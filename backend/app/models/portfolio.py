@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,6 +20,9 @@ class Portfolio(Base):
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
 
     transactions: Mapped[list["Transaction"]] = relationship(back_populates="portfolio", cascade="all, delete-orphan")
+    watchlist: Mapped[list["PortfolioSymbol"]] = relationship(
+        back_populates="portfolio", cascade="all, delete-orphan"
+    )
 
 
 class Transaction(Base):
@@ -45,6 +48,21 @@ class Transaction(Base):
     lots: Mapped[list["Lot"]] = relationship(back_populates="transaction")
 
 
+class PortfolioSymbol(Base):
+    __tablename__ = "portfolio_symbol"
+    __table_args__ = (
+        UniqueConstraint("portfolio_id", "symbol", name="uq_portfolio_symbol"),
+        Index("ix_portfolio_symbol_symbol", "symbol"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    portfolio_id: Mapped[int] = mapped_column(ForeignKey("portfolio.id", ondelete="CASCADE"))
+    symbol: Mapped[str] = mapped_column(String(20))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+    portfolio: Mapped[Portfolio] = relationship(back_populates="watchlist")
+
+
 class Lot(Base):
     __tablename__ = "lot"
     __table_args__ = (
@@ -62,4 +80,4 @@ class Lot(Base):
     transaction: Mapped[Transaction] = relationship(back_populates="lots")
 
 
-__all__ = ["Portfolio", "Transaction", "Lot", "TRANSACTION_TYPES"]
+__all__ = ["Portfolio", "Transaction", "Lot", "PortfolioSymbol", "TRANSACTION_TYPES"]

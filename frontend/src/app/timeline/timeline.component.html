@@ -4,12 +4,11 @@
       <h1>Portfolio Timeline</h1>
       <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
     </div>
-    <form class="filters" aria-label="Timeline filters">
+    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
       <label>
         Symbol
-
-        <select [ngModel]="selectedSymbol()" (ngModelChange)="selectedSymbol.set($event)" name="symbol">
-          <option *ngFor="let ticker of symbols" [value]="ticker">{{ ticker }}</option>
+        <select [ngModel]="selectedSymbol()" (ngModelChange)="onSymbolChange($event)" name="symbol">
+          <option *ngFor="let ticker of watchlist()" [value]="ticker.symbol">{{ ticker.symbol }}</option>
         </select>
       </label>
       <label>
@@ -20,21 +19,82 @@
         To
         <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" name="to" />
       </label>
-      <button type="button">Refresh</button>
+      <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
     </form>
   </header>
+
+  <p class="empty" *ngIf="!watchlist().length">
+    Add a symbol from the Portfolio workspace to start building a personalized timeline.
+  </p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
   <section class="chart-card">
     <header>
       <h2>Timeline View</h2>
       <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
     </header>
-    <div echarts [options]="timelineOption" class="chart"></div>
+    <div echarts [options]="timelineOption()" class="chart" *ngIf="hasData(); else emptyState"></div>
+    <ng-template #emptyState>
+      <div class="chart-placeholder">
+        <p>Select a symbol with price history and recorded trades to render the chart.</p>
+      </div>
+    </ng-template>
   </section>
 
   <section class="data-grid" aria-live="polite">
     <h2>Daily opportunity breakdown</h2>
-    <table>
+    <table *ngIf="tableRows().length; else noRows">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Close</</EOF
+cat <<'EOF' > frontend/src/app/timeline/timeline.component.html
+<section class="timeline-page">
+  <header class="page-header">
+    <div>
+      <h1>Portfolio Timeline</h1>
+      <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
+    </div>
+    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
+      <label>
+        Symbol
+        <select [ngModel]="selectedSymbol()" (ngModelChange)="onSymbolChange($event)" name="symbol">
+          <option *ngFor="let ticker of watchlist()" [value]="ticker.symbol">{{ ticker.symbol }}</option>
+        </select>
+      </label>
+      <label>
+        From
+        <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" name="from" />
+      </label>
+      <label>
+        To
+        <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" name="to" />
+      </label>
+      <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
+    </form>
+  </header>
+
+  <p class="empty" *ngIf="!watchlist().length">
+    Add a symbol from the Portfolio workspace to start building a personalized timeline.
+  </p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <section class="chart-card">
+    <header>
+      <h2>Timeline View</h2>
+      <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
+    </header>
+    <div echarts [options]="timelineOption()" class="chart" *ngIf="hasData(); else emptyState"></div>
+    <ng-template #emptyState>
+      <div class="chart-placeholder">
+        <p>Select a symbol with price history and recorded trades to render the chart.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <section class="data-grid" aria-live="polite">
+    <h2>Daily opportunity breakdown</h2>
+    <table *ngIf="tableRows().length; else noRows">
       <thead>
         <tr>
           <th scope="col">Date</th>
@@ -45,9 +105,9 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let row of filteredData">
+        <tr *ngFor="let row of tableRows()">
           <td>{{ row.date }}</td>
-          <td>{{ row.price | number: '1.2-2' }}</td>
+          <td>{{ row.price === null ? '—' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
           <td>{{ row.hypoPnl | currency: 'USD' }}</td>
           <td>{{ row.unrealizedPnl | currency: 'USD' }}</td>
           <td>
@@ -58,5 +118,22 @@
         </tr>
       </tbody>
     </table>
+    <ng-template #noRows>
+      <p class="empty">No timeline data yet. Add trades to visualize missed opportunities for this symbol.</p>
+    </ng-template>
+  </section>
+
+  <section class="transactions" *ngIf="transactions().length">
+    <h2>Recorded trades</h2>
+    <ul>
+      <li *ngFor="let tx of transactions()">
+        <span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span>
+        <strong>{{ tx.symbol }}</strong>
+        <span>{{ tx.trade_datetime | date: 'mediumDate' }}</span>
+        <span>{{ tx.quantity }} @ {{ tx.price | currency: 'USD' }}</span>
+        <span *ngIf="tx.account">Account: {{ tx.account }}</span>
+        <span class="value">Value ≈ {{ (tx.quantity * tx.price) | currency: 'USD' }}</span>
+      </li>
+    </ul>
   </section>
 </section>
