@@ -18,14 +18,18 @@ export class AppComponent {
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly user = this.auth.user;
   readonly navLinks = [
-    { path: '/app', label: 'Overview', fragment: 'overview' },
-    { path: '/app', label: 'Performance', fragment: 'performance' },
-    { path: '/app', label: 'Opportunities', fragment: 'opportunities' },
-    { path: '/app', label: 'Alerts', fragment: 'alerts' },
-    { path: '/app', label: 'Macro', fragment: 'macro' }
+    { path: '/app/overview', label: 'Overview' },
+    { path: '/app/timeline', label: 'Timeline' },
+    { path: '/app/opportunities', label: 'Opportunities' },
+    { path: '/app/signals', label: 'Signals' },
+    { path: '/app/sentiment', label: 'Sentiment' },
+    { path: '/app/forecast', label: 'Forecast' },
+    { path: '/app/simulator', label: 'Simulator' },
+    { path: '/app/macro', label: 'Macro' },
+    { path: '/app/alerts', label: 'Alerts' }
   ];
 
-  readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app' : '/login'));
+  readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
   readonly currentYear = new Date().getFullYear();
 
   logout(): void {

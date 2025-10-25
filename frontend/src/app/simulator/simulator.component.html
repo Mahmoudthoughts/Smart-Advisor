@@ -1,0 +1,87 @@
+<section class="simulator-page">
+  <header class="page-header">
+    <div>
+      <h1>Scenario Simulator</h1>
+      <p>Create alternate timelines to test exits, re-entries, and hedges before committing.</p>
+    </div>
+    <label>
+      Base timeline
+      <select [(ngModel)]="selectedTimeline" name="timeline">
+        <option *ngFor="let option of baseTimeline" [value]="option">{{ option }}</option>
+      </select>
+    </label>
+  </header>
+
+  <section class="actions">
+    <header>
+      <h2>What-if actions</h2>
+      <button type="button" (click)="addAction()">Add action</button>
+    </header>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Date</th>
+          <th>Qty %</th>
+          <th>Price</th>
+          <th>Limit price</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let action of actions(); trackBy: trackById">
+          <td>
+            <select [ngModel]="action.type" (ngModelChange)="updateAction(action.id, { type: $event })">
+              <option value="BUY">BUY</option>
+              <option value="SELL">SELL</option>
+            </select>
+          </td>
+          <td>
+            <input type="date" [ngModel]="action.date" (ngModelChange)="updateAction(action.id, { date: $event })" />
+          </td>
+          <td>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              [ngModel]="action.qtyPct"
+              (ngModelChange)="updateAction(action.id, { qtyPct: $event })"
+            />
+          </td>
+          <td>
+            <select [ngModel]="action.price" (ngModelChange)="updateAction(action.id, { price: $event as any })">
+              <option value="mkt_close">Market close</option>
+              <option value="limit">Limit</option>
+            </select>
+          </td>
+          <td>
+            <input
+              type="number"
+              step="0.01"
+              [disabled]="action.price === 'mkt_close'"
+              [ngModel]="action.limitPrice"
+              (ngModelChange)="updateAction(action.id, { limitPrice: $event ? +$event : undefined })"
+            />
+          </td>
+          <td>
+            <button type="button" class="delete" (click)="removeAction(action.id)">Remove</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="results">
+    <header>
+      <h2>Scenario deltas</h2>
+      <p>Compare ghost timeline results with the active portfolio baseline.</p>
+    </header>
+    <ul>
+      <li *ngFor="let metric of results">
+        <h3>{{ metric.label }}</h3>
+        <p>{{ metric.value }}</p>
+        <span>{{ metric.delta }}</span>
+      </li>
+    </ul>
+  </section>
+</section>
