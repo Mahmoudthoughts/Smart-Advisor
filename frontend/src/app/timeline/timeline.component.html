@@ -7,6 +7,7 @@
     <form class="filters" aria-label="Timeline filters">
       <label>
         Symbol
+
         <select [(ngModel)]="selectedSymbol()" name="symbol">
           <option *ngFor="let ticker of symbols" [value]="ticker">{{ ticker }}</option>
         </select>

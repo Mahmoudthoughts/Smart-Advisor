@@ -46,6 +46,36 @@ export class SimulatorComponent {
     ]);
   }
 
+  onTypeChange(id: number, value: 'BUY' | 'SELL'): void {
+    this.updateAction(id, { type: value });
+  }
+
+  onDateChange(id: number, value: string): void {
+    this.updateAction(id, { date: value });
+  }
+
+  onQtyChange(id: number, value: string | number): void {
+    const parsed = typeof value === 'number' ? value : Number(value);
+    this.updateAction(id, { qtyPct: Number.isFinite(parsed) ? parsed : 0 });
+  }
+
+  onPriceModeChange(id: number, value: 'mkt_close' | 'limit'): void {
+    this.updateAction(id, {
+      price: value,
+      limitPrice: value === 'limit' ? this.actions().find((row) => row.id === id)?.limitPrice : undefined
+    });
+  }
+
+  onLimitPriceChange(id: number, value: string | number | null): void {
+    if (value === null || value === '') {
+      this.updateAction(id, { limitPrice: undefined });
+      return;
+    }
+
+    const parsed = typeof value === 'number' ? value : Number(value);
+    this.updateAction(id, { limitPrice: Number.isFinite(parsed) ? parsed : undefined });
+  }
+
   updateAction(id: number, partial: Partial<ActionRow>): void {
     this.actions.update((rows) =>
       rows.map((row) => (row.id === id ? { ...row, ...partial } : row))

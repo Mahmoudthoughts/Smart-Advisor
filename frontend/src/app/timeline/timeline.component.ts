@@ -1,10 +1,13 @@
 import { CommonModule } from '@angular/common';
+
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 
 interface TimelinePoint {
+  readonly symbol: string;
+
   readonly date: string;
   readonly price: number;
   readonly hypoPnl: number;
@@ -21,6 +24,7 @@ interface TimelinePoint {
 })
 export class TimelineComponent {
   readonly symbols = ['PATH', 'TSLA', 'NVDA', 'LAC'];
+
   readonly selectedSymbol = signal<string>(this.symbols[0]);
   readonly fromDate = signal<string>('2024-01-01');
   readonly toDate = signal<string>('2024-03-31');
