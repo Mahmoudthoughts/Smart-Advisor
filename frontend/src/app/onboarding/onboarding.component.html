@@ -1,0 +1,105 @@
+<section class="onboarding">
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Welcome to Smart Advisor</p>
+      <h1>Bootstrap your real portfolio workspace</h1>
+      <p class="lede">
+        Add the symbols you follow and connect an account so the advisor can track trades, compute regret, and surface insights tailored to you.
+      </p>
+    </div>
+    <a routerLink="/app/overview" class="skip-link">Skip to demo overview</a>
+  </header>
+
+  <section class="steps">
+    <article class="card">
+      <header>
+        <span class="step">Step 1</span>
+        <h2>Add symbols to watch</h2>
+        <p>Search by ticker or company name, then add it to your personalized workspace.</p>
+      </header>
+      <form class="search" (ngSubmit)="searchSymbols()" novalidate>
+        <label for="symbol-search">Search universe</label>
+        <div class="input-row">
+          <input
+            id="symbol-search"
+            name="symbol"
+            type="search"
+            placeholder="e.g. PATH or UiPath"
+            [(ngModel)]="searchTerm"
+            [disabled]="isSearching()"
+          />
+          <button type="submit" [disabled]="isSearching()">{{ isSearching() ? 'Searching…' : 'Search' }}</button>
+        </div>
+        <p class="error" *ngIf="searchError()">{{ searchError() }}</p>
+      </form>
+      <ul class="results" *ngIf="searchResults().length">
+        <li *ngFor="let result of searchResults()">
+          <div class="meta">
+            <strong>{{ result.symbol }}</strong>
+            <span>{{ result.name }}</span>
+            <span class="muted">{{ result.region }} · {{ result.currency }}</span>
+          </div>
+          <button type="button" (click)="addSymbol(result)" [disabled]="isAddingSymbol()">Add</button>
+        </li>
+      </ul>
+      <p class="success" *ngIf="addSymbolStatus()">{{ addSymbolStatus() }}</p>
+      <p class="error" *ngIf="addSymbolError()">{{ addSymbolError() }}</p>
+      <div class="watchlist" *ngIf="watchlist().length">
+        <h3>Currently tracking</h3>
+        <ul>
+          <li *ngFor="let item of watchlist()">{{ item.symbol }}<span *ngIf="item.name"> · {{ item.name }}</span></li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="card">
+      <header>
+        <span class="step">Step 2</span>
+        <h2>Create an account</h2>
+        <p>Capture where trades are executed so we can roll up positions, fees, and average cost.</p>
+      </header>
+      <form #accountFormRef="ngForm" (ngSubmit)="saveAccount(accountFormRef)" novalidate>
+        <label>
+          Account name
+          <input name="name" type="text" required [(ngModel)]="accountForm.name" placeholder="Interactive Brokers" />
+        </label>
+        <label>
+          Account type
+          <input name="type" type="text" [(ngModel)]="accountForm.type" placeholder="Brokerage" />
+        </label>
+        <label>
+          Currency
+          <input name="currency" type="text" maxlength="3" [(ngModel)]="accountForm.currency" />
+        </label>
+        <label>
+          Notes
+          <textarea name="notes" rows="2" [(ngModel)]="accountForm.notes" placeholder="Optional context"></textarea>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="is_default" [(ngModel)]="accountForm.is_default" />
+          Set as default trading account
+        </label>
+        <button type="submit" [disabled]="isSavingAccount()">{{ isSavingAccount() ? 'Saving…' : 'Save account' }}</button>
+        <p class="success" *ngIf="accountStatus()">{{ accountStatus() }}</p>
+        <p class="error" *ngIf="accountError()">{{ accountError() }}</p>
+      </form>
+      <div class="accounts" *ngIf="accounts().length">
+        <h3>Accounts configured</h3>
+        <ul>
+          <li *ngFor="let account of accounts()">
+            <strong>{{ account.name }}</strong>
+            <span>{{ account.type || 'Brokerage' }} · {{ account.currency }}</span>
+            <span *ngIf="account.is_default" class="badge">Default</span>
+          </li>
+        </ul>
+      </div>
+    </article>
+  </section>
+
+  <footer class="next">
+    <button type="button" class="primary" (click)="goToStocks()" [disabled]="!onboardingComplete()">
+      Continue to My Stocks
+    </button>
+    <p *ngIf="!onboardingComplete()" class="hint">Complete the two steps above to unlock the full workspace.</p>
+  </footer>
+</section>

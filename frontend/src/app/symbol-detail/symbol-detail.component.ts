@@ -1,53 +1,55 @@
 import { CommonModule } from '@angular/common';
-
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
+import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { CurrencyPipe, PercentPipe } from '@angular/common';
 import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
+import { Subscription } from 'rxjs';
 
 import {
   PortfolioDataService,
+  SymbolRefreshResponse,
   TimelinePricePoint,
-  TimelineResponse,
   TimelineSnapshot,
   TimelineTransaction,
-  WatchlistSymbol,
+  WatchlistSymbol
 } from '../portfolio-data.service';
 
+interface SymbolSummary {
+  readonly lastPrice: number | null;
+  readonly change: number | null;
+  readonly changePercent: number | null;
+  readonly positionQty: number | null;
+  readonly averageCost: number | null;
+  readonly unrealized: number | null;
+  readonly realized: number | null;
+  readonly hypo: number | null;
+}
+
 @Component({
-  selector: 'app-timeline-page',
+  selector: 'app-symbol-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxEchartsDirective],
-  templateUrl: './timeline.component.html',
-  styleUrls: ['./timeline.component.scss']
+  imports: [CommonModule, RouterLink, NgxEchartsDirective, CurrencyPipe, PercentPipe],
+  templateUrl: './symbol-detail.component.html',
+  styleUrls: ['./symbol-detail.component.scss']
 })
-export class TimelineComponent implements OnInit {
+export class SymbolDetailComponent implements OnInit, OnDestroy {
+  private readonly route = inject(ActivatedRoute);
   private readonly dataService = inject(PortfolioDataService);
 
-  readonly watchlist = signal<WatchlistSymbol[]>([]);
-  readonly selectedSymbol = signal<string>('');
-  readonly fromDate = signal<string>('');
-  readonly toDate = signal<string>('');
+  private paramSub: Subscription | null = null;
+
+  readonly symbol = signal<string>('');
+  readonly isLoading = signal<boolean>(false);
+  readonly loadError = signal<string | null>(null);
+  readonly refreshStatus = signal<string | null>(null);
+  readonly refreshError = signal<string | null>(null);
+  readonly watchlistEntry = signal<WatchlistSymbol | null>(null);
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);
-  readonly isLoading = signal<boolean>(false);
-  readonly loadError = signal<string | null>(null);
 
-  readonly tableRows = computed(() => {
-    const priceLookup = new Map(this.prices().map((point) => [point.date, point.adj_close]));
-    return this.snapshots().map((snapshot) => ({
-      date: snapshot.date,
-      price: priceLookup.get(snapshot.date) ?? null,
-      hypoPnl: snapshot.hypo_liquidation_pl_base,
-      unrealizedPnl: snapshot.unrealized_pl_base,
-      dayOpportunity: snapshot.day_opportunity_base,
-    }));
-  });
-
-  readonly hasData = computed(() => this.snapshots().length > 0 || this.prices().length > 0);
-
-  readonly timelineOption = signal<EChartsOption>({
+  readonly chartOption = signal<EChartsOption>({
     tooltip: { trigger: 'axis' },
     legend: { data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'] },
     grid: { left: 32, right: 24, top: 32, bottom: 48 },
@@ -55,80 +57,113 @@ export class TimelineComponent implements OnInit {
     yAxis: [
       {
         type: 'value',
-        axisLabel: {
-          formatter: (value: number) => `$${value.toLocaleString()}`
-        }
+        axisLabel: { formatter: (value: number) => `$${value.toLocaleString()}` }
       },
       {
         type: 'value',
         position: 'right',
-        axisLabel: {
-          formatter: (value: number) => `$${value.toFixed(2)}`
-        }
+        axisLabel: { formatter: (value: number) => `$${value.toFixed(2)}` }
       }
     ],
     series: []
   });
 
+  readonly summary = computed<SymbolSummary>(() => {
+    const entry = this.watchlistEntry();
+    const snaps = this.snapshots();
+    const lastSnapshot = snaps.length ? snaps[snaps.length - 1] : null;
+    return {
+      lastPrice: entry?.latest_close ?? null,
+      change: entry?.day_change ?? null,
+      changePercent: entry?.day_change_percent ?? null,
+      positionQty: lastSnapshot ? Number(lastSnapshot.shares_open) : entry?.position_qty ?? null,
+      averageCost:
+        lastSnapshot && lastSnapshot.shares_open > 0
+          ? Number(lastSnapshot.cost_basis_open_base) / Number(lastSnapshot.shares_open)
+          : entry?.average_cost ?? null,
+      unrealized: lastSnapshot ? Number(lastSnapshot.unrealized_pl_base) : entry?.unrealized_pl ?? null,
+      realized: lastSnapshot ? Number(lastSnapshot.realized_pl_to_date_base) : null,
+      hypo: lastSnapshot ? Number(lastSnapshot.hypo_liquidation_pl_base) : null
+    };
+  });
+
   ngOnInit(): void {
-    this.loadWatchlist();
+    this.paramSub = this.route.paramMap.subscribe((params) => {
+      const symbol = (params.get('symbol') ?? '').toUpperCase();
+      this.symbol.set(symbol);
+      this.loadWatchlist();
+      this.loadTimeline();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.paramSub?.unsubscribe();
   }
 
   loadWatchlist(): void {
     this.dataService.getWatchlist().subscribe({
-      next: (symbols) => {
-        this.loadError.set(null);
-        this.watchlist.set(symbols);
-        if (!this.selectedSymbol() && symbols.length > 0) {
-          this.selectedSymbol.set(symbols[0].symbol);
-          this.loadTimeline();
-        }
+      next: (items) => {
+        const entry = items.find((item) => item.symbol === this.symbol());
+        this.watchlistEntry.set(entry ?? null);
       },
-      error: () => {
-        this.loadError.set('Unable to load watchlist. Add a symbol to begin tracking.');
-      }
+      error: () => this.watchlistEntry.set(null)
     });
   }
 
   loadTimeline(): void {
-    const symbol = this.selectedSymbol();
-    if (!symbol) {
+    const ticker = this.symbol();
+    if (!ticker) {
       return;
     }
     this.isLoading.set(true);
     this.loadError.set(null);
-    this.dataService
-      .getTimeline(symbol, this.fromDate() || undefined, this.toDate() || undefined)
-      .subscribe({
-        next: (response: TimelineResponse) => {
-          this.snapshots.set(response.snapshots);
-          this.prices.set(response.prices);
-          this.transactions.set(response.transactions);
-          this.updateChart();
-          this.isLoading.set(false);
-        },
-        error: () => {
-          this.snapshots.set([]);
-          this.prices.set([]);
-          this.transactions.set([]);
-          this.updateChart();
-          this.isLoading.set(false);
-          this.loadError.set('Unable to load timeline data for the selected symbol.');
-        }
-      });
+    this.dataService.getTimeline(ticker).subscribe({
+      next: (response) => {
+        this.snapshots.set(response.snapshots);
+        this.prices.set(response.prices);
+        this.transactions.set(response.transactions);
+        this.updateChart();
+        this.isLoading.set(false);
+      },
+      error: () => {
+        this.snapshots.set([]);
+        this.prices.set([]);
+        this.transactions.set([]);
+        this.updateChart();
+        this.isLoading.set(false);
+        this.loadError.set('Unable to load analytics for this symbol.');
+      }
+    });
   }
 
-  onSymbolChange(symbol: string): void {
-    this.selectedSymbol.set(symbol);
-    this.loadTimeline();
+  refresh(): void {
+    const ticker = this.symbol();
+    if (!ticker) {
+      return;
+    }
+    this.refreshStatus.set(null);
+    this.refreshError.set(null);
+    this.dataService.refreshSymbol(ticker).subscribe({
+      next: (response: SymbolRefreshResponse) => {
+        this.refreshStatus.set(
+          `${response.symbol} refreshed (${response.prices_ingested} prices, ${response.snapshots_rebuilt} snapshots).`
+        );
+        this.loadWatchlist();
+        this.loadTimeline();
+      },
+      error: (err) => {
+        const message = err?.error?.detail ?? 'Unable to refresh market data for this symbol.';
+        this.refreshError.set(message);
+      }
+    });
   }
 
-  updateChart(): void {
+  private updateChart(): void {
     const snapshots = this.snapshots();
     const prices = this.prices();
     const transactions = this.transactions();
     if (!snapshots.length && !prices.length) {
-      this.timelineOption.update((option) => ({
+      this.chartOption.update((option) => ({
         ...option,
         xAxis: { ...option.xAxis, data: [] },
         series: []
@@ -148,6 +183,7 @@ export class TimelineComponent implements OnInit {
             : null
         )
       : axisDates.map(() => null);
+
     const tradeMarkers = transactions.map((tx) => {
       const tradeDate = tx.trade_datetime.split('T')[0];
       const markerColor = tx.type === 'SELL' ? '#dc2626' : '#16a34a';
@@ -167,7 +203,12 @@ export class TimelineComponent implements OnInit {
       latestSnapshot = snapshots[snapshots.length - 1];
     }
 
-    const realizedMarkers = [] as Array<{ coord: [string, number]; value: number; itemStyle: { color: string }; label: { formatter: () => string } }>;
+    const realizedMarkers: Array<{
+      coord: [string, number];
+      value: number;
+      itemStyle: { color: string };
+      label: { formatter: () => string };
+    }> = [];
     if (snapshots.length > 1) {
       let previousRealized = Number(snapshots[0].realized_pl_to_date_base);
       for (let i = 1; i < snapshots.length; i += 1) {
@@ -204,7 +245,7 @@ export class TimelineComponent implements OnInit {
       return name;
     };
 
-    this.timelineOption.set({
+    this.chartOption.set({
       tooltip: {
         trigger: 'axis',
         axisPointer: { type: 'cross' },
@@ -232,7 +273,10 @@ export class TimelineComponent implements OnInit {
           return [`<strong>${dateLabel}</strong>`, ...lines].join('<br/>');
         }
       },
-      legend: { data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'], formatter: legendFormatter },
+      legend: {
+        data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'],
+        formatter: legendFormatter
+      },
       grid: { left: 32, right: 24, top: 32, bottom: 48 },
       xAxis: {
         type: 'category',

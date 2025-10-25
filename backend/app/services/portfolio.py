@@ -7,6 +7,7 @@ from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import delete, select
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -14,10 +15,15 @@ from app.models import (
     DailyBar,
     DailyPortfolioSnapshot,
     Portfolio,
+    PortfolioAccount,
     PortfolioSymbol,
     Transaction,
 )
-from app.schemas.portfolio import TransactionCreateRequest
+from app.schemas.portfolio import (
+    PortfolioAccountCreateRequest,
+    TransactionCreateRequest,
+    TransactionUpdateRequest,
+)
 from app.services.snapshots import TransactionInput, compute_daily
 
 
@@ -36,7 +42,12 @@ async def ensure_portfolio(session: AsyncSession) -> Portfolio:
     return portfolio
 
 
-async def add_watchlist_symbol(symbol: str, session: AsyncSession) -> PortfolioSymbol:
+async def add_watchlist_symbol(
+    symbol: str,
+    session: AsyncSession,
+    *,
+    display_name: str | None = None,
+) -> PortfolioSymbol:
     """Ensure a symbol exists on the portfolio watchlist."""
 
     portfolio = await ensure_portfolio(session)
@@ -51,8 +62,16 @@ async def add_watchlist_symbol(symbol: str, session: AsyncSession) -> PortfolioS
     )
     existing = result.scalars().first()
     if existing:
+        if display_name and not existing.display_name:
+            existing.display_name = display_name.strip()
+            await session.commit()
+            await session.refresh(existing)
         return existing
-    record = PortfolioSymbol(portfolio_id=portfolio.id, symbol=normalized)
+    record = PortfolioSymbol(
+        portfolio_id=portfolio.id,
+        symbol=normalized,
+        display_name=display_name.strip() if display_name else None,
+    )
     session.add(record)
     await session.commit()
     await session.refresh(record)
@@ -77,6 +96,37 @@ async def list_transactions(session: AsyncSession) -> list[Transaction]:
     return list(result.scalars().all())
 
 
+async def _resolve_account(
+    portfolio: Portfolio,
+    session: AsyncSession,
+    *,
+    account_id: int | None,
+    account_name: str | None,
+) -> tuple[PortfolioAccount | None, str | None]:
+    account_record: PortfolioAccount | None = None
+    normalized = account_name.strip() if account_name else None
+    if account_id is not None:
+        account_record = await session.get(PortfolioAccount, account_id)
+        if account_record is None or account_record.portfolio_id != portfolio.id:
+            raise ValueError("Invalid account selected for transaction")
+    elif normalized:
+        existing_stmt = select(PortfolioAccount).where(
+            PortfolioAccount.portfolio_id == portfolio.id,
+            sa.func.lower(PortfolioAccount.name) == normalized.lower(),
+        )
+        account_record = (await session.execute(existing_stmt)).scalars().first()
+
+    if account_record is None:
+        default_stmt = select(PortfolioAccount).where(
+            PortfolioAccount.portfolio_id == portfolio.id,
+            PortfolioAccount.is_default.is_(True),
+        )
+        account_record = (await session.execute(default_stmt)).scalars().first()
+
+    resolved_name = account_record.name if account_record else normalized
+    return account_record, resolved_name
+
+
 async def create_transaction(payload: TransactionCreateRequest, session: AsyncSession) -> Transaction:
     """Persist a manual transaction and recompute snapshots."""
 
@@ -88,6 +138,13 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
     if trade_dt.tzinfo is None:
         trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
 
+    account_record, account_name = await _resolve_account(
+        portfolio,
+        session,
+        account_id=payload.account_id,
+        account_name=payload.account,
+    )
+
     tx = Transaction(
         portfolio_id=portfolio.id,
         symbol=payload.symbol.strip().upper(),
@@ -98,7 +155,8 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
         tax=Decimal(str(payload.tax)),
         currency=payload.currency.upper(),
         datetime=trade_dt,
-        broker_id=payload.account,
+        broker_id=account_name,
+        account_id=account_record.id if account_record else None,
         notes=payload.notes,
     )
     session.add(tx)
@@ -106,6 +164,100 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
     await session.refresh(tx)
     await recompute_snapshots_for_symbol(tx.symbol, session)
     return tx
+
+
+async def update_transaction(
+    transaction_id: int,
+    payload: TransactionUpdateRequest,
+    session: AsyncSession,
+) -> Transaction:
+    portfolio = await ensure_portfolio(session)
+    tx = await session.get(Transaction, transaction_id)
+    if tx is None or tx.portfolio_id != portfolio.id:
+        raise ValueError("Transaction not found for this portfolio")
+
+    previous_symbol = tx.symbol
+    await add_watchlist_symbol(payload.symbol, session)
+
+    settings = get_settings()
+    trade_dt = payload.trade_datetime
+    if trade_dt.tzinfo is None:
+        trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
+
+    account_record, account_name = await _resolve_account(
+        portfolio,
+        session,
+        account_id=payload.account_id,
+        account_name=payload.account,
+    )
+
+    tx.symbol = payload.symbol.strip().upper()
+    tx.type = payload.type.upper()
+    tx.qty = Decimal(str(payload.quantity))
+    tx.price = Decimal(str(payload.price))
+    tx.fee = Decimal(str(payload.fee))
+    tx.tax = Decimal(str(payload.tax))
+    tx.currency = payload.currency.upper()
+    tx.datetime = trade_dt
+    tx.broker_id = account_name
+    tx.account_id = account_record.id if account_record else None
+    tx.notes = payload.notes
+
+    await session.commit()
+    await session.refresh(tx)
+
+    if previous_symbol != tx.symbol:
+        await recompute_snapshots_for_symbol(previous_symbol, session)
+    await recompute_snapshots_for_symbol(tx.symbol, session)
+    return tx
+
+
+async def list_accounts(session: AsyncSession) -> list[PortfolioAccount]:
+    portfolio = await ensure_portfolio(session)
+    result = await session.execute(
+        select(PortfolioAccount)
+            .where(PortfolioAccount.portfolio_id == portfolio.id)
+            .order_by(PortfolioAccount.is_default.desc(), PortfolioAccount.name)
+    )
+    return list(result.scalars().all())
+
+
+async def create_account(
+    payload: PortfolioAccountCreateRequest,
+    session: AsyncSession,
+) -> PortfolioAccount:
+    portfolio = await ensure_portfolio(session)
+    name = payload.name.strip()
+    if not name:
+        raise ValueError("Account name must not be empty")
+
+    exists_stmt = select(PortfolioAccount).where(
+        PortfolioAccount.portfolio_id == portfolio.id,
+        sa.func.lower(PortfolioAccount.name) == name.lower(),
+    )
+    existing = (await session.execute(exists_stmt)).scalars().first()
+    if existing:
+        raise ValueError("An account with this name already exists")
+
+    if payload.is_default:
+        await session.execute(
+            sa.update(PortfolioAccount)
+            .where(PortfolioAccount.portfolio_id == portfolio.id)
+            .values(is_default=False)
+        )
+
+    record = PortfolioAccount(
+        portfolio_id=portfolio.id,
+        name=name,
+        type=payload.type.strip() if payload.type else None,
+        currency=payload.currency.upper(),
+        notes=payload.notes.strip() if payload.notes else None,
+        is_default=payload.is_default,
+    )
+    session.add(record)
+    await session.commit()
+    await session.refresh(record)
+    return record
 
 
 async def recompute_snapshots_for_symbol(symbol: str, session: AsyncSession) -> list:
@@ -174,5 +326,8 @@ __all__ = [
     "list_watchlist",
     "list_transactions",
     "create_transaction",
+    "update_transaction",
+    "list_accounts",
+    "create_account",
     "recompute_snapshots_for_symbol",
 ]

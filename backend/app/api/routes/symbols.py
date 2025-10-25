@@ -1,4 +1,4 @@
-"""Symbol timeline endpoints."""
+"""Symbol-centric endpoints: search, timeline, and refresh helpers."""
 
 from __future__ import annotations
 
@@ -7,13 +7,15 @@ from decimal import Decimal
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_db
+from app.ingest.prices import ingest_prices
 from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
+from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from app.schemas.snapshots import (
     DailyPortfolioSnapshotSchema,
     TimelinePricePointSchema,
@@ -21,8 +23,38 @@ from app.schemas.snapshots import (
     TimelineTransactionSchema,
     TopMissedDaySchema,
 )
+from app.schemas.symbols import SymbolRefreshResponse, SymbolSearchResultSchema
+from app.services.portfolio import recompute_snapshots_for_symbol
 
 router = APIRouter()
+
+
+@router.get("/search", response_model=list[SymbolSearchResultSchema])
+async def search_symbols(
+    query: str = Query(..., min_length=1, max_length=32, description="Ticker or company keywords"),
+    client=Depends(get_alpha_vantage_client),
+) -> list[SymbolSearchResultSchema]:
+    try:
+        payload = await client.symbol_search(query)
+    except AlphaVantageError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    matches = payload.get("bestMatches", [])
+    results: list[SymbolSearchResultSchema] = []
+    for match in matches:
+        try:
+            score = float(match.get("9. matchScore")) if match.get("9. matchScore") is not None else None
+        except (TypeError, ValueError):
+            score = None
+        results.append(
+            SymbolSearchResultSchema(
+                symbol=(match.get("1. symbol") or "").upper(),
+                name=match.get("2. name") or match.get("1. symbol") or "",
+                region=match.get("4. region"),
+                currency=match.get("8. currency"),
+                match_score=score,
+            )
+        )
+    return results
 
 
 @router.get("/{symbol}/timeline", response_model=TimelineResponse)
@@ -88,12 +120,37 @@ async def get_symbol_timeline(
             quantity=float(Decimal(str(tx.qty))),
             price=float(Decimal(str(tx.price))),
             trade_datetime=tx.datetime,
-            account=tx.broker_id,
+            fee=float(Decimal(str(tx.fee))),
+            tax=float(Decimal(str(tx.tax))),
+            account_id=tx.account_id,
+            account=tx.account.name if tx.account else tx.broker_id,
+            notes=tx.notes,
             notional_value=float(Decimal(str(tx.qty)) * Decimal(str(tx.price))),
         )
         for tx in tx_rows
     ]
     return TimelineResponse(symbol=normalized, snapshots=snapshots, prices=prices, transactions=transactions)
+
+
+@router.post("/{symbol}/refresh", response_model=SymbolRefreshResponse)
+async def refresh_symbol(
+    symbol: str,
+    session: AsyncSession = Depends(get_db),
+    client=Depends(get_alpha_vantage_client),
+) -> SymbolRefreshResponse:
+    normalized = symbol.strip().upper()
+    if not normalized:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Symbol must not be empty")
+    try:
+        ingested = await ingest_prices(normalized, session, client=client)
+    except AlphaVantageError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    snapshots = await recompute_snapshots_for_symbol(normalized, session)
+    return SymbolRefreshResponse(
+        symbol=normalized,
+        prices_ingested=ingested,
+        snapshots_rebuilt=len(snapshots),
+    )
 
 
 @router.get("/{symbol}/top-missed", response_model=list[TopMissedDaySchema])
