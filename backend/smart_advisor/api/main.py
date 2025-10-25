@@ -30,7 +30,11 @@ def create_app(db: Database | None = None) -> FastAPI:
 
     @app.get("/health", response_model=HealthResponse)
     async def health() -> HealthResponse:
-        return HealthResponse(status="ok", service="smart-advisor", database_url=database_instance.url)
+        return HealthResponse(
+            status="ok",
+            service="smart-advisor",
+            database_status="connected",
+        )
 
     return app
 
