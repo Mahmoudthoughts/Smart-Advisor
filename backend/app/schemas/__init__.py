@@ -5,8 +5,11 @@ from .sentiment import SentimentSeriesResponse, TickerSentimentDailySchema
 from .portfolio import (
     TransactionCreateRequest,
     TransactionSchema,
+    TransactionUpdateRequest,
     WatchlistCreateRequest,
     WatchlistSymbolSchema,
+    PortfolioAccountSchema,
+    PortfolioAccountCreateRequest,
 )
 from .signals import SignalEventSchema, SignalRuleUpsertRequest
 from .snapshots import (
@@ -17,6 +20,7 @@ from .snapshots import (
     TopMissedDaySchema,
 )
 from .simulate import SimulationRequest, SimulationResponse
+from .symbols import SymbolRefreshResponse, SymbolSearchResultSchema
 
 __all__ = [
     "ForecastResponse",
@@ -33,6 +37,11 @@ __all__ = [
     "SimulationResponse",
     "TransactionSchema",
     "TransactionCreateRequest",
+    "TransactionUpdateRequest",
     "WatchlistSymbolSchema",
     "WatchlistCreateRequest",
+    "PortfolioAccountSchema",
+    "PortfolioAccountCreateRequest",
+    "SymbolSearchResultSchema",
+    "SymbolRefreshResponse",
 ]

@@ -86,6 +86,9 @@ class AlphaVantageClient:
             }
         )
 
+    async def symbol_search(self, keywords: str) -> Dict[str, Any]:
+        return await self._get({"function": "SYMBOL_SEARCH", "keywords": keywords})
+
     async def econ_indicator(self, function: str, **kwargs: Any) -> Dict[str, Any]:
         params = {"function": function}
         params.update(kwargs)

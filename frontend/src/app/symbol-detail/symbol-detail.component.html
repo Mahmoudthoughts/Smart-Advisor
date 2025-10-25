@@ -1,0 +1,91 @@
+<section class="symbol-detail" *ngIf="symbol(); else missing">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Symbol detail</p>
+      <h1>{{ symbol() }}<span *ngIf="watchlistEntry()?.name"> · {{ watchlistEntry()?.name }}</span></h1>
+      <p>Historical performance, trade overlays, and current position analytics for this symbol.</p>
+    </div>
+    <div class="actions">
+      <button type="button" (click)="refresh()">Refresh data</button>
+      <a routerLink="/app/transactions" [queryParams]="{ symbol: symbol() }" class="secondary">Add transaction</a>
+    </div>
+  </header>
+
+  <p class="status" *ngIf="refreshStatus()">{{ refreshStatus() }}</p>
+  <p class="error" *ngIf="refreshError()">{{ refreshError() }}</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <section class="overview">
+    <article class="metric">
+      <span class="label">Last price</span>
+      <strong>{{ summary().lastPrice === null ? '—' : (summary().lastPrice | currency: 'USD':'symbol':'1.2-2') }}</strong>
+      <span class="delta" [class.positive]="(summary().change ?? 0) >= 0" [class.negative]="(summary().change ?? 0) < 0">
+        {{ summary().change === null ? '—' : (summary().change | currency: 'USD':'symbol':'1.2-2') }}
+        <small *ngIf="summary().changePercent !== null">({{ summary().changePercent | percent: '1.2-2' }})</small>
+      </span>
+    </article>
+    <article class="metric">
+      <span class="label">Position</span>
+      <strong>{{ summary().positionQty === null ? '—' : (summary().positionQty | number: '1.0-2') }} shares</strong>
+      <span class="delta">Avg cost {{ summary().averageCost === null ? '—' : (summary().averageCost | currency: 'USD') }}</span>
+    </article>
+    <article class="metric">
+      <span class="label">Unrealized P&amp;L</span>
+      <strong [class.positive]="(summary().unrealized ?? 0) >= 0" [class.negative]="(summary().unrealized ?? 0) < 0">
+        {{ summary().unrealized === null ? '—' : (summary().unrealized | currency: 'USD') }}
+      </strong>
+      <span class="delta">Realized {{ summary().realized === null ? '—' : (summary().realized | currency: 'USD') }}</span>
+    </article>
+    <article class="metric">
+      <span class="label">Hypo liquidation</span>
+      <strong>{{ summary().hypo === null ? '—' : (summary().hypo | currency: 'USD') }}</strong>
+      <span class="delta">Today if you sold everything</span>
+    </article>
+  </section>
+
+  <section class="chart-card">
+    <header>
+      <h2>Timeline &amp; trades</h2>
+      <p>Adjusted close, dynamic average cost, and P&amp;L overlays with trade markers.</p>
+    </header>
+    <div echarts [options]="chartOption()" class="chart" *ngIf="!isLoading(); else loading"></div>
+    <ng-template #loading>
+      <div class="chart-placeholder">Loading chart…</div>
+    </ng-template>
+  </section>
+
+  <section class="ledger" *ngIf="transactions().length">
+    <header>
+      <h2>Trade history</h2>
+      <p>Manual transactions recorded for {{ symbol() }} with account context.</p>
+    </header>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Side</th>
+          <th>Quantity</th>
+          <th>Price</th>
+          <th>Fees</th>
+          <th>Account</th>
+          <th>Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let tx of transactions()">
+          <td>{{ tx.trade_datetime | date: 'medium' }}</td>
+          <td><span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span></td>
+          <td>{{ tx.quantity | number: '1.0-2' }}</td>
+          <td>{{ tx.price | currency: 'USD' }}</td>
+          <td>{{ tx.fee | currency: 'USD' }}</td>
+          <td>{{ tx.account || '—' }}</td>
+          <td>{{ tx.notes || '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</section>
+
+<ng-template #missing>
+  <p class="error">Symbol not provided. Return to <a routerLink="/app/stocks">My Stocks</a>.</p>
+</ng-template>

@@ -51,7 +51,11 @@ class TimelineTransactionSchema(BaseModel):
     quantity: float
     price: float
     trade_datetime: datetime
+    fee: float
+    tax: float
+    account_id: int | None = None
     account: str | None = None
+    notes: str | None = None
     notional_value: float
 
 

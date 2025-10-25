@@ -2,7 +2,7 @@
   <header class="page-header">
     <div>
       <h1>Portfolio Timeline</h1>
-      <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
+      <p>Track hypothetical liquidation, unrealized P&amp;L, and daily opportunities across your portfolio.</p>
     </div>
     <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
       <label>
@@ -23,15 +23,13 @@
     </form>
   </header>
 
-  <p class="empty" *ngIf="!watchlist().length">
-    Add a symbol from the Portfolio workspace to start building a personalized timeline.
-  </p>
+  <p class="empty" *ngIf="!watchlist().length">Add a symbol from My Stocks to start building a personalized timeline.</p>
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
   <section class="chart-card">
     <header>
       <h2>Timeline View</h2>
-      <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
+      <p>Overlay price with hypothetical liquidation and unrealized P&amp;L to highlight regret windows.</p>
     </header>
     <div echarts [options]="timelineOption()" class="chart" *ngIf="hasData(); else emptyState"></div>
     <ng-template #emptyState>
@@ -48,62 +46,8 @@
         <tr>
           <th scope="col">Date</th>
           <th scope="col">Close</th>
-        </tr>
-      </thead> 
-    </table> 
-  </section>
-  <section class="timeline-page">
-    <header class="page-header">
-      <div>
-        <h1>Portfolio Timeline</h1>
-        <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
-      </div>
-    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
-      <label>
-        Symbol
-        <select [ngModel]="selectedSymbol()" (ngModelChange)="onSymbolChange($event)" name="symbol">
-          <option *ngFor="let ticker of watchlist()" [value]="ticker.symbol">{{ ticker.symbol }}</option>
-        </select>
-      </label>
-      <label>
-        From
-        <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" name="from" />
-      </label>
-      <label>
-        To
-        <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" name="to" />
-      </label>
-      <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
-    </form>
-  </header>
-
-  <p class="empty" *ngIf="!watchlist().length">
-    Add a symbol from the Portfolio workspace to start building a personalized timeline.
-  </p>
-  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
-
-  <section class="chart-card">
-    <header>
-      <h2>Timeline View</h2>
-      <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
-    </header>
-    <div echarts [options]="timelineOption()" class="chart" *ngIf="hasData(); else emptyState"></div>
-    <ng-template #emptyState>
-      <div class="chart-placeholder">
-        <p>Select a symbol with price history and recorded trades to render the chart.</p>
-      </div>
-    </ng-template>
-  </section>
-
-  <section class="data-grid" aria-live="polite">
-    <h2>Daily opportunity breakdown</h2>
-    <table *ngIf="tableRows().length; else noRows">
-      <thead>
-        <tr>
-          <th scope="col">Date</th>
-          <th scope="col">Close</th>
-          <th scope="col">Hypo P&L</th>
-          <th scope="col">Unrealized P&L</th>
+          <th scope="col">Hypo P&amp;L</th>
+          <th scope="col">Unrealized P&amp;L</th>
           <th scope="col">Day Opportunity</th>
         </tr>
       </thead>

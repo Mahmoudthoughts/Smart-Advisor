@@ -5,13 +5,16 @@ import { AlertsComponent } from './alerts/alerts.component';
 import { ForecastComponent } from './forecast/forecast.component';
 import { LoginComponent } from './login/login.component';
 import { MacroComponent } from './macro/macro.component';
+import { MyStocksComponent } from './my-stocks/my-stocks.component';
+import { OnboardingComponent } from './onboarding/onboarding.component';
 import { OpportunitiesComponent } from './opportunities/opportunities.component';
 import { RegisterComponent } from './register/register.component';
 import { SentimentComponent } from './sentiment/sentiment.component';
 import { SignalsComponent } from './signals/signals.component';
+import { SymbolDetailComponent } from './symbol-detail/symbol-detail.component';
 import { SimulatorComponent } from './simulator/simulator.component';
 import { TimelineComponent } from './timeline/timeline.component';
-import { PortfolioComponent } from './portfolio/portfolio.component';
+import { TransactionsComponent } from './transactions/transactions.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -23,18 +26,33 @@ export const APP_ROUTES: Routes = [
     component: RegisterComponent
   },
   {
+    path: 'app/onboarding',
+    component: OnboardingComponent,
+    canActivate: [authGuard]
+  },
+  {
     path: 'app/overview',
     component: AdvisorDashboardComponent,
     canActivate: [authGuard]
   },
   {
-    path: 'app/timeline',
-    component: TimelineComponent,
+    path: 'app/stocks',
+    component: MyStocksComponent,
     canActivate: [authGuard]
   },
   {
-    path: 'app/portfolio',
-    component: PortfolioComponent,
+    path: 'app/transactions',
+    component: TransactionsComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/symbols/:symbol',
+    component: SymbolDetailComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/timeline',
+    component: TimelineComponent,
     canActivate: [authGuard]
   },
   {
@@ -71,6 +89,11 @@ export const APP_ROUTES: Routes = [
     path: 'app/alerts',
     component: AlertsComponent,
     canActivate: [authGuard]
+  },
+  {
+    path: 'app/portfolio',
+    pathMatch: 'full',
+    redirectTo: 'app/stocks'
   },
   {
     path: 'app',
