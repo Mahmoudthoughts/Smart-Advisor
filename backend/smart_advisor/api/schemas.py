@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Optional
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
 
 class UserOut(BaseModel):
-    id: str
+    id: UUID
     name: str
     email: EmailStr
     created_at: datetime

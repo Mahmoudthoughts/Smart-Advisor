@@ -4,22 +4,23 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from typing import Optional
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .database import Base
 
 
-def _uuid_pk() -> str:
-    return str(uuid4())
+def _uuid_pk() -> UUID:
+    return uuid4()
 
 
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_pk)
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
@@ -32,8 +33,8 @@ class User(Base):
 class AuthToken(Base):
     __tablename__ = "auth_tokens"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_pk)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     token: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -42,7 +43,7 @@ class AuthToken(Base):
     user: Mapped[User] = relationship("User", back_populates="tokens")
 
     @classmethod
-    def for_user(cls, user_id: str, lifetime: timedelta) -> "AuthToken":
+    def for_user(cls, user_id: UUID, lifetime: timedelta) -> "AuthToken":
         token_value = str(uuid4())
         now = datetime.utcnow()
         return cls(user_id=user_id, token=token_value, created_at=now, expires_at=now + lifetime, is_active=True)
@@ -51,9 +52,9 @@ class AuthToken(Base):
 class Portfolio(Base):
     __tablename__ = "portfolios"
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_pk)
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
     name: Mapped[str] = mapped_column(String(255))
-    owner_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    owner_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
     timezone: Mapped[Optional[str]] = mapped_column(String(64), default="Asia/Dubai")
     base_currency: Mapped[Optional[str]] = mapped_column(String(8), default="USD")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
@@ -65,9 +66,9 @@ class UserPortfolioAccess(Base):
     __tablename__ = "user_portfolio_access"
     __table_args__ = (UniqueConstraint("user_id", "portfolio_id", name="uq_user_portfolio"),)
 
-    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=_uuid_pk)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    portfolio_id: Mapped[str] = mapped_column(ForeignKey("portfolios.id", ondelete="CASCADE"))
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    user_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"))
+    portfolio_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("portfolios.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(String(32), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
