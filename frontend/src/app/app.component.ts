@@ -26,6 +26,7 @@ export class AppComponent {
   ];
 
   readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app' : '/login'));
+  readonly currentYear = new Date().getFullYear();
 
   logout(): void {
     this.auth.logout();
