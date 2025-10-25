@@ -20,4 +20,35 @@ Services exposed locally:
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
 
+The backend container now exposes the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
+against Alpha Vantage out of the box.
+
 When the compose stack starts, PostgreSQL loads `backend/sql/schema.sql` automatically to provision the required tables. The frontend communicates with the backend using the `environment.apiBaseUrl` value defined under `frontend/src/environments/`.
+
+## Backend service layout
+
+The `/backend/app` package now provides the Missed Opportunity Analyzer + Smart Advisor service skeleton described in `AGENT.md`:
+
+- `app/main.py` — FastAPI app wiring and `/health` route.
+- `app/config/settings.py` — Centralised configuration (Asia/Dubai timezone, USD base currency, Alpha Vantage API key + rate limits).
+- `app/db/` — Declarative base and async session helpers.
+- `app/models/` — SQLAlchemy models for Portfolio, Transaction, Lot, DailyBar, FXRate, DailyPortfolioSnapshot, SignalEvent, TickerSentimentDaily, AnalystSnapshot, ForecastDaily, MacroEvent, and DashboardKPI with required indexes.
+- `app/providers/alpha_vantage.py` — Throttled Alpha Vantage client exposing `daily_adjusted`, `fx_daily`, `tech_indicator`, `news_sentiment`, and `econ_indicator` helpers.
+- `app/ingest/` — Idempotent upsert jobs for TIME_SERIES_DAILY_ADJUSTED and FX_DAILY responses.
+- `app/indicators/compute.py` — Pandas-powered SMA/EMA/RSI/MACD/ATR/volume-multiple indicators with caching.
+- `app/rules/engine.py` — Boolean expression evaluation with cooldown tracking per rule.
+- `app/services/snapshots.py` — FIFO/LIFO lot builder and daily P&L metrics per §3–§4 of the spec.
+- `app/api/routes/` — Endpoints for timelines, top missed days, signal definitions/events, sentiment series, forecast stub, and simulator stub.
+- `app/migrations/` — Alembic environment plus initial revision (see `app/migrations/versions/0001_initial.py` for SQL operations).
+
+Utility scripts under `/backend/scripts` support ingestion, indicator recompute, snapshot rebuilds, and seed loading. Common workflows are wrapped in the backend `Makefile`:
+
+```bash
+cd backend
+make dev              # Uvicorn with reload
+make migrate          # Alembic upgrade head
+make ingest SYMBOL=AAPL
+make indicators SYMBOL=AAPL
+make recompute SYMBOL=AAPL
+make test
+```
