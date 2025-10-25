@@ -1,0 +1,49 @@
+<section class="opportunities-page">
+  <header class="page-header">
+    <div>
+      <h1>Top Missed Opportunities</h1>
+      <p>Rank regret-heavy sessions and understand the drivers that made them stand out.</p>
+    </div>
+    <label>
+      Strategy focus
+      <select [(ngModel)]="selectedStrategy" name="strategy">
+        <option *ngFor="let strategy of strategies" [value]="strategy">{{ strategy }}</option>
+      </select>
+    </label>
+  </header>
+
+  <section class="leaderboard">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Rank</th>
+          <th scope="col">Date</th>
+          <th scope="col">Symbol</th>
+          <th scope="col">Hypo P&L</th>
+          <th scope="col">Day Opportunity</th>
+          <th scope="col">Δ vs Today</th>
+          <th scope="col">Narrative</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of topMissed">
+          <td>{{ row.rank }}</td>
+          <td>{{ row.date }}</td>
+          <td><span class="ticker">{{ row.symbol }}</span></td>
+          <td>{{ row.hypoPnl | currency: 'USD' }}</td>
+          <td>{{ row.dayOpportunity | currency: 'USD' }}</td>
+          <td [class.positive]="row.deltaVsToday > 0">{{ row.deltaVsToday | currency: 'USD' }}</td>
+          <td>{{ row.narrative }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="themes">
+    <article *ngFor="let theme of themes">
+      <h2>{{ theme.title }}</h2>
+      <p>{{ theme.description }}</p>
+      <span class="impact">Impact: {{ theme.impact }}</span>
+    </article>
+  </section>
+</section>
