@@ -35,5 +35,5 @@ class LoginRequest(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     service: str
-    database_url: Optional[str]
+    database_status: Optional[str]
 
