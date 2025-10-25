@@ -9,6 +9,10 @@
     "test": "ng test",
     "lint": "ng lint"
   },
+  "engines": {
+    "node": ">=20 <21",
+    "npm": ">=9"
+  },
   "dependencies": {
     "@angular/animations": "^17.3.0",
     "@angular/common": "^17.3.0",
@@ -19,7 +23,7 @@
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "echarts": "^5.5.0",
-    "ngx-echarts": "^17.3.0",
+    "ngx-echarts": "^17.2.0",
     "rxjs": "^7.8.1",
     "tslib": "^2.6.2",
     "zone.js": "~0.14.3"
