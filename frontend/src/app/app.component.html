@@ -4,7 +4,6 @@
     <a
       *ngFor="let link of navLinks"
       [routerLink]="link.path"
-      [fragment]="link.fragment"
       routerLinkActive="active"
       [routerLinkActiveOptions]="{ exact: false }"
       >{{ link.label }}</a

@@ -1,0 +1,61 @@
+<section class="timeline-page">
+  <header class="page-header">
+    <div>
+      <h1>Portfolio Timeline</h1>
+      <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
+    </div>
+    <form class="filters" aria-label="Timeline filters">
+      <label>
+        Symbol
+        <select [(ngModel)]="selectedSymbol" name="symbol">
+          <option *ngFor="let ticker of symbols" [value]="ticker">{{ ticker }}</option>
+        </select>
+      </label>
+      <label>
+        From
+        <input type="date" [(ngModel)]="fromDate" name="from" />
+      </label>
+      <label>
+        To
+        <input type="date" [(ngModel)]="toDate" name="to" />
+      </label>
+      <button type="button">Refresh</button>
+    </form>
+  </header>
+
+  <section class="chart-card">
+    <header>
+      <h2>Timeline View</h2>
+      <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
+    </header>
+    <div echarts [options]="timelineOption" class="chart"></div>
+  </section>
+
+  <section class="data-grid" aria-live="polite">
+    <h2>Daily opportunity breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Close</th>
+          <th scope="col">Hypo P&L</th>
+          <th scope="col">Unrealized P&L</th>
+          <th scope="col">Day Opportunity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of filteredData">
+          <td>{{ row.date }}</td>
+          <td>{{ row.price | number: '1.2-2' }}</td>
+          <td>{{ row.hypoPnl | currency: 'USD' }}</td>
+          <td>{{ row.unrealizedPnl | currency: 'USD' }}</td>
+          <td>
+            <span [class.positive]="row.dayOpportunity > 0">
+              {{ row.dayOpportunity | currency: 'USD' }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</section>
