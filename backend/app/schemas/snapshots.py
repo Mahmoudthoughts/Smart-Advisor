@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -39,9 +39,27 @@ class DailyPortfolioSnapshotSchema(BaseModel):
         }
 
 
+class TimelinePricePointSchema(BaseModel):
+    date: date
+    adj_close: float
+
+
+class TimelineTransactionSchema(BaseModel):
+    id: int
+    symbol: str
+    type: str
+    quantity: float
+    price: float
+    trade_datetime: datetime
+    account: str | None = None
+    notional_value: float
+
+
 class TimelineResponse(BaseModel):
     symbol: str
     snapshots: list[DailyPortfolioSnapshotSchema]
+    prices: list[TimelinePricePointSchema]
+    transactions: list[TimelineTransactionSchema]
 
 
 class TopMissedDaySchema(BaseModel):
@@ -53,6 +71,8 @@ class TopMissedDaySchema(BaseModel):
 
 __all__ = [
     "DailyPortfolioSnapshotSchema",
+    "TimelinePricePointSchema",
+    "TimelineTransactionSchema",
     "TimelineResponse",
     "TopMissedDaySchema",
 ]

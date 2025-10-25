@@ -11,6 +11,7 @@ import { SentimentComponent } from './sentiment/sentiment.component';
 import { SignalsComponent } from './signals/signals.component';
 import { SimulatorComponent } from './simulator/simulator.component';
 import { TimelineComponent } from './timeline/timeline.component';
+import { PortfolioComponent } from './portfolio/portfolio.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -29,6 +30,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/timeline',
     component: TimelineComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/portfolio',
+    component: PortfolioComponent,
     canActivate: [authGuard]
   },
   {

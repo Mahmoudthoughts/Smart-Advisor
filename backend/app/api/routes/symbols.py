@@ -2,16 +2,25 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime, time
+from decimal import Decimal
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.db.session import get_db
-from app.models import DailyPortfolioSnapshot
-from app.schemas.snapshots import DailyPortfolioSnapshotSchema, TimelineResponse, TopMissedDaySchema
+from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
+from app.schemas.snapshots import (
+    DailyPortfolioSnapshotSchema,
+    TimelinePricePointSchema,
+    TimelineResponse,
+    TimelineTransactionSchema,
+    TopMissedDaySchema,
+)
 
 router = APIRouter()
 
@@ -23,7 +32,8 @@ async def get_symbol_timeline(
     to_date: Optional[date] = Query(default=None, alias="to"),
     session: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
-    stmt: Select = select(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == symbol)
+    normalized = symbol.strip().upper()
+    stmt: Select = select(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == normalized)
     if from_date:
         stmt = stmt.where(DailyPortfolioSnapshot.date >= from_date)
     if to_date:
@@ -47,7 +57,43 @@ async def get_symbol_timeline(
         )
         for row in rows
     ]
-    return TimelineResponse(symbol=symbol, snapshots=snapshots)
+    price_stmt: Select = select(DailyBar).where(DailyBar.symbol == normalized)
+    if from_date:
+        price_stmt = price_stmt.where(DailyBar.date >= from_date)
+    if to_date:
+        price_stmt = price_stmt.where(DailyBar.date <= to_date)
+    price_stmt = price_stmt.order_by(DailyBar.date)
+    price_rows = (await session.execute(price_stmt)).scalars().all()
+    prices = [
+        TimelinePricePointSchema(date=row.date, adj_close=float(row.adj_close))
+        for row in price_rows
+    ]
+
+    settings = get_settings()
+    tz = ZoneInfo(settings.timezone)
+    tx_stmt: Select = select(Transaction).where(Transaction.symbol == normalized)
+    if from_date:
+        start_dt = datetime.combine(from_date, time.min, tzinfo=tz)
+        tx_stmt = tx_stmt.where(Transaction.datetime >= start_dt)
+    if to_date:
+        end_dt = datetime.combine(to_date, time.max, tzinfo=tz)
+        tx_stmt = tx_stmt.where(Transaction.datetime <= end_dt)
+    tx_stmt = tx_stmt.order_by(Transaction.datetime)
+    tx_rows = (await session.execute(tx_stmt)).scalars().all()
+    transactions = [
+        TimelineTransactionSchema(
+            id=tx.id,
+            symbol=tx.symbol,
+            type=tx.type,
+            quantity=float(Decimal(str(tx.qty))),
+            price=float(Decimal(str(tx.price))),
+            trade_datetime=tx.datetime,
+            account=tx.broker_id,
+            notional_value=float(Decimal(str(tx.qty)) * Decimal(str(tx.price))),
+        )
+        for tx in tx_rows
+    ]
+    return TimelineResponse(symbol=normalized, snapshots=snapshots, prices=prices, transactions=transactions)
 
 
 @router.get("/{symbol}/top-missed", response_model=list[TopMissedDaySchema])

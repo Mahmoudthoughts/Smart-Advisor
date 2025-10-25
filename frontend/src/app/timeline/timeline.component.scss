@@ -26,6 +26,7 @@
   display: flex;
   gap: 1rem;
   align-items: flex-end;
+  flex-wrap: wrap;
 
   label {
     display: flex;
@@ -48,10 +49,16 @@
     color: #fff;
     border: none;
     cursor: pointer;
-    transition: transform 0.2s ease;
+    transition: transform 0.2s ease, opacity 0.2s ease;
 
     &:hover {
       transform: translateY(-1px);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
     }
   }
 }
@@ -78,6 +85,23 @@
   .chart {
     width: 100%;
     height: 320px;
+  }
+
+  .chart-placeholder {
+    display: grid;
+    place-items: center;
+    min-height: 320px;
+    color: #6b7280;
+    background: repeating-linear-gradient(
+      45deg,
+      rgba(99, 102, 241, 0.05),
+      rgba(99, 102, 241, 0.05) 10px,
+      rgba(14, 165, 233, 0.05) 10px,
+      rgba(14, 165, 233, 0.05) 20px
+    );
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
   }
 }
 
@@ -119,4 +143,69 @@
     color: #047857;
     font-weight: 600;
   }
+}
+
+.transactions {
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1.5rem;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.05), rgba(99, 102, 241, 0.05));
+  }
+
+  .badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(22, 163, 74, 0.12);
+    color: #166534;
+    font-weight: 600;
+
+    &.sell {
+      background: rgba(220, 38, 38, 0.12);
+      color: #b91c1c;
+    }
+  }
+
+  .value {
+    margin-left: auto;
+    font-weight: 600;
+  }
+}
+
+.empty,
+.error {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.empty {
+  color: #6b7280;
+}
+
+.error {
+  color: #dc2626;
+  font-weight: 600;
 }
