@@ -47,14 +47,17 @@
       <thead>
         <tr>
           <th scope="col">Date</th>
-          <th scope="col">Close</</EOF
-cat <<'EOF' > frontend/src/app/timeline/timeline.component.html
-<section class="timeline-page">
-  <header class="page-header">
-    <div>
-      <h1>Portfolio Timeline</h1>
-      <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
-    </div>
+          <th scope="col">Close</th>
+        </tr>
+      </thead> 
+    </table> 
+  </section>
+  <section class="timeline-page">
+    <header class="page-header">
+      <div>
+        <h1>Portfolio Timeline</h1>
+        <p>Track hypothetical liquidation, unrealized P&L, and daily opportunities across your portfolio.</p>
+      </div>
     <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
       <label>
         Symbol
@@ -130,7 +133,7 @@ cat <<'EOF' > frontend/src/app/timeline/timeline.component.html
         <span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span>
         <strong>{{ tx.symbol }}</strong>
         <span>{{ tx.trade_datetime | date: 'mediumDate' }}</span>
-        <span>{{ tx.quantity }} @ {{ tx.price | currency: 'USD' }}</span>
+        <span>{{ tx.quantity }} &#64;{{ tx.price | currency: 'USD' }}</span>
         <span *ngIf="tx.account">Account: {{ tx.account }}</span>
         <span class="value">Value ≈ {{ (tx.quantity * tx.price) | currency: 'USD' }}</span>
       </li>
