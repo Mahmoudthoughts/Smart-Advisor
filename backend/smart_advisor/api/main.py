@@ -12,6 +12,7 @@ from .schemas import HealthResponse
 from typing import List
 import os
 from fastapi.middleware.cors import CORSMiddleware
+from ..config import get_alpha_vantage_api_key
 
 
 @asynccontextmanager
@@ -47,6 +48,7 @@ def create_app(db: Database | None = None) -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.state.alpha_vantage_api_key = get_alpha_vantage_api_key()
     app.include_router(get_auth_router(database_instance))
 
     @app.get("/health", response_model=HealthResponse)
