@@ -110,6 +110,15 @@
   gap: 1.5rem;
 }
 
+.panel header,
+.panel-block header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
 .panel header h2 {
   margin: 0;
   font-size: 1.5rem;
@@ -131,6 +140,36 @@
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+}
+
+.view-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.08);
+  color: #1d4ed8;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.view-link::after {
+  content: '→';
+  font-size: 1rem;
+}
+
+.view-link:hover {
+  background: rgba(37, 99, 235, 0.16);
+  color: #1e40af;
+  transform: translateY(-1px);
+}
+
+.view-link:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 .chart {
