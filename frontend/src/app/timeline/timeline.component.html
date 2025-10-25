@@ -7,17 +7,18 @@
     <form class="filters" aria-label="Timeline filters">
       <label>
         Symbol
-        <select [(ngModel)]="selectedSymbol" name="symbol">
+
+        <select [(ngModel)]="selectedSymbol()" name="symbol">
           <option *ngFor="let ticker of symbols" [value]="ticker">{{ ticker }}</option>
         </select>
       </label>
       <label>
         From
-        <input type="date" [(ngModel)]="fromDate" name="from" />
+        <input type="date" [(ngModel)]="fromDate()" name="from" />
       </label>
       <label>
         To
-        <input type="date" [(ngModel)]="toDate" name="to" />
+        <input type="date" [(ngModel)]="toDate()" name="to" />
       </label>
       <button type="button">Refresh</button>
     </form>
@@ -28,7 +29,7 @@
       <h2>Timeline View</h2>
       <p>Overlay price with hypothetical liquidation and unrealized P&L to highlight regret windows.</p>
     </header>
-    <div echarts [options]="timelineOption" class="chart"></div>
+    <div ngx-echarts [options]="timelineOption" class="chart"></div>
   </section>
 
   <section class="data-grid" aria-live="polite">
