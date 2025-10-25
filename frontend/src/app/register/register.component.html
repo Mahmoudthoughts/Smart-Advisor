@@ -1,0 +1,56 @@
+<section class="register-wrapper">
+  <div class="brand-panel">
+    <div class="brand">Smart Advisor</div>
+    <p class="tagline">Unlock a collaborative workspace for missed opportunity intelligence.</p>
+    <p class="copy">Create an account to invite team members, build shared dashboards, and explore advisory signals tuned to your portfolio.</p>
+  </div>
+  <div class="form-panel">
+    <h1>Create your account</h1>
+    <p class="subtitle">Start with your details to personalize the Smart Advisor experience.</p>
+
+    <form [formGroup]="registerForm" (ngSubmit)="submit()" novalidate>
+      <label>
+        Full name
+        <input type="text" placeholder="Jordan Analyst" formControlName="name" />
+      </label>
+      <div class="error" *ngIf="nameControl.touched && nameControl.invalid">
+        <span *ngIf="nameControl.errors?.['required']">Name is required.</span>
+        <span *ngIf="nameControl.errors?.['minlength']">Use at least 2 characters.</span>
+      </div>
+
+      <label>
+        Email address
+        <input type="email" placeholder="you@firm.com" formControlName="email" />
+      </label>
+      <div class="error" *ngIf="emailControl.touched && emailControl.invalid">
+        <span *ngIf="emailControl.errors?.['required']">Email is required.</span>
+        <span *ngIf="emailControl.errors?.['email']">Enter a valid email.</span>
+      </div>
+
+      <div class="password-grid">
+        <label>
+          Password
+          <input type="password" placeholder="••••••••" formControlName="password" />
+        </label>
+        <label>
+          Confirm password
+          <input type="password" placeholder="••••••••" formControlName="confirmPassword" />
+        </label>
+      </div>
+      <div class="error" *ngIf="passwordControl.touched && passwordControl.invalid">
+        <span *ngIf="passwordControl.errors?.['required']">Password is required.</span>
+        <span *ngIf="passwordControl.errors?.['minlength']">Use at least 8 characters.</span>
+      </div>
+      <div class="error" *ngIf="confirmPasswordControl.touched && !passwordsMatch()">Passwords must match.</div>
+
+      <div class="error" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+
+      <button type="submit">Register</button>
+    </form>
+
+    <p class="footnote">
+      Already have an account?
+      <a routerLink="/login">Sign in instead</a>
+    </p>
+  </div>
+</section>

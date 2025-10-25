@@ -1,0 +1,46 @@
+<section class="login-wrapper">
+  <div class="brand-panel">
+    <div class="brand">Smart Advisor</div>
+    <p class="tagline">Missed opportunity insights, predictive narratives, and macro awareness in one command center.</p>
+    <ul>
+      <li *ngFor="let item of requirements()">{{ item }}</li>
+    </ul>
+  </div>
+  <div class="form-panel">
+    <h1>Welcome back</h1>
+    <p class="subtitle">Sign in to continue to your Smart Advisor workspace.</p>
+
+    <form [formGroup]="credentialsForm" (ngSubmit)="submit()" novalidate>
+      <label>
+        Email address
+        <input type="email" placeholder="alex@portfolio.com" formControlName="email" />
+      </label>
+      <div class="error" *ngIf="emailControl.touched && emailControl.invalid">
+        <span *ngIf="emailControl.errors?.['required']">Email is required.</span>
+        <span *ngIf="emailControl.errors?.['email']">Enter a valid email address.</span>
+      </div>
+
+      <label>
+        Password
+        <input type="password" placeholder="••••••••" formControlName="password" />
+      </label>
+      <div class="error" *ngIf="passwordControl.touched && passwordControl.invalid">
+        <span *ngIf="passwordControl.errors?.['required']">Password is required.</span>
+        <span *ngIf="passwordControl.errors?.['minlength']">Use at least 8 characters.</span>
+      </div>
+
+      <div class="error" *ngIf="errorMessage()">{{ errorMessage() }}</div>
+
+      <button type="submit">Sign in</button>
+    </form>
+
+    <p class="footnote">
+      Need an account?
+      <a routerLink="/register">Create one now</a>
+    </p>
+    <p class="footnote">
+      Trouble signing in?
+      <a routerLink="/login">Contact support</a>
+    </p>
+  </div>
+</section>

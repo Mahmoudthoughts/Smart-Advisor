@@ -1,0 +1,31 @@
+<header class="topbar">
+  <a class="brand" [routerLink]="brandTarget()">{{ brand }}</a>
+  <nav *ngIf="isAuthenticated()">
+    <a
+      *ngFor="let link of navLinks"
+      [routerLink]="link.path"
+      [fragment]="link.fragment"
+      routerLinkActive="active"
+      [routerLinkActiveOptions]="{ exact: false }"
+      >{{ link.label }}</a
+    >
+  </nav>
+  <div class="session">
+    <ng-container *ngIf="isAuthenticated(); else loginLink">
+      <span class="user-name">{{ user()?.name }}</span>
+      <button type="button" (click)="logout()">Sign out</button>
+    </ng-container>
+    <ng-template #loginLink>
+      <a routerLink="/login" class="login">Login</a>
+      <a routerLink="/register" class="register">Register</a>
+    </ng-template>
+  </div>
+</header>
+
+<main class="app-shell">
+  <router-outlet></router-outlet>
+</main>
+
+<footer class="footer">
+  <p>© {{ new Date().getFullYear() }} Smart Advisor. Missed opportunity analytics, elevated.</p>
+</footer>

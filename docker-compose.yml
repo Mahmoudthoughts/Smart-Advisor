@@ -1,0 +1,35 @@
+version: '3.11'
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: smart_advisor
+      POSTGRES_USER: smart_advisor
+      POSTGRES_PASSWORD: smart_advisor
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+    ports:
+      - '5432:5432'
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
+    depends_on:
+      - db
+    ports:
+      - '8000:8000'
+
+  frontend:
+    build:
+      context: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - '4200:80'
+
+volumes:
+  db_data:
