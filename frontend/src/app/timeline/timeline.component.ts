@@ -6,8 +6,6 @@ import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 
 interface TimelinePoint {
-  readonly symbol: string;
-
   readonly date: string;
   readonly price: number;
   readonly hypoPnl: number;
