@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime, time
 from decimal import Decimal
-from typing import Optional
+from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -27,6 +28,7 @@ from app.schemas.symbols import SymbolRefreshResponse, SymbolSearchResultSchema
 from app.services.portfolio import recompute_snapshots_for_symbol
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/search", response_model=list[SymbolSearchResultSchema])
@@ -34,27 +36,59 @@ async def search_symbols(
     query: str = Query(..., min_length=1, max_length=32, description="Ticker or company keywords"),
     client=Depends(get_alpha_vantage_client),
 ) -> list[SymbolSearchResultSchema]:
+    logger.info(f"Searching symbols with query: {query}")
     try:
         payload = await client.symbol_search(query)
+        logger.debug(f"Raw AlphaVantage response: {payload}")
+        
+        if not isinstance(payload, dict):
+            logger.error(f"Unexpected payload type: {type(payload)}")
+            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Invalid response from data provider")
+            
+        matches = payload.get("bestMatches", [])
+        logger.debug(f"Found {len(matches)} raw matches")
+        
+        results: list[SymbolSearchResultSchema] = []
+        for match in matches:
+            try:
+                logger.debug(f"Processing match: {match}")
+                score = float(match.get("9. matchScore")) if match.get("9. matchScore") is not None else None
+                symbol = (match.get("1. symbol") or "").upper()
+                name = match.get("2. name") or match.get("1. symbol") or ""
+                region = match.get("4. region")
+                currency = match.get("8. currency")
+                
+                # Validate all required fields are present
+                if not symbol:
+                    logger.warning("Skipping match with empty symbol")
+                    continue
+                    
+                result = SymbolSearchResultSchema(
+                    symbol=symbol,
+                    name=name,
+                    region=region,
+                    currency=currency,
+                    match_score=score,
+                )
+                logger.debug(f"Created result schema: {result.dict()}")
+                results.append(result)
+                
+            except (TypeError, ValueError) as e:
+                logger.warning(f"Failed to process match {match}: {e}")
+                continue
+                
+        logger.info(f"Returning {len(results)} processed matches for query: {query}")
+        # Validate the entire response
+        response_data = [r.dict() for r in results]
+        logger.debug(f"Final response data: {response_data}")
+        return response_data
+        
     except AlphaVantageError as exc:
+        logger.error(f"AlphaVantage search failed: {exc}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    matches = payload.get("bestMatches", [])
-    results: list[SymbolSearchResultSchema] = []
-    for match in matches:
-        try:
-            score = float(match.get("9. matchScore")) if match.get("9. matchScore") is not None else None
-        except (TypeError, ValueError):
-            score = None
-        results.append(
-            SymbolSearchResultSchema(
-                symbol=(match.get("1. symbol") or "").upper(),
-                name=match.get("2. name") or match.get("1. symbol") or "",
-                region=match.get("4. region"),
-                currency=match.get("8. currency"),
-                match_score=score,
-            )
-        )
-    return results
+    except Exception as e:
+        logger.error(f"Unexpected error in symbol search: {e}", exc_info=True)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
 @router.get("/{symbol}/timeline", response_model=TimelineResponse)
@@ -64,6 +98,7 @@ async def get_symbol_timeline(
     to_date: Optional[date] = Query(default=None, alias="to"),
     session: AsyncSession = Depends(get_db),
 ) -> TimelineResponse:
+    logger.info(f"Getting timeline for {symbol} from {from_date} to {to_date}")
     normalized = symbol.strip().upper()
     stmt: Select = select(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == normalized)
     if from_date:
@@ -129,6 +164,7 @@ async def get_symbol_timeline(
         )
         for tx in tx_rows
     ]
+    logger.debug(f"Retrieved timeline for {symbol}: {len(snapshots)} snapshots, {len(prices)} prices, {len(transactions)} transactions")
     return TimelineResponse(symbol=normalized, snapshots=snapshots, prices=prices, transactions=transactions)
 
 
@@ -138,14 +174,18 @@ async def refresh_symbol(
     session: AsyncSession = Depends(get_db),
     client=Depends(get_alpha_vantage_client),
 ) -> SymbolRefreshResponse:
+    logger.info(f"Refreshing symbol: {symbol}")
     normalized = symbol.strip().upper()
     if not normalized:
+        logger.error("Empty symbol provided")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Symbol must not be empty")
     try:
         ingested = await ingest_prices(normalized, session, client=client)
     except AlphaVantageError as exc:
+        logger.error(f"AlphaVantage refresh failed for {symbol}: {exc}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     snapshots = await recompute_snapshots_for_symbol(normalized, session)
+    logger.info(f"Refreshed {symbol}: ingested {ingested} prices, rebuilt {len(snapshots)} snapshots")
     return SymbolRefreshResponse(
         symbol=normalized,
         prices_ingested=ingested,
@@ -159,6 +199,7 @@ async def get_top_missed_days(
     limit: int = Query(default=5, ge=1, le=50),
     session: AsyncSession = Depends(get_db),
 ) -> list[TopMissedDaySchema]:
+    logger.info(f"Getting top {limit} missed days for {symbol}")
     stmt = (
         select(DailyPortfolioSnapshot)
         .where(DailyPortfolioSnapshot.symbol == symbol)
@@ -175,6 +216,7 @@ async def get_top_missed_days(
     )
     today_row = (await session.execute(today_stmt)).scalars().first()
     delta_anchor = float(today_row.day_opportunity_base) if today_row else 0.0
+    logger.debug(f"Retrieved {len(rows)} top missed days for {symbol}")
     return [
         TopMissedDaySchema(
             date=row.date,

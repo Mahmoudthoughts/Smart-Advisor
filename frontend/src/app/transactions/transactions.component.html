@@ -34,11 +34,11 @@
         </label>
         <label>
           Quantity
-          <input type="number" step="0.0001" name="new-qty" [ngModel]="model.quantity" (ngModelChange)="updateNewTransaction({ quantity: Number($event) })" />
+          <input type="number" step="0.0001" name="new-qty" [ngModel]="model.quantity" (ngModelChange)="updateNewTransaction({ quantity: toNumber($event) })" />
         </label>
         <label>
           Price
-          <input type="number" step="0.0001" name="new-price" [ngModel]="model.price" (ngModelChange)="updateNewTransaction({ price: Number($event) })" />
+          <input type="number" step="0.0001" name="new-price" [ngModel]="model.price" (ngModelChange)="updateNewTransaction({ price: toNumber($event) })" />
         </label>
         <label>
           Date &amp; time
@@ -46,11 +46,11 @@
         </label>
         <label>
           Fee
-          <input type="number" step="0.0001" name="new-fee" [ngModel]="model.fee" (ngModelChange)="updateNewTransaction({ fee: Number($event) })" />
+          <input type="number" step="0.0001" name="new-fee" [ngModel]="model.fee" (ngModelChange)="updateNewTransaction({ fee: toNumber($event) })" />
         </label>
         <label>
           Tax
-          <input type="number" step="0.0001" name="new-tax" [ngModel]="model.tax" (ngModelChange)="updateNewTransaction({ tax: Number($event) })" />
+          <input type="number" step="0.0001" name="new-tax" [ngModel]="model.tax" (ngModelChange)="updateNewTransaction({ tax: toNumber($event) })" />
         </label>
         <label>
           Currency
@@ -78,14 +78,14 @@
     <form #filterForm="ngForm" (ngSubmit)="0">
       <label>
         Symbol
-        <select name="symbol" [ngModel]="filters().symbol" (ngModelChange)="filters.set({ ...filters(), symbol: $event })">
+        <select name="symbol" [ngModel]="filters().symbol" (ngModelChange)="updateFilters({ symbol: $event ?? '' })">
           <option value="">All</option>
           <option *ngFor="let item of watchlist()" [value]="item.symbol">{{ item.symbol }}</option>
         </select>
       </label>
       <label>
         Type
-        <select name="type" [ngModel]="filters().type" (ngModelChange)="filters.set({ ...filters(), type: $event })">
+        <select name="type" [ngModel]="filters().type" (ngModelChange)="updateFilters({ type: $event ?? '' })">
           <option value="">All</option>
           <option value="BUY">Buy</option>
           <option value="SELL">Sell</option>
@@ -95,18 +95,18 @@
       </label>
       <label>
         Account
-        <select name="account" [ngModel]="filters().account" (ngModelChange)="filters.set({ ...filters(), account: $event })">
+        <select name="account" [ngModel]="filters().account" (ngModelChange)="updateFilters({ account: $event ?? '' })">
           <option value="">All</option>
           <option *ngFor="let account of accounts()" [value]="account.name">{{ account.name }}</option>
         </select>
       </label>
       <label>
         From
-        <input type="date" name="from" [ngModel]="filters().from" (ngModelChange)="filters.set({ ...filters(), from: $event })" />
+        <input type="date" name="from" [ngModel]="filters().from" (ngModelChange)="updateFilters({ from: $event || undefined })" />
       </label>
       <label>
         To
-        <input type="date" name="to" [ngModel]="filters().to" (ngModelChange)="filters.set({ ...filters(), to: $event })" />
+        <input type="date" name="to" [ngModel]="filters().to" (ngModelChange)="updateFilters({ to: $event || undefined })" />
       </label>
       <button type="button" (click)="resetFilters()">Reset</button>
     </form>

@@ -11,7 +11,7 @@ from .portfolio import (
     PortfolioAccountSchema,
     PortfolioAccountCreateRequest,
 )
-from .signals import SignalEventSchema, SignalRuleUpsertRequest
+from .signals import SignalEventSchema, SignalRuleDefinition, SignalRuleUpsertRequest
 from .snapshots import (
     DailyPortfolioSnapshotSchema,
     TimelinePricePointSchema,
@@ -27,6 +27,7 @@ __all__ = [
     "SentimentSeriesResponse",
     "TickerSentimentDailySchema",
     "SignalEventSchema",
+    "SignalRuleDefinition",
     "SignalRuleUpsertRequest",
     "DailyPortfolioSnapshotSchema",
     "TimelinePricePointSchema",

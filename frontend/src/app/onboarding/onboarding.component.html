@@ -35,15 +35,47 @@
       <ul class="results" *ngIf="searchResults().length">
         <li *ngFor="let result of searchResults()">
           <div class="meta">
-            <strong>{{ result.symbol }}</strong>
-            <span>{{ result.name }}</span>
-            <span class="muted">{{ result.region }} · {{ result.currency }}</span>
+            <div class="primary">
+              <strong>{{ result.symbol }}</strong>
+              <span class="score" *ngIf="result.match_score">{{ (result.match_score * 100).toFixed(0) }}% match</span>
+            </div>
+            <span class="name">{{ result.name }}</span>
+            <span class="details">{{ result.region }} · {{ result.currency }}</span>
           </div>
-          <button type="button" (click)="addSymbol(result)" [disabled]="isAddingSymbol()">Add</button>
+          <button type="button" (click)="addSymbol(result)" [disabled]="isAddingSymbol()">
+            <span>Add</span>
+          </button>
         </li>
       </ul>
       <p class="success" *ngIf="addSymbolStatus()">{{ addSymbolStatus() }}</p>
       <p class="error" *ngIf="addSymbolError()">{{ addSymbolError() }}</p>
+      <form class="quick-add" #manualAddForm="ngForm" (ngSubmit)="addSymbolFromInput(manualAddForm)" novalidate>
+        <div class="field-group">
+          <label>
+            Add by ticker
+            <input
+              name="manual-symbol"
+              type="text"
+              maxlength="10"
+              placeholder="Ticker (e.g., MSFT)"
+              [(ngModel)]="manualSymbol"
+              [disabled]="isAddingSymbol()"
+              required
+            />
+          </label>
+          <label>
+            Optional name
+            <input
+              name="manual-name"
+              type="text"
+              placeholder="Friendly name"
+              [(ngModel)]="manualName"
+              [disabled]="isAddingSymbol()"
+            />
+          </label>
+        </div>
+        <button type="submit" [disabled]="isAddingSymbol()">{{ isAddingSymbol() ? 'Adding…' : 'Add symbol' }}</button>
+      </form>
       <div class="watchlist" *ngIf="watchlist().length">
         <h3>Currently tracking</h3>
         <ul>

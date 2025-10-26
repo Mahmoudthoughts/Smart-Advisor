@@ -125,6 +125,15 @@ export class TransactionsComponent implements OnInit {
     this.filters.set({ symbol: '', type: '', account: '' });
   }
 
+  updateFilters(patch: Partial<TransactionFilters>): void {
+    this.filters.update((current) => ({ ...current, ...patch }));
+  }
+
+  toNumber(value: unknown): number {
+    const numeric = typeof value === 'number' ? value : Number(value ?? 0);
+    return Number.isNaN(numeric) ? 0 : numeric;
+  }
+
   updateNewTransaction(patch: Partial<TransactionPayload>): void {
     this.newTransaction.update((current) => ({ ...current, ...patch }));
   }

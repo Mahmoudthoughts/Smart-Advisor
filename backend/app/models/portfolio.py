@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-
+from typing import Optional
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -64,7 +64,7 @@ class Transaction(Base):
 
     portfolio: Mapped[Portfolio] = relationship(back_populates="transactions")
     lots: Mapped[list["Lot"]] = relationship(back_populates="transaction")
-    account: Mapped["PortfolioAccount" | None] = relationship(back_populates="transactions")
+    account: Mapped[Optional["PortfolioAccount"]] = relationship(back_populates="transactions")
 
 
 class PortfolioSymbol(Base):

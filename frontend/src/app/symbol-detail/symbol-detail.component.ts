@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
-import type { EChartsOption } from 'echarts';
+import type { EChartsOption, MarkPointComponentOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { Subscription } from 'rxjs';
 
@@ -203,12 +203,8 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       latestSnapshot = snapshots[snapshots.length - 1];
     }
 
-    const realizedMarkers: Array<{
-      coord: [string, number];
-      value: number;
-      itemStyle: { color: string };
-      label: { formatter: () => string };
-    }> = [];
+    type SymbolMarkPoint = NonNullable<MarkPointComponentOption['data']>[number];
+    const realizedMarkers: SymbolMarkPoint[] = [];
     if (snapshots.length > 1) {
       let previousRealized = Number(snapshots[0].realized_pl_to_date_base);
       for (let i = 1; i < snapshots.length; i += 1) {
@@ -218,11 +214,13 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         const sellsForDay = transactions.filter((tx) => tx.type === 'SELL' && tx.trade_datetime.startsWith(date));
         if (sellsForDay.length > 0 && Math.abs(delta) > 0.01) {
           realizedMarkers.push({
+            name: delta >= 0 ? 'Realized Gain' : 'Realized Loss',
             coord: [date, Number(snapshot.realized_pl_to_date_base)],
             value: delta,
             itemStyle: { color: delta >= 0 ? '#16a34a' : '#dc2626' },
             label: {
-              formatter: () => `${delta >= 0 ? '▲' : '▼'} $${delta.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+              formatter: () =>
+                `${delta >= 0 ? '▲' : '▼'} $${delta.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
             }
           });
         }

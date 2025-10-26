@@ -1,8 +1,30 @@
 <header class="topbar">
   <a class="brand" [routerLink]="brandTarget()">{{ brand }}</a>
   <nav *ngIf="isAuthenticated()">
+    <button type="button" class="menu-toggle" (click)="toggleMenu($event)" aria-haspopup="true" [attr.aria-expanded]="menuOpen()">
+      Menu
+      <span class="chevron" [class.open]="menuOpen()">▾</span>
+    </button>
+    <div class="nav-menu" *ngIf="menuOpen()" (click)="keepMenuOpen($event)">
+      <header>
+        <h3>Choose pages</h3>
+        <p>Select which views appear in your quick navigation.</p>
+      </header>
+      <ul>
+        <li *ngFor="let link of allNavLinks">
+          <label>
+            <input type="checkbox" [checked]="isLinkSelected(link.path)" (change)="toggleLink(link.path)" />
+            <span>{{ link.label }}</span>
+          </label>
+        </li>
+      </ul>
+      <footer class="menu-actions">
+        <button type="button" class="link" (click)="selectAll()">Select all</button>
+        <button type="button" class="link" (click)="resetDefaults()">Reset defaults</button>
+      </footer>
+    </div>
     <a
-      *ngFor="let link of navLinks"
+      *ngFor="let link of navLinks()"
       [routerLink]="link.path"
       routerLinkActive="active"
       [routerLinkActiveOptions]="{ exact: false }"

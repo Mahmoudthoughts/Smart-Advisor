@@ -35,6 +35,9 @@ export class OnboardingComponent implements OnInit {
   readonly accountError = signal<string | null>(null);
 
   searchTerm = '';
+  manualSymbol = '';
+  manualName = '';
+
   accountForm: PortfolioAccountPayload = {
     name: '',
     type: 'Brokerage',
@@ -92,6 +95,33 @@ export class OnboardingComponent implements OnInit {
   }
 
   addSymbol(result: SymbolSearchResult): void {
+    this.handleSymbolAdd(result);
+  }
+
+  addSymbolFromInput(form: NgForm): void {
+    const normalized = this.manualSymbol.trim().toUpperCase();
+    if (!normalized) {
+      this.addSymbolError.set('Enter a symbol ticker (e.g., AAPL) to add it.');
+      return;
+    }
+    const name = this.manualName.trim() || undefined;
+    this.handleSymbolAdd(
+      {
+        symbol: normalized,
+        name: name ?? normalized,
+        region: undefined,
+        currency: undefined,
+        match_score: null
+      },
+      () => {
+        form.resetForm({ symbol: '', name: '' });
+        this.manualSymbol = '';
+        this.manualName = '';
+      }
+    );
+  }
+
+  private handleSymbolAdd(result: SymbolSearchResult, onSuccess?: () => void): void {
     if (!result?.symbol) {
       return;
     }
@@ -114,6 +144,7 @@ export class OnboardingComponent implements OnInit {
         });
         this.addSymbolStatus.set(`${normalized} added to your workspace.`);
         this.isAddingSymbol.set(false);
+        onSuccess?.();
       },
       error: (err) => {
         const message = err?.error?.detail ?? 'Unable to add the selected symbol.';
