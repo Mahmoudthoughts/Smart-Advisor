@@ -32,18 +32,33 @@
         </div>
         <p class="error" *ngIf="searchError()">{{ searchError() }}</p>
       </form>
-      <ul class="results" *ngIf="searchResults().length">
-        <li *ngFor="let result of searchResults()">
+      <p class="hint" *ngIf="searchResultsView().length">
+        Showing top {{ searchResultsView().length }} match{{ searchResultsView().length === 1 ? '' : 'es' }}.
+      </p>
+      <ul class="results" *ngIf="searchResultsView().length">
+        <li *ngFor="let result of searchResultsView()">
           <div class="meta">
             <div class="primary">
               <strong>{{ result.symbol }}</strong>
-              <span class="score" *ngIf="result.match_score">{{ (result.match_score * 100).toFixed(0) }}% match</span>
+              <span class="score" *ngIf="result.match_score !== null && result.match_score !== undefined">
+                {{ (result.match_score * 100).toFixed(0) }}% match
+              </span>
             </div>
             <span class="name">{{ result.name }}</span>
-            <span class="details">{{ result.region }} · {{ result.currency }}</span>
+            <span class="details" *ngIf="result.region || result.currency">
+              <ng-container *ngIf="result.region">{{ result.region }}</ng-container>
+              <ng-container *ngIf="result.region && result.currency"> · </ng-container>
+              <ng-container *ngIf="result.currency">{{ result.currency }}</ng-container>
+            </span>
+            <span class="status" *ngIf="result.alreadyTracked">Already in your workspace</span>
           </div>
-          <button type="button" (click)="addSymbol(result)" [disabled]="isAddingSymbol()">
-            <span>Add</span>
+          <button
+            type="button"
+            (click)="addSymbol(result)"
+            [disabled]="isAddingSymbol() || result.alreadyTracked"
+            [class.tracked]="result.alreadyTracked"
+          >
+            <span>{{ result.alreadyTracked ? 'Tracked' : 'Add' }}</span>
           </button>
         </li>
       </ul>

@@ -11,6 +11,8 @@ import {
   WatchlistSymbol
 } from '../portfolio-data.service';
 
+type SymbolSearchView = SymbolSearchResult & { readonly alreadyTracked: boolean };
+
 @Component({
   selector: 'app-onboarding',
   standalone: true,
@@ -25,6 +27,7 @@ export class OnboardingComponent implements OnInit {
   readonly watchlist = signal<WatchlistSymbol[]>([]);
   readonly accounts = signal<PortfolioAccount[]>([]);
   readonly searchResults = signal<SymbolSearchResult[]>([]);
+  readonly maxSearchResults = 10;
   readonly isSearching = signal<boolean>(false);
   readonly isAddingSymbol = signal<boolean>(false);
   readonly isSavingAccount = signal<boolean>(false);
@@ -49,6 +52,34 @@ export class OnboardingComponent implements OnInit {
   readonly onboardingComplete = computed(
     () => this.watchlist().length > 0 && this.accounts().length > 0
   );
+
+  readonly searchResultsView = computed<SymbolSearchView[]>(() => {
+    const results = this.searchResults();
+    if (!results.length) {
+      return [];
+    }
+
+    const seen = new Set<string>();
+    const tracked = new Set(this.watchlist().map((item) => item.symbol.toUpperCase()));
+
+    return results
+      .slice()
+      .sort((a, b) => (b.match_score ?? 0) - (a.match_score ?? 0))
+      .filter((result) => {
+        const normalized = result.symbol?.toUpperCase() ?? '';
+        if (!normalized || seen.has(normalized)) {
+          return false;
+        }
+        seen.add(normalized);
+        return true;
+      })
+      .slice(0, this.maxSearchResults)
+      .map((result) => ({
+        ...result,
+        symbol: result.symbol.toUpperCase(),
+        alreadyTracked: tracked.has(result.symbol.toUpperCase())
+      }));
+  });
 
   ngOnInit(): void {
     this.loadWatchlist();
@@ -126,6 +157,13 @@ export class OnboardingComponent implements OnInit {
       return;
     }
     const normalized = result.symbol.toUpperCase();
+    if (this.watchlist().some((item) => item.symbol === normalized)) {
+      this.addSymbolStatus.set(`${normalized} is already in your workspace.`);
+      this.addSymbolError.set(null);
+      this.isAddingSymbol.set(false);
+      onSuccess?.();
+      return;
+    }
     this.isAddingSymbol.set(true);
     this.addSymbolError.set(null);
     this.dataService.addWatchlistSymbol(normalized, result.name).subscribe({

@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.config import get_settings
 from app.core.logging import setup_logging
+from app.db.init import init_database
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -23,6 +24,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def startup() -> None:
+    """Initialise the database schema when the service boots."""
+
+    await init_database()
 
 
 @app.get("/health", tags=["health"])
