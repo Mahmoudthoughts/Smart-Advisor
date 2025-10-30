@@ -33,8 +33,11 @@
   </nav>
   <div class="session">
     <ng-container *ngIf="isAuthenticated(); else loginLink">
-      <span class="user-name">{{ user()?.name }}</span>
-      <button type="button" (click)="logout()">Sign out</button>
+      <div class="user-chip" aria-label="Signed in user">
+        <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+        <span class="user-name">{{ user()?.name }}</span>
+      </div>
+      <button type="button" class="signout" (click)="logout()">Sign out</button>
     </ng-container>
     <ng-template #loginLink>
       <a routerLink="/login" class="login">Login</a>

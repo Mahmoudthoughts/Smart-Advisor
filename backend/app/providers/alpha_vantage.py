@@ -66,7 +66,7 @@ class AlphaVantageClient:
         return data
 
     async def daily_adjusted(self, symbol: str, *, output: str = "full") -> Dict[str, Any]:
-        return await self._get({"function": "TIME_SERIES_DAILY_ADJUSTED", "symbol": symbol, "outputsize": output})
+        return await self._get({"function": "TIME_SERIES_DAILY", "symbol": symbol, "outputsize": output})
 
     async def fx_daily(self, from_ccy: str, to_ccy: str) -> Dict[str, Any]:
         return await self._get({"function": "FX_DAILY", "from_symbol": from_ccy, "to_symbol": to_ccy})

@@ -34,7 +34,8 @@ router = APIRouter()
 def _serialize_transaction(tx: Transaction) -> TransactionSchema:
     qty = float(Decimal(str(tx.qty)))
     price = float(Decimal(str(tx.price)))
-    account_label = tx.account.name if tx.account else tx.broker_id
+    account = tx.__dict__.get("account")
+    account_label = account.name if account else tx.broker_id
     return TransactionSchema(
         id=tx.id,
         symbol=tx.symbol,
@@ -86,18 +87,20 @@ async def get_watchlist(session: AsyncSession = Depends(get_db)) -> list[Watchli
             unrealized = float(snapshot.unrealized_pl_base)
         day_change = None
         day_change_pct = None
-        if latest and previous:
-            day_change = float(latest.adj_close - previous.adj_close)
-            if previous.adj_close:
-                day_change_pct = float((day_change / previous.adj_close) * 100)
+        latest_close = float(latest.adj_close) if latest else None
+        previous_close = float(previous.adj_close) if previous else None
+        if latest_close is not None and previous_close is not None:
+            day_change = latest_close - previous_close
+            if previous_close:
+                day_change_pct = (day_change / previous_close) * 100
         response.append(
             WatchlistSymbolSchema(
                 id=item.id,
                 symbol=item.symbol,
                 created_at=item.created_at,
-                latest_close=float(latest.adj_close) if latest else None,
+                latest_close=latest_close,
                 latest_close_date=latest.date if latest else None,
-                previous_close=float(previous.adj_close) if previous else None,
+                previous_close=previous_close,
                 day_change=day_change,
                 day_change_percent=day_change_pct,
                 position_qty=shares_open,

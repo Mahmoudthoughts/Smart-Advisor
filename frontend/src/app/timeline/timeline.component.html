@@ -31,7 +31,7 @@
       <h2>Timeline View</h2>
       <p>Overlay price with hypothetical liquidation and unrealized P&amp;L to highlight regret windows.</p>
     </header>
-    <div echarts [options]="timelineOption()" class="chart" *ngIf="hasData(); else emptyState"></div>
+    <div echarts [options]="timelineOption()" [autoResize]="true" class="chart" *ngIf="hasData(); else emptyState"></div>
     <ng-template #emptyState>
       <div class="chart-placeholder">
         <p>Select a symbol with price history and recorded trades to render the chart.</p>
@@ -53,11 +53,11 @@
       </thead>
       <tbody>
         <tr *ngFor="let row of tableRows()">
-          <td>{{ row.date }}</td>
-          <td>{{ row.price === null ? '—' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
-          <td>{{ row.hypoPnl | currency: 'USD' }}</td>
-          <td>{{ row.unrealizedPnl | currency: 'USD' }}</td>
-          <td>
+          <td data-label="Date">{{ row.date }}</td>
+          <td data-label="Close">{{ row.price === null ? '—' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
+          <td data-label="Hypo P&L">{{ row.hypoPnl | currency: 'USD' }}</td>
+          <td data-label="Unrealized P&L">{{ row.unrealizedPnl | currency: 'USD' }}</td>
+          <td data-label="Day opportunity">
             <span [class.positive]="row.dayOpportunity > 0">
               {{ row.dayOpportunity | currency: 'USD' }}
             </span>

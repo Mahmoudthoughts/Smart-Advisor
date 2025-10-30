@@ -56,6 +56,18 @@ export class AppComponent {
     void this.router.navigate(['/login']);
   }
 
+  userInitials(): string {
+    const name = this.user()?.name ?? '';
+    if (!name.trim()) {
+      return '•';
+    }
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   toggleMenu(event?: MouseEvent): void {
     event?.stopPropagation();
     this.menuOpen.update((open) => !open);

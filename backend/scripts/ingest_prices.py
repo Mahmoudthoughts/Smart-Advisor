@@ -18,7 +18,7 @@ async def _run(symbol: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Ingest TIME_SERIES_DAILY_ADJUSTED data")
+    parser = argparse.ArgumentParser(description="Ingest TIME_SERIES_DAILY data")
     parser.add_argument("--symbol", required=True)
     args = parser.parse_args()
     asyncio.run(_run(args.symbol))

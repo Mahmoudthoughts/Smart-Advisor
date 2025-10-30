@@ -3,7 +3,7 @@
 This repository now ships with a Python analytics backend, a PostgreSQL schema, and an Angular frontend that together deliver the Smart Advisor experience.
 
 - `backend/` — Python package that rebuilds positions, computes hypothetical liquidation metrics, and now exposes FastAPI endpoints for multi-user authentication. Includes a Dockerfile for containerized execution and pytest coverage.
-- `frontend/` — Angular workspace with login/registration flows, guarded advisor dashboards, and ngx-echarts visualisations.
+- `frontend/` — Angular workspace with login/registration flows, responsive advisor dashboards, and ngx-echarts visualisations (auto-resize aware navigation + chart layouts). Served through NGINX with SPA routing configured in `frontend/nginx.conf`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
 
 ## Running with Docker Compose
@@ -23,6 +23,12 @@ Services exposed locally:
 The backend container now exposes the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
 against Alpha Vantage out of the box.
 
+> **Note:** After updating frontend assets or `frontend/nginx.conf`, rebuild the frontend image so the single-page app fallback (deep-link support) picks up the changes:
+> ```bash
+> docker compose build frontend
+> docker compose up -d frontend
+> ```
+
 When the compose stack starts, PostgreSQL loads `backend/sql/schema.sql` automatically to provision the required tables. The frontend communicates with the backend using the `environment.apiBaseUrl` value defined under `frontend/src/environments/`.
 
 ## Backend service layout
@@ -33,8 +39,8 @@ The `/backend/app` package now provides the Missed Opportunity Analyzer + Smart 
 - `app/config/settings.py` — Centralised configuration (Asia/Dubai timezone, USD base currency, Alpha Vantage API key + rate limits).
 - `app/db/` — Declarative base and async session helpers.
 - `app/models/` — SQLAlchemy models for Portfolio, Transaction, Lot, DailyBar, FXRate, DailyPortfolioSnapshot, SignalEvent, TickerSentimentDaily, AnalystSnapshot, ForecastDaily, MacroEvent, and DashboardKPI with required indexes.
-- `app/providers/alpha_vantage.py` — Throttled Alpha Vantage client exposing `daily_adjusted`, `fx_daily`, `tech_indicator`, `news_sentiment`, and `econ_indicator` helpers.
-- `app/ingest/` — Idempotent upsert jobs for TIME_SERIES_DAILY_ADJUSTED and FX_DAILY responses.
+- `app/providers/alpha_vantage.py` — Throttled Alpha Vantage client exposing `daily_adjusted` (TIME_SERIES_DAILY), `fx_daily`, `tech_indicator`, `news_sentiment`, and `econ_indicator` helpers.
+- `app/ingest/` — Idempotent upsert jobs for TIME_SERIES_DAILY and FX_DAILY responses.
 - `app/indicators/compute.py` — Pandas-powered SMA/EMA/RSI/MACD/ATR/volume-multiple indicators with caching.
 - `app/rules/engine.py` — Boolean expression evaluation with cooldown tracking per rule.
 - `app/services/snapshots.py` — FIFO/LIFO lot builder and daily P&L metrics per §3–§4 of the spec.

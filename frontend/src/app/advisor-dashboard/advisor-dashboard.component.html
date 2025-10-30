@@ -28,7 +28,7 @@
     </div>
     <a class="view-link" routerLink="/app/timeline">View timeline</a>
   </header>
-  <div echarts [options]="liquidationChart" class="chart chart-lg"></div>
+  <div echarts [options]="liquidationChart" [autoResize]="true" class="chart chart-lg"></div>
 </section>
 
 <section class="panel two-column" id="opportunities">
@@ -40,7 +40,7 @@
       </div>
       <a class="view-link" routerLink="/app/opportunities">Explore opportunities</a>
     </header>
-    <div echarts [options]="opportunityChart" class="chart"></div>
+    <div echarts [options]="opportunityChart" [autoResize]="true" class="chart"></div>
     <table>
       <thead>
         <tr>
@@ -52,10 +52,10 @@
       </thead>
       <tbody>
         <tr *ngFor="let row of opportunities">
-          <td>{{ row.rank }}</td>
-          <td>{{ row.symbol }}</td>
-          <td>{{ row.missedGain }}</td>
-          <td>{{ row.driver }}</td>
+          <td data-label="Rank">{{ row.rank }}</td>
+          <td data-label="Symbol">{{ row.symbol }}</td>
+          <td data-label="Missed gain">{{ row.missedGain }}</td>
+          <td data-label="Driver">{{ row.driver }}</td>
         </tr>
       </tbody>
     </table>

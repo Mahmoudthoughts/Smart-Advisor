@@ -10,7 +10,7 @@
       <p>Visualize daily sentiment drift per ticker; values are normalized to [-1, +1].</p>
     </header>
 
-    <div echarts class="heatmap" [options]="heatmapOption"></div>
+    <div echarts class="heatmap" [options]="heatmapOption" [autoResize]="true"></div>
   </section>
 
   <section class="sentiment-table">
@@ -30,11 +30,11 @@
       </thead>
       <tbody>
         <tr *ngFor="let row of sentimentRows">
-          <td>{{ row.date }}</td>
-          <td><span class="ticker">{{ row.symbol }}</span></td>
-          <td><span [class.positive]="row.score >= 0" [class.negative]="row.score < 0">{{ row.score | number: '1.2-2' }}</span></td>
-          <td>{{ row.articles }}</td>
-          <td>{{ row.highlights }}</td>
+          <td data-label="Date">{{ row.date }}</td>
+          <td data-label="Symbol"><span class="ticker">{{ row.symbol }}</span></td>
+          <td data-label="Score"><span [class.positive]="row.score >= 0" [class.negative]="row.score < 0">{{ row.score | number: '1.2-2' }}</span></td>
+          <td data-label="Articles">{{ row.articles }}</td>
+          <td data-label="Highlights">{{ row.highlights }}</td>
         </tr>
       </tbody>
     </table>

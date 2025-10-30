@@ -122,16 +122,18 @@ Columns: `date, type{BUY|SELL|DIVIDEND|FEE|SPLIT}, symbol, quantity, price, fee,
 
 ---
 
-## 7) Algorithms (concise)
+## 7) Algorithms (concise + operational detail)
 ### 7.1 Lot Builder & P&L
-- Build lots from buys; close with sells via FIFO/LIFO/SpecID.  
-- Daily loop d: compute shares_open, market value, cost basis, realized_to_date; compute HypoLiquidP&L(d) & DayOpp(d); update peaks & drawdowns.
+- Build lots from buys; close with sells via FIFO/LIFO/Specific-ID (configurable).
+- Daily loop `d`: compute shares_open, market value, cost basis, realized_to_date; derive HypoLiquidP&L(d), DayOpp(d), rolling peaks, and drawdowns.
 
-### 7.2 Indicators (cached)
-- `sma_n, ema_n, rsi_14, macd(12,26,9), atr_14, volume_multiple_20d, momentum_20/60d, gap stats`.
+### 7.2 Indicator Cache
+- Pre-compute and persist `close, open, high, low, volume, sma_n, ema_n, rsi_14, macd(12,26,9), atr_n, volume_multiple_20d, momentum_20/60d, gap stats, bollinger bands (upper/lower_n)`.
+- Cache keyed by `(symbol, date, indicator_id)` to support both batch signal runs and interactive charting.
 
 ### 7.3 Rule Engine (technical triggers)
-- Evaluate boolean expression trees over indicator arrays; enforce `cooldown_days` per `rule_id` per symbol; de-duplicate same-day multi-triggers.
+- Evaluate boolean expression trees over indicator arrays; enforce `cooldown_days` per `(rule_id, symbol)`; suppress duplicate fire within same session.
+- JSON schema aligns with the user-defined rule format below; `valid_session` filters out pre/post sessions.
 
 **Technical Rule JSON (example)**
 ```json
@@ -149,55 +151,368 @@ Columns: `date, type{BUY|SELL|DIVIDEND|FEE|SPLIT}, symbol, quantity, price, fee,
 }
 ```
 
-### 7.4 Sentiment
-- Per-article LLM classification → z-score by source → time decay → **daily ticker score** in [−1,+1].
+**Indicator dictionary (minimum viable)**
+`close, open, high, low, volume, sma_{n}, ema_{n}, rsi_{n}, macd(12,26,9), volume_multiple_20d, atr_{n}, bb_upper_{n}, bb_lower_{n}`.
 
-### 7.5 Analyst “AI-verified”
-- `verified = True` iff analyst direction agrees with both: (a) technical momentum (e.g., `RSI>60` or `SMA20>SMA50`) and (b) sentiment score > +0.2 (or < −0.2 for bearish).
+### 7.4 Sentiment pipeline
+- Fetch → dedupe by URL hash → LLM summarize (headline plus 1–2 bullet takeaways) → classify into `{bearish, neutral, bullish}` with score in `[-1, +1]`.
+- Daily aggregate: volume-weighted mean by publisher weight with exponential decay; materialize as `TickerSentimentDaily`.
 
-### 7.6 Predictor (30‑day)
-- Model: gradient-boosted trees (weekly recalibration).  
-- Features: behavior (missed-opportunity history), tech, flow, sentiment, analyst, macro proximity, beta/corr to indices/10Y/oil.  
-- Targets:  
-  - `P(High_{t+30} ≥ last_peak_price)`  
-  - `E[Regret_30d | sell_now]`, `E[Regret_30d | hold_now]`.  
-- Explainability: normalized SHAP → `drivers[]` ~ sum to 1.
+### 7.5 Analyst insight verification
+- Normalize upstream sources (SeekingAlpha, MarketBeat, TradingView Analysts, Reuters) into `{rating, target_price, horizon_days, note}`.
+- Set `verified=True` when analyst direction aligns with both technical momentum (`RSI>60` or `SMA20>SMA50`) and `sentiment_daily.score > 0.2` (or < -0.2 for bearish cases).
 
-### 7.7 Macro Impact
-- Event windows [−3d,+3d]; compute return/vol deciles vs rolling baseline; flag top decile as impact markers.  
-- Rolling `beta_60d`, `corr_60d` to NASDAQ/S&P/sector ETF/10Y/oil.
+### 7.6 Predictor (30-day Next Best Move)
+- Baseline: gradient boosted trees retrained weekly; handles class imbalance via focal loss where applicable and calibrated via Platt scaling or isotonic regression.
+- Outputs `P(High_{t+30} ≥ last_peak_price)`, `E[Regret_{30d} | sell_now]`, `E[Regret_{30d} | hold_now]`, plus SHAP-based drivers summing to ~1.
 
-### 7.8 ERI (Emotional Risk Index)
-1) Identify post-peak windows;  
-2) Count instances where holding persisted through ≥20% reversal;  
-3) ERI=100×(held_through / total_post_peak_windows).
+### 7.7 Macro impact and correlation
+- Event windows `[−3d, +3d]`; compute return/vol deciles vs rolling history; flag top decile as impact markers.
+- Maintain rolling `beta_60d` and `corr_60d` to NASDAQ, S&P, sector ETF, US 10Y, and Brent/WTI.
+
+### 7.8 Emotional Risk Index (ERI)
+1. Detect post-peak windows;  
+2. Count episodes with ≥20% reversal while position remained open;  
+3. `ERI = 100 × (count_held_through / total_post_peak_windows)`.
+
+### 7.9 Reason engine scaffolding
+- Assemble templated narratives from structured facts to power alerts, daily reports, and simulator explanations.
 
 ---
 
 ## 8) UI/UX
-- **Main Chart**: Hypo Liquidation P&L (thick), Unrealized P&L (thin), price (secondary). Background gradient by daily **sentiment score**. Hover shows: date, price, shares_open, hypo P&L, DayOpp, realized_to_date, sentiment, signal tags.  
-- **Calendar Heatmap**: DayOpp intensity; click to jump in chart.  
-- **Top Missed Days**: Date, Hypo P&L, DayOpp, Price, Shares, “Δ vs Today”.  
-- **Lot Waterfall**: contribution to the best missed day.  
-- **Predictor Panel**: prob_retake_peak_30d; expected regret sell vs hold; drivers.  
-- **Scenario Simulator**: define actions (SELL/BUY/TRAIL STOP), assumptions; render ghost timeline and Δ metrics.  
-- **Macro Overlays**: badges on chart; hover for event details & impact.  
-- **Dashboard**: KPI cards for %DaysMissed10, AvgDD_after_best, ERI, PeakRegretNow, SignalFollow‑Through.
+- Main chart: Hypo Liquidation P&L (primary), Unrealized P&L (secondary), price overlay; background gradient follows `sentiment_daily.score`.
+- Calendar heatmap: DayOpp intensity; clicking synchronizes the main chart cursor.
+- Top Missed Days table: date, Hypo P&L, DayOpp, price, shares, delta vs today.
+- Lot waterfall: contribution to best missed day.
+- Predictor panel: probability of retaking peak, expected regret if selling vs holding, top drivers with directionality.
+- Scenario simulator: define SELL/BUY/TRAIL STOP actions, assumptions; render ghost timeline and deltas.
+- Macro overlays: event markers on chart; hover reveals event metadata and impact classification.
+- Dashboard cards: `%DaysMissed10`, `AvgDD_after_best`, `ERI`, `PeakRegretNow`, `SignalFollow-Through` with drill-through navigation.
 
 **Architecture Diagram (SVG)**: [smart_advisor_architecture.svg](smart_advisor_architecture.svg)  
-(Chat download link: `sandbox:/mnt/data/smart_advisor_architecture.svg`)
+(Download: `sandbox:/mnt/data/smart_advisor_architecture.svg`)
 
 ---
 
 ## 9) APIs
 **Full OpenAPI (YAML)**: [smart_advisor_openapi.yaml](smart_advisor_openapi.yaml)  
-(Chat download link: `sandbox:/mnt/data/smart_advisor_openapi.yaml`)
+(Download: `sandbox:/mnt/data/smart_advisor_openapi.yaml`)
 
-### 9.1 Selected Endpoints
-- `GET /symbols/{symbol}/timeline?from&to` → `DailyPortfolioSnapshot[]`  
-- `GET /symbols/{symbol}/top-missed?limit=10`  
-- `POST /simulate` → create alternate timeline (ghost)  
-- **Signals & Sentiment**:  
+### 9.1 Selected endpoints
+- `GET /symbols/{symbol}/timeline?from&to` → `DailyPortfolioSnapshot[]`
+- `GET /symbols/{symbol}/top-missed?limit=10`
+- `POST /symbols/{symbol}/refresh` → runs ingest + snapshot recompute
+- `POST /simulate` → create alternate (ghost) timeline
+
+### 9.2 Extended roadmap endpoints
+- Signals & Sentiment:  
+  - `GET /signals/{symbol}?from&to`  
+  - `POST /signals/rules` (create/update JSON rules)  
+  - `GET /sentiment/{symbol}?from&to`  
+  - `GET /analyst/{symbol}?from&to`
+- Forecasts:  
+  - `GET /forecast/{symbol}?asof`  
+  - `POST /forecast/retrain` (admin)
+- Narratives:  
+  - `GET /narratives/daily?date=YYYY-MM-DD`  
+  - `GET /narratives/weekly?week=YYYY-Www`
+- Alerts:  
+  - `GET /alerts?date=YYYY-MM-DD`  
+  - `POST /alerts/test`
+- Macro:  
+  - `GET /macro/events?from&to&type=FOMC|CPI|NFP`  
+  - `GET /macro/impact/{symbol}?from&to`
+- Dashboard:  
+  - `GET /dashboard/kpis?date=YYYY-MM-DD`
+
+### 9.3 Simulator API example
+```json
+POST /simulate
+{
+  "symbol": "HPE",
+  "base_timeline_id": "current",
+  "what_if": [
+    {"type": "SELL", "date": "2025-09-10", "qty_pct": 0.5, "price": "mkt_close"},
+    {"type": "BUY", "date": "2025-09-24", "qty_pct": 0.5, "price": 15.50}
+  ],
+  "assumptions": {"fee_bps": 5, "fx_sigma_pct": 1.2, "tax_rate_pct": 15}
+}
+→ {
+  "timeline_id": "sim_abc123",
+  "diff_vs_base": { "...": "..." }
+}
+```
+
+---
+
+## 10) Market intelligence & signal integration
+### 10.1 Daily signal engine
+- Schedule: run after price/news ingest per trading day (timezone Asia/Dubai).
+- Inputs: `DailyBar`, News items, Analyst notes, `IndicatorCache`.
+- Outputs: `SignalEvent[]`, `TickerSentimentDaily`, `AnalystSnapshot`.
+
+### 10.1.1 Technical rule schema
+See Section 7.3 for schema; ensure rules include scope, conditions (`all`/`any`), actions, cooldown, and valid session metadata.
+
+### 10.1.2 Indicator dictionary
+Minimum set: `close, open, high, low, volume, sma_{n}, ema_{n}, rsi_{n}, macd(12,26,9), volume_multiple_20d, atr_{n}, bb_upper_{n}, bb_lower_{n}`.
+
+### 10.2 News sentiment (headline to daily score)
+- Pipeline: fetch → dedupe → LLM summarise (headline plus 1-2 bullet takeaways) → classify into `{bearish, neutral, bullish}` with score in `[-1, +1]`.
+- Daily aggregate: volume-weighted mean with publisher weights and recency decay → persisted as `sentiment_daily`.
+- Payload example:
+```json
+{
+  "symbol": "HPE",
+  "date": "2025-10-23",
+  "score": 0.34,
+  "class": "bullish",
+  "top_headlines": [
+    {"src": "Reuters", "summary": "Guidance raised on AI servers; margin intact"}
+  ]
+}
+```
+- Chart integration: color P&L chart background by sentiment score gradient.
+
+### 10.3 Analyst insights
+- Sources (pluggable): SeekingAlpha, MarketBeat, TradingView Analysts, Reuters.
+- Normalized fields: `rating` (bearish→bullish scale), `target_price`, `horizon_days`, `note`, `source`.
+- AI-verified tag set when analyst direction matches technical momentum and sentiment thresholds (Section 7.5).
+
+---
+
+## 11) Smart Opportunity Forecasting (Next Best Move Predictor)
+### 11.1 Objective
+Estimate near-term timing risk: probability of exceeding last peak within 30 days and expected regret if selling or holding today.
+
+### 11.2 Feature sets
+- Behavioural: distance from prior peak missed days, DayOpp distribution.
+- Technical: RSI, MACD histogram trend, SMA crossovers, ATR percentage, 20/60 day momentum.
+- Flow: abnormal volume, gap statistics.
+- News/Analyst: `sentiment_daily.score`, `verified_analyst_bullish`.
+- Event: macro proximity (FOMC/CPI/NFP ±3 days), sector/index beta.
+
+### 11.3 Modelling notes
+- Baseline model: gradient boosted trees refreshed weekly; apply focal loss or class-weighting to balance positive events; calibrate with Platt scaling.
+
+### 11.4 Output contract
+```json
+{
+  "symbol": "PATH",
+  "asof": "2025-10-24",
+  "prob_retake_peak_30d": 0.41,
+  "exp_regret_sell_now_30d": -0.034,
+  "exp_regret_hold_now_30d": 0.018,
+  "drivers": [
+    {"feature": "sentiment_score", "direction": "+", "contrib": 0.22},
+    {"feature": "rsi_14", "direction": "+", "contrib": 0.18}
+  ]
+}
+```
+
+### 11.5 UI copy
+Display examples such as: `If you sold today, expected regret over 30 days: -3.4%.`
+
+---
+
+## 12) Daily and weekly narrative reports
+### 12.1 Generation windows
+- Produce daily report at market close and weekly report at Friday close (Asia/Dubai buckets).
+
+### 12.2 Content blocks
+- Leaders and laggards (unrealized P&L delta day-over-day).
+- Missed opportunity trend (delta vs peak; new peaks).
+- Signals summary (triggered rules, cooldown state).
+- Sentiment and analyst snippets with verified badges.
+- Actionable nudges sourced from predictor thresholds.
+
+### 12.3 Narrative payload example
+```json
+{
+  "date": "2025-10-24",
+  "highlights": [
+    "TSLA +2.1% unrealized led gains; LAC -3.6% weighed on P&L.",
+    "HPE flagged REENTRY; volume 1.6x 20D avg (cooldown clear)."
+  ],
+  "missed_opportunity": {
+    "new_peak_symbols": ["PATH"],
+    "top_regret_today": [{"symbol": "LAC", "regret_delta_pct": 2.8}]
+  },
+  "sentiment": [{"symbol": "TSLA", "score": 0.45, "class": "bullish", "analyst_verified": true}],
+  "actions": [{"symbol": "HPE", "suggestion": "add/trim review", "reason": "REENTRY + sentiment>0.2"}]
+}
+```
+
+---
+
+## 13) Scenario simulator enhancements
+### 13.1 Actions
+- Sell half on last signal, re-enter at price X on date D, trail stop at Y × ATR.
+
+### 13.2 Assumptions panel
+- Fee model, FX volatility model (±sigma scenarios), trade tax rates, slippage percentage.
+
+### 13.3 API contract
+See Section 9.3 for request/response; ensure ghost timeline reconciles fees and taxes.
+
+---
+
+## 14) Macro integration layer
+### 14.1 Overlays
+- Economic calendar events: FOMC, CPI, PPI, NFP, GDP advance/revision, PMI/ISM.
+- Impact markers: flag when absolute return or volatility is in top decile within ±2 days of event.
+
+### 14.2 Auto-correlation metrics
+- Rolling beta and correlation to NASDAQ, S&P, sector ETF, US 10Y, Brent/WTI; expose on hover and in narratives.
+
+---
+
+## 15) Advanced alerts and AI explanations
+### 15.1 Alert types
+- Drawdown++ threshold crossed with reason.
+- Signal trigger summary (e.g., "PATH re-entry condition; vol 1.6x 20D").
+- Macro proximity alerts (e.g., "CPI tomorrow; high beta names: TSLA, LAC").
+- New peak detection ("New all-time Hypo P&L peak on PATH").
+
+### 15.2 Reason engine template
+```json
+{
+  "type": "drawdown",
+  "symbol": "HPE",
+  "magnitude_pct": -3.8,
+  "cause": "post-Investor Day guidance",
+  "historical_analogue": {"window": "2022-2023", "median_recovery_days": [9, 14]}
+}
+```
+Renders to: `HPE fell 3.8% post-Investor Day guidance. Similar events in 2022-2023 saw recovery in 9-14 days.`
+
+---
+
+## 16) Regret–risk–reward dashboard
+### 16.1 KPI definitions
+- `%DaysMissed10`: share of days where DayOpp ≥ +10%.
+- `AvgDD_after_best`: average max drawdown after top missed days.
+- `Emotional Risk Index (ERI)`: see Section 7.8.
+- `PeakRegretNow`: `Peak Hypo P&L - Today Hypo P&L`.
+- `SignalFollow-Through`: percent of signals that led to +X% within Y days.
+
+### 16.2 Layout and drill-through
+- KPI cards with sparkline mini-charts per symbol; drill-through reveals day-level detail and associated narratives.
+
+---
+
+## 17) Multi-agent and API extensions
+### 17.1 Data connectors
+- TradingView and Yahoo Finance for live bars and fundamentals.
+- News feeds: Reuters, SeekingAlpha, MarketBeat via rate-limited queue.
+
+### 17.2 OpenAI Agents SDK integration
+- Maintain per-ticker daily reasoning traces (signals → forecast → narrative).
+- Auto-annotations: agent writes inline notes onto charts with source snippets.
+- Toolchain: `tool:get_prices`, `tool:get_news`, `tool:emit_signal`, `tool:write_narrative`, `tool:push_alert`.
+
+---
+
+## 18) Technical architecture (Smart Advisor layer)
+```
+[Connectors]
+  ├─ Price/FX (TV/YF) ─┐
+  ├─ News/Analyst -----┼─────────┐
+  └─ Macro Calendar ---┘         │
+                                 ▼
+                     [Data Normalization & Cache]
+                                 ▼
+                        [Daily Signal Engine]
+                     (tech rules + sentiment + analysts)
+                                 ▼
+               ┌───────────────[Feature Store]───────────────┐
+               │ tech, flow, sentiment, macro, behaviour     │
+               └──────────────────────┬──────────────────────┘
+                                      ▼
+                          [Next Best Move Predictor]
+                                      ▼
+                           [Narrative Generator]
+                                      ▼
+                        [Alerts/Reason Engine + Bus]
+                                      ▼
+                    [Missed Opp UI + Simulator + API]
+```
+
+---
+
+## 19) Data model additions
+Canonical definitions remain in Section 6.2. This section highlights the Smart Advisor layer tables for quick reference:
+- `SignalEvent (id, symbol, date, rule_id, signal_type, severity, payload, cooldown_until)`
+- `TickerSentimentDaily (symbol, date, score, class, top_headlines[])`
+- `AnalystSnapshot (symbol, date, rating, target_price, horizon_days, source, verified)`
+- `ForecastDaily (symbol, asof, prob_retake_peak_30d, exp_regret_sell_now_30d, exp_regret_hold_now_30d, drivers[])`
+- `MacroEvent (event_id, type, time_utc, importance, symbol_impact_tags[])`
+- `DashboardKPI (date, metric_key, symbol?, value)`
+
+---
+
+## 20) Algorithm cross-check
+- Signal evaluation: vectorised indicator evaluation with cooldown enforcement.
+- Sentiment: article classification → z-score/decay → daily score; keep source list.
+- Forecast: rolling 3-5 year training window; calibration ensures Brier score ≤ baseline.
+- ERI: refer to Section 7.8.
+- Macro impact: event windows with decile-based thresholding.
+
+---
+
+## 21) Acceptance criteria (additions)
+- Signals: sample PATH rule fires when `close > 17.20` and `volume_multiple_20d ≥ 1.5`, respects 2-day cooldown.
+- Sentiment overlay: background gradient follows `sentiment_daily.score`.
+- Analyst verified flag set only when technical momentum and sentiment agree with analyst direction.
+- Predictor: returns calibrated `prob_retake_peak_30d`; drivers list sums to ~1.
+- Narratives: daily output includes leaders/laggards, signals, sentiment, and recommended nudges.
+- Simulator: "sell half on last signal" action yields ghost timeline matching fee/tax assumptions.
+- Macro: CPI and FOMC overlays render; impact markers appear for top decile events.
+- Alerts: drawdown alert includes cause plus historical analogue window.
+- Dashboard: ERI, `%DaysMissed10`, `AvgDD_after_best` compute correctly on seed datasets.
+
+---
+
+## 22) Ops, SLOs, and audit
+- SLOs: signal engine completes <2 minutes after market close; narratives <5 minutes.
+- Retry/backfill: idempotent upserts keyed by `(symbol, date, source)`.
+- Explainability: retain feature snapshots and SHAP artefacts for 90 days.
+- Privacy: redact API keys; store `source_url_hash` instead of raw URLs.
+- Tracing: use OpenAI Agents SDK traces per symbol/day (ingest → signal → forecast → narrative → alert id).
+
+---
+
+## 23) Seed content (samples)
+### 23.1 PATH re-entry rule
+```json
+{
+  "id": "rule_path_reentry_1720",
+  "name": "PATH closes > 17.20 w/1.5x vol",
+  "scope": {"symbols": ["PATH"], "active": true},
+  "when": {"all": [
+    {"ind": "close", "op": ">", "value": 17.20},
+    {"ind": "volume_multiple_20d", "op": ">=", "value": 1.5}
+  ]},
+  "then": {"signal_type": "REENTRY", "severity": "info", "tags": ["breakout"]},
+  "cooldown_days": 2
+}
+```
+
+### 23.2 Alert template (drawdown)
+```json
+{
+  "template": "drawdown_explain_v1",
+  "vars": {
+    "symbol": "HPE",
+    "magnitude_pct": -3.8,
+    "cause": "post-Investor Day guidance",
+    "analogue_window": "2022-2023",
+    "recovery_days_range": "9-14"
+  }
+}
+```
+
   - `GET /signals/{symbol}?from&to`  
   - `POST /signals/rules` (upsert technical rules)  
   - `GET /sentiment/{symbol}?from&to`  

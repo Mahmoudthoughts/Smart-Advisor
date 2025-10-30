@@ -11,6 +11,8 @@ from app.api.routes import api_router
 from app.config import get_settings
 from app.core.logging import setup_logging
 from app.db.init import init_database
+from smart_advisor.api.auth import get_auth_router
+from smart_advisor.api.database import database as legacy_database
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
@@ -31,6 +33,7 @@ async def startup() -> None:
     """Initialise the database schema when the service boots."""
 
     await init_database()
+    await legacy_database.create_all()
 
 
 @app.get("/health", tags=["health"])
@@ -48,6 +51,7 @@ def configure_app() -> FastAPI:
     """Attach routes and dependencies."""
 
     app.include_router(api_router)
+    app.include_router(get_auth_router(legacy_database))
     return app
 
 

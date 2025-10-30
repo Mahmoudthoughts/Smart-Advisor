@@ -158,7 +158,7 @@ async def get_symbol_timeline(
             fee=float(Decimal(str(tx.fee))),
             tax=float(Decimal(str(tx.tax))),
             account_id=tx.account_id,
-            account=tx.account.name if tx.account else tx.broker_id,
+            account=(tx.__dict__.get("account").name if tx.__dict__.get("account") else tx.broker_id),
             notes=tx.notes,
             notional_value=float(Decimal(str(tx.qty)) * Decimal(str(tx.price))),
         )

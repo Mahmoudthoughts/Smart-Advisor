@@ -48,7 +48,7 @@
       <h2>Timeline &amp; trades</h2>
       <p>Adjusted close, dynamic average cost, and P&amp;L overlays with trade markers.</p>
     </header>
-    <div echarts [options]="chartOption()" class="chart" *ngIf="!isLoading(); else loading"></div>
+    <div echarts [options]="chartOption()" [autoResize]="true" class="chart" *ngIf="!isLoading(); else loading"></div>
     <ng-template #loading>
       <div class="chart-placeholder">Loading chart…</div>
     </ng-template>
@@ -73,13 +73,13 @@
       </thead>
       <tbody>
         <tr *ngFor="let tx of transactions()">
-          <td>{{ tx.trade_datetime | date: 'medium' }}</td>
-          <td><span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span></td>
-          <td>{{ tx.quantity | number: '1.0-2' }}</td>
-          <td>{{ tx.price | currency: 'USD' }}</td>
-          <td>{{ tx.fee | currency: 'USD' }}</td>
-          <td>{{ tx.account || '—' }}</td>
-          <td>{{ tx.notes || '—' }}</td>
+          <td data-label="Date">{{ tx.trade_datetime | date: 'medium' }}</td>
+          <td data-label="Side"><span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span></td>
+          <td data-label="Quantity">{{ tx.quantity | number: '1.0-2' }}</td>
+          <td data-label="Price">{{ tx.price | currency: 'USD' }}</td>
+          <td data-label="Fees">{{ tx.fee | currency: 'USD' }}</td>
+          <td data-label="Account">{{ tx.account || '—' }}</td>
+          <td data-label="Notes">{{ tx.notes || '—' }}</td>
         </tr>
       </tbody>
     </table>
