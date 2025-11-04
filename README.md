@@ -58,3 +58,15 @@ make indicators SYMBOL=AAPL
 make recompute SYMBOL=AAPL
 make test
 ```
+
+### OpenTelemetry
+
+Tracing can be enabled without further code changes by exporting the following environment variables before launching the backend (e.g. `make dev`):
+
+- `TELEMETRY_ENABLED=true`
+- `TELEMETRY_SERVICE_NAME=smart-advisor-api` (optional; defaults to the logical service name)
+- `TELEMETRY_OTLP_ENDPOINT=http://otel-collector:4317` (optional; default follows OpenTelemetry SDK conventions)
+- `TELEMETRY_OTLP_INSECURE=true` when targeting an unsecured collector endpoint
+- `TELEMETRY_SAMPLE_RATIO=1.0` for probabilistic sampling (0.0–1.0)
+
+When enabled the FastAPI router and SQLAlchemy ORM emit spans through the OTLP gRPC exporter, so traces appear automatically in any standards-compliant collector.

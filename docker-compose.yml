@@ -19,6 +19,18 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
       ALPHAVANTAGE_API_KEY: W7NAEL9D8ERL47FW
+      TELEMETRY_ENABLED: "true"
+      TELEMETRY_SERVICE_NAME: smart_advisor_backend
+      OTEL_SERVICE_NAME: smart_advisor_backend
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=1.0.0
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://localhost:4317
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: http/protobuf
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://localhost:4318/v1/logs
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://localhost:4318/v1/metrics
     depends_on:
       - db
     ports:

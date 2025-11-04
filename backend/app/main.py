@@ -10,13 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import api_router
 from app.config import get_settings
 from app.core.logging import setup_logging
+from app.core.telemetry import setup_telemetry
 from app.db.init import init_database
+from app.db.session import _engine
 from smart_advisor.api.auth import get_auth_router
 from smart_advisor.api.database import database as legacy_database
 
 settings = get_settings()
 app = FastAPI(title=settings.app_name, version="0.1.0")
 setup_logging()
+setup_telemetry(app, settings, engine=_engine)
 
 # Configure CORS
 app.add_middleware(

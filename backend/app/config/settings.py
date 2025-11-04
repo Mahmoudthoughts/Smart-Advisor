@@ -33,6 +33,12 @@ class AppSettings(BaseSettings):
     lot_allocation_method: Literal["FIFO", "LIFO", "SPEC_ID"] = Field(default="FIFO")
     lot_specific_map: dict[str, str] = Field(default_factory=dict)
 
+    telemetry_enabled: bool = Field(default=False)
+    telemetry_service_name: str = Field(default="smart-advisor")
+    telemetry_otlp_endpoint: str | None = Field(default=None)
+    telemetry_otlp_insecure: bool = Field(default=True)
+    telemetry_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
