@@ -1,9 +1,16 @@
-"""Price ingest job for Alpha Vantage daily price series."""
+"""Price ingest job for Alpha Vantage daily price series.
+
+This implementation performs incremental upserts:
+- On first run (no existing rows), it fetches the full series.
+- On subsequent runs, it fetches the compact series and only upserts a small
+  backfill window plus new days to capture restatements/dividends/splits.
+"""
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from sqlalchemy import Select, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,10 +21,25 @@ from .config import get_settings
 
 
 async def ingest_prices(symbol: str, session: AsyncSession, client: AlphaVantageClient | None = None) -> int:
-    """Fetch and persist Alpha Vantage TIME_SERIES_DAILY data."""
+    """Fetch and persist Alpha Vantage TIME_SERIES_DAILY data incrementally."""
 
     client = client or get_alpha_vantage_client()
-    payload = await client.daily_adjusted(symbol)
+    # Determine last ingested date for incremental fetch
+    latest_stmt: Select = select(func.max(DailyBar.date)).where(DailyBar.symbol == symbol)
+    latest_date = (await session.execute(latest_stmt)).scalar()
+
+    # Use compact for incremental updates, full for initial load or long gaps
+    output_size = "compact" if latest_date else "full"
+    if latest_date:
+        try:
+            from datetime import date as _date
+
+            if (_date.today() - latest_date).days > 90:
+                output_size = "full"
+        except Exception:
+            # Fallback to compact on any unexpected date issues
+            output_size = output_size
+    payload = await client.daily_adjusted(symbol, output=output_size)
     series = payload.get("Time Series (Daily)", {})
     total = 0
     settings = get_settings()
@@ -29,8 +51,15 @@ async def ingest_prices(symbol: str, session: AsyncSession, client: AlphaVantage
         else settings.base_currency
     )
 
+    # Backfill to capture restatements/splits around the last known date
+    backfill_days = 5
+    cutoff_date = (latest_date - timedelta(days=backfill_days)) if latest_date else None
+
     for day_str, values in series.items():
         day = datetime.strptime(day_str, "%Y-%m-%d").date()
+        if cutoff_date and day < cutoff_date:
+            # Skip historical rows beyond the backfill window
+            continue
         adj_close_value = values.get("5. adjusted close") or values.get("4. close")
         volume_value = values.get("6. volume") or values.get("5. volume")
         if adj_close_value is None or volume_value is None:

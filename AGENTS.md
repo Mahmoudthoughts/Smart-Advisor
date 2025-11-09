@@ -9,6 +9,7 @@ Tech Stack
 - Frontend: Angular (standalone components, Signals API), ngx-echarts, SCSS, served via NGINX.
 - Backend: FastAPI (Python 3.11), SQLAlchemy (async), PostgreSQL, Alembic, OpenTelemetry optional.
 - Orchestration: Docker Compose (db, backend, frontend).
+  - Ingest microservice: FastAPI service under `services/ingest` (Alpha Vantage data fetcher), now the only path for price ingest.
 
 Run & Build
 - Compose: `docker compose up --build`
@@ -40,12 +41,32 @@ Backend Conventions
 - Auth endpoints under `/auth`: `POST /auth/register`, `POST /auth/login`. See `backend/smart_advisor/api/auth.py` for token generation.
 - DB sessions via async dependencies (`Depends(get_db)` or legacy `.get_session`).
 - Migrations under `backend/app/migrations`.
+ - Ingest flow:
+   - All price ingests are routed via the ingest microservice (no in-process fallback).
+   - Backend endpoints that trigger ingest:
+     - `POST /portfolio/watchlist` (on add) → calls ingest `POST /jobs/prices?run_sync=true`
+     - `POST /symbols/{symbol}/refresh` → calls ingest `POST /jobs/prices?run_sync=true`
+   - Ingest health proxy: `GET /ingest/health` forwards to the microservice `/health`.
+   - Configure backend with `INGEST_BASE_URL` (Compose sets `http://ingest:8100`).
+
+Ingest Microservice
+- Location: `services/ingest` (FastAPI app, separate container `ingest`).
+- Endpoints:
+  - `GET /health` – lightweight health/status.
+  - `POST /jobs/prices` – body `{ symbol }`, query `run_sync`: `true|false`.
+  - `POST /jobs/fx` – body `{ from_ccy, to_ccy }`, query `run_sync`: `true|false`.
+- Incremental ingest:
+  - Initial run: `outputsize=full` and upsert all days.
+  - Subsequent runs: `outputsize=compact`; only upsert days ≥ (last_ingested_date − 5 days).
+  - If last ingested is older than 90 days, microservice uses a one-time `full` fetch to catch up.
+- OpenTelemetry: enabled via OTLP envs (see Compose). Service name `smart-advisor-ingest`.
 
 Do
 - Make minimal, surgical changes; keep existing structure and naming.
 - Prefer CSS variables for color changes; avoid hardcoded colors where a token exists.
 - Keep accessibility in mind: aria labels, keyboard support (Esc to close drawer), adequate color contrast.
 - Update docs when adding visible features (README and this AGENTS.md).
+  - When changing ingest behavior or env vars, also update `docs/operations-and-developer-guide.md`.
 - When adding components: use standalone components, co-locate `.html/.ts/.scss`.
 
 Don’t
@@ -75,5 +96,8 @@ Notes for Agents
 - If a change affects multiple files, group related patches and keep context hunks minimal.
 - Prefer additive patches; avoid file deletes unless replacing the full content (and only when necessary).
 - If you must introduce new env vars or tokens, document them in README and here.
+ - Ingest-related env vars to keep in sync:
+   - Backend: `INGEST_BASE_URL`.
+   - Ingest: `DATABASE_URL`, `ALPHAVANTAGE_API_KEY`, `ALPHAVANTAGE_REQUESTS_PER_MINUTE`, `BASE_CURRENCY`, OTEL envs.
 
 This document applies to all subdirectories unless overridden by a deeper AGENTS.md.

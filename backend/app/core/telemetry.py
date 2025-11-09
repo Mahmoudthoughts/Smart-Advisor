@@ -13,6 +13,7 @@ from opentelemetry.exporter.otlp.proto.grpc.metric_exporter import OTLPMetricExp
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.logging import LoggingInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.system_metrics import SystemMetricsInstrumentor
 from opentelemetry.sdk._logs import LoggerProvider
@@ -69,6 +70,8 @@ def setup_telemetry(app: FastAPI, settings: AppSettings, engine: AsyncEngine | N
         tracer_provider=tracer_provider,
         meter_provider=meter_provider,
     )
+    # Instrument httpx so outbound calls (e.g., to ingest) create spans and propagate context
+    HTTPXClientInstrumentor().instrument()
     SystemMetricsInstrumentor().instrument(meter_provider=meter_provider)
 
     if engine is not None:
