@@ -7,7 +7,7 @@ from datetime import datetime
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.models import FXRate
+from app.models import FXRate
 
 from .alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
 

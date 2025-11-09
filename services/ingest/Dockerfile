@@ -13,7 +13,7 @@ COPY services/ingest/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY services ./services
-COPY backend/app ./backend/app
+COPY backend/app ./app
 
 ENV PYTHONPATH=/app
 
