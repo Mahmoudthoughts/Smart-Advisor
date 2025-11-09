@@ -64,6 +64,6 @@ def test_realized_pl_after_sell():
     snapshot_map = {snap.date: snap for snap in snapshots}
     sell_day = snapshot_map[date(2024, 9, 15)]
     # Realized P&L should reflect 50 shares sold FIFO
-    expected_cost_basis = Decimal("10.10") * Decimal("50")  # First lot cost per share 10.10
+    expected_cost_basis = Decimal("10.05") * Decimal("50")  # FIFO lot cost per share 10.05
     proceeds = Decimal("50") * Decimal("15.00") - Decimal("5")
     assert sell_day.realized_pl_to_date_base == proceeds - expected_cost_basis

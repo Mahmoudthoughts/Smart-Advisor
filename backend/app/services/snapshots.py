@@ -7,6 +7,8 @@ from datetime import date
 from decimal import Decimal, getcontext
 from typing import Iterable, List, Sequence
 
+from app.config import get_settings
+
 getcontext().prec = 28
 
 
@@ -60,8 +62,22 @@ def compute_daily(
     price_series: dict[date, Decimal],
     *,
     lot_method: str = "FIFO",
+    estimated_sell_fee_bps: Decimal | None = None,
+    estimated_sell_fee_flat: Decimal | None = None,
 ) -> List[DailySnapshot]:
     """Compute daily portfolio snapshots according to §3–§4."""
+
+    settings = get_settings()
+    fee_bps = (
+        Decimal(estimated_sell_fee_bps)
+        if estimated_sell_fee_bps is not None
+        else Decimal(str(settings.estimated_sell_fee_bps))
+    )
+    fee_flat = (
+        Decimal(estimated_sell_fee_flat)
+        if estimated_sell_fee_flat is not None
+        else Decimal(str(settings.estimated_sell_fee_flat))
+    )
 
     lots: list[LotPosition] = []
     realized_pl = Decimal("0")
@@ -101,11 +117,17 @@ def compute_daily(
         cost_basis_open = sum(lot.quantity * lot.cost_per_share for lot in lots)
         market_value = shares_open * day_price
         unrealized = market_value - cost_basis_open
-        hypo_liquidation = realized_pl + (market_value - cost_basis_open)
         if shares_open == 0:
             hypo_liquidation = realized_pl
             day_opp = Decimal("0")
         else:
+            hypo_proceeds = market_value
+            if fee_bps:
+                hypo_proceeds *= Decimal("1") - (fee_bps / Decimal("10000"))
+            hypo_proceeds -= fee_flat
+            if hypo_proceeds < 0:
+                hypo_proceeds = Decimal("0")
+            hypo_liquidation = realized_pl + (hypo_proceeds - cost_basis_open)
             day_opp = max(Decimal("0"), hypo_liquidation - realized_pl)
         if peak_hypo == Decimal("-Infinity"):
             peak_hypo = hypo_liquidation

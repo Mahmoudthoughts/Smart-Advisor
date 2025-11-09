@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -29,6 +30,15 @@ class AppSettings(BaseSettings):
     alphavantage_requests_per_minute: int = Field(default=5)
 
     indicator_cache_ttl_minutes: int = Field(default=60)
+
+    estimated_sell_fee_bps: Decimal = Field(
+        default=Decimal("0"),
+        description="Estimated basis points charged when liquidating a position.",
+    )
+    estimated_sell_fee_flat: Decimal = Field(
+        default=Decimal("5"),
+        description="Estimated flat fee charged when liquidating a position.",
+    )
 
     lot_allocation_method: Literal["FIFO", "LIFO", "SPEC_ID"] = Field(default="FIFO")
     lot_specific_map: dict[str, str] = Field(default_factory=dict)
