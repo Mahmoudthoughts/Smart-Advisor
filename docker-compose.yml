@@ -46,5 +46,19 @@ services:
     ports:
       - '4200:80'
 
+  ingest:
+    build:
+      context: .
+      dockerfile: services/ingest/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY:-demo}
+      ALPHAVANTAGE_REQUESTS_PER_MINUTE: ${ALPHAVANTAGE_REQUESTS_PER_MINUTE:-5}
+      BASE_CURRENCY: ${BASE_CURRENCY:-USD}
+    depends_on:
+      - db
+    ports:
+      - '8100:8100'
+
 volumes:
   db_data:
