@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import FXRate
 
-from .alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
+from app.providers.alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
 
 
 async def ingest_fx_pair(

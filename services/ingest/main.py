@@ -12,15 +12,17 @@ from pydantic import BaseModel, Field
 
 from .alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from .config import get_settings
-from .db import _session_factory
+from .db import _session_factory, _engine
 from .fx import ingest_fx_pair
 from .prices import ingest_prices
+from .telemetry import setup_telemetry
 
 logger = logging.getLogger("services.ingest")
 if not logging.getLogger().handlers:
     logging.basicConfig(level=logging.INFO)
 
 app = FastAPI(title="Smart Advisor Ingest Service", version="0.1.0")
+setup_telemetry(app, engine=_engine)
 
 
 class PriceIngestRequest(BaseModel):

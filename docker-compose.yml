@@ -20,6 +20,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
       ALPHAVANTAGE_API_KEY: W7NAEL9D8ERL47FW
+      # Use the standalone ingest microservice from the backend
+      INGEST_BASE_URL: http://ingest:8100
       TELEMETRY_ENABLED: "true"
       TELEMETRY_SERVICE_NAME: smart-advisor
       OTEL_SERVICE_NAME: smart-advisor-backend
@@ -28,10 +30,11 @@ services:
       OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4317
       OTEL_LOGS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: http/protobuf
-      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://1otel-collector:4318/v1/logs
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4317
       OTEL_METRICS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4318/v1/metrics
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317
     depends_on:
       - db
     ports:
@@ -52,9 +55,21 @@ services:
       dockerfile: services/ingest/Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
-      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY:-demo}
+      ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY:-W7NAEL9D8ERL47FW}
       ALPHAVANTAGE_REQUESTS_PER_MINUTE: ${ALPHAVANTAGE_REQUESTS_PER_MINUTE:-5}
       BASE_CURRENCY: ${BASE_CURRENCY:-USD}
+      # OpenTelemetry configuration for ingest service
+      OTEL_SERVICE_NAME: smart-advisor-ingest
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=1.0.0
+      OTEL_TRACES_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4317
+      OTEL_LOGS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4317
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317
     depends_on:
       - db
     ports:

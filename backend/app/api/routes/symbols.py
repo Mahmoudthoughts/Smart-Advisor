@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_db
-from app.ingest.prices import ingest_prices
+from app.ingest.client import IngestServiceError, trigger_price_ingest
 from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
 from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from app.schemas.snapshots import (
@@ -180,9 +180,22 @@ async def refresh_symbol(
         logger.error("Empty symbol provided")
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Symbol must not be empty")
     try:
-        ingested = await ingest_prices(normalized, session, client=client)
-    except AlphaVantageError as exc:
-        logger.error(f"AlphaVantage refresh failed for {symbol}: {exc}")
+        settings = get_settings()
+        if not settings.ingest_base_url:
+            logger.error("INGEST_BASE_URL not configured; cannot ingest %s via microservice", normalized)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Ingest service not configured (INGEST_BASE_URL missing)",
+            )
+        logger.info(
+            "Calling ingest microservice for %s at %s (run_sync=True)",
+            normalized,
+            settings.ingest_base_url,
+        )
+        resp = await trigger_price_ingest(normalized, settings.ingest_base_url, run_sync=True)
+        ingested = int(resp.get("rows", 0))
+    except (AlphaVantageError, IngestServiceError) as exc:
+        logger.error(f"Ingest refresh failed for {symbol}: {exc}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     snapshots = await recompute_snapshots_for_symbol(normalized, session)
     logger.info(f"Refreshed {symbol}: ingested {ingested} prices, rebuilt {len(snapshots)} snapshots")

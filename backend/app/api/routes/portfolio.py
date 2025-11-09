@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -9,7 +10,8 @@ from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.ingest.prices import ingest_prices
+from app.ingest.client import IngestServiceError, trigger_price_ingest
+from app.config import get_settings
 from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
 from app.providers.alpha_vantage import AlphaVantageError
 from app.schemas import (
@@ -29,6 +31,7 @@ from app.services.portfolio import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _serialize_transaction(tx: Transaction) -> TransactionSchema:
@@ -123,8 +126,20 @@ async def post_watchlist(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
     try:
-        await ingest_prices(record.symbol, session)
-    except AlphaVantageError as exc:
+        settings = get_settings()
+        if not settings.ingest_base_url:
+            logger.error("INGEST_BASE_URL not configured; cannot ingest %s via microservice", record.symbol)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Ingest service not configured (INGEST_BASE_URL missing)",
+            )
+        logger.info(
+            "Using ingest microservice for %s at %s (run_sync=True)",
+            record.symbol,
+            settings.ingest_base_url,
+        )
+        await trigger_price_ingest(record.symbol, settings.ingest_base_url, run_sync=True)
+    except (AlphaVantageError, IngestServiceError) as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to fetch market data") from exc
