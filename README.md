@@ -7,6 +7,7 @@ For contributor/agent guidelines, see `AGENTS.md`.
 - `backend/` — Python package that rebuilds positions, computes hypothetical liquidation metrics, and now exposes FastAPI endpoints for multi-user authentication. Includes a Dockerfile for containerized execution and pytest coverage.
 - `frontend/` — Angular workspace with login/registration flows, responsive advisor dashboards, and ngx-echarts visualisations (auto-resize aware navigation + chart layouts). Served through NGINX with SPA routing configured in `frontend/nginx.conf`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
+- `services/ingest/` — Standalone Alpha Vantage ingest service that can run independently to populate the shared PostgreSQL schema or feed downstream consumers.
 
 ## Running with Docker Compose
 
@@ -20,9 +21,10 @@ Services exposed locally:
 
 - **Backend API:** http://localhost:8000 (FastAPI with `/auth/register`, `/auth/login`, `/health`)
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
+- **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
 
-The backend container now exposes the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
+The backend and ingest containers expose the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
 against Alpha Vantage out of the box.
 
 > **Note:** After updating frontend assets or `frontend/nginx.conf`, rebuild the frontend image so the single-page app fallback (deep-link support) picks up the changes:
@@ -32,6 +34,40 @@ against Alpha Vantage out of the box.
 > ```
 
 When the compose stack starts, PostgreSQL loads `backend/sql/schema.sql` automatically to provision the required tables. The frontend communicates with the backend using the `environment.apiBaseUrl` value defined under `frontend/src/environments/`.
+
+## Ingest service
+
+The ingest worker under `services/ingest` wraps the Alpha Vantage client and the idempotent price/FX upsert jobs so they can run as a dedicated service.
+
+### Configuration
+
+Set the following environment variables before starting the service (Compose wires sensible defaults):
+
+- `DATABASE_URL` — Async SQLAlchemy URL pointing at the shared PostgreSQL instance (e.g. `postgresql+asyncpg://smart_advisor:smart_advisor@localhost:5432/smart_advisor`).
+- `ALPHAVANTAGE_API_KEY` — Alpha Vantage API key.
+- `ALPHAVANTAGE_REQUESTS_PER_MINUTE` — Optional throttle override (defaults to 5 req/min).
+- `BASE_CURRENCY` — Fallback currency code applied when Alpha Vantage omits one (defaults to `USD`).
+
+### Running standalone
+
+```bash
+export DATABASE_URL=postgresql+asyncpg://smart_advisor:smart_advisor@localhost:5432/smart_advisor
+export ALPHAVANTAGE_API_KEY=demo
+uvicorn services.ingest.main:app --reload --port 8100
+```
+
+The service exposes:
+
+- `GET /health` — lightweight probe with rate-limit metadata.
+- `POST /jobs/prices` — schedule or synchronously run an equity/ETF ingest (set `run_sync=true` to await completion). Body: `{ "symbol": "AAPL" }`.
+- `POST /jobs/fx` — schedule or synchronously run an FX ingest. Body: `{ "from_ccy": "USD", "to_ccy": "AED" }`.
+
+Jobs persist normalized rows into the existing schema:
+
+- `daily_bar` (`symbol`, `date`, `adj_close`, `volume`, `currency`, `dividend_amount`, `split_coefficient`) via an upsert keyed on `(symbol, date)`.
+- `fx_rate` (`date`, `from_ccy`, `to_ccy`, `rate_close`) via an upsert keyed on `(date, from_ccy, to_ccy)`.
+
+Downstream processors can either read directly from these tables or plug into the job helpers (`services.ingest.prices.ingest_prices` / `services.ingest.fx.ingest_fx_pair`) to reroute records to a message broker.
 
 ## Recent UI changes and usage
 
@@ -82,8 +118,8 @@ The `/backend/app` package now provides the Missed Opportunity Analyzer + Smart 
 - `app/config/settings.py` — Centralised configuration (Asia/Dubai timezone, USD base currency, Alpha Vantage API key + rate limits).
 - `app/db/` — Declarative base and async session helpers.
 - `app/models/` — SQLAlchemy models for Portfolio, Transaction, Lot, DailyBar, FXRate, DailyPortfolioSnapshot, SignalEvent, TickerSentimentDaily, AnalystSnapshot, ForecastDaily, MacroEvent, and DashboardKPI with required indexes.
-- `app/providers/alpha_vantage.py` — Throttled Alpha Vantage client exposing `daily_adjusted` (TIME_SERIES_DAILY), `fx_daily`, `tech_indicator`, `news_sentiment`, and `econ_indicator` helpers.
-- `app/ingest/` — Idempotent upsert jobs for TIME_SERIES_DAILY and FX_DAILY responses.
+- `app/providers/alpha_vantage.py` — Re-export of the shared Alpha Vantage client housed in `services/ingest/alpha_vantage.py`.
+- `app/ingest/` — Backwards-compatible shims that point to the standalone ingest jobs under `services/ingest/`.
 - `app/indicators/compute.py` — Pandas-powered SMA/EMA/RSI/MACD/ATR/volume-multiple indicators with caching.
 - `app/rules/engine.py` — Boolean expression evaluation with cooldown tracking per rule.
 - `app/services/snapshots.py` — FIFO/LIFO lot builder and daily P&L metrics per §3–§4 of the spec.
