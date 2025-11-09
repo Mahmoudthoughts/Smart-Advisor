@@ -1,4 +1,4 @@
-"""Alpha Vantage client used by the backend service."""
+"""Alpha Vantage API client wrapper for the ingest service."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any, Deque, Dict, Optional
 
 import httpx
 
-from app.config import get_settings
+from .config import get_settings
 
 BASE_URL = "https://www.alphavantage.co/query"
 
