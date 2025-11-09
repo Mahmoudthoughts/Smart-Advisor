@@ -2,7 +2,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from smart_advisor.api.database import Database
 from smart_advisor.api.main import create_app
@@ -21,8 +21,10 @@ def _client(database: Database):
 
     @asynccontextmanager
     async def _manager():
-        async with AsyncClient(app=app, base_url="http://test", lifespan="on") as client:
-            yield client
+        async with app.router.lifespan_context(app):
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                yield client
 
     return _manager
 
