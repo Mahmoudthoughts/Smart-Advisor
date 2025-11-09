@@ -1,4 +1,4 @@
-"""FX ingest job for Alpha Vantage daily FX series."""
+"""FX rate ingest job."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import FXRate
-from app.providers.alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
+
+from .alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
 
 
 async def ingest_fx_pair(
