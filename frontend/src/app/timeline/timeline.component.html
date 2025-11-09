@@ -11,13 +11,20 @@
           <option *ngFor="let ticker of watchlist()" [value]="ticker.symbol">{{ ticker.symbol }}</option>
         </select>
       </label>
+      <div class="presets" role="group" aria-label="Quick ranges">
+        <button type="button" [class.active]="selectedPreset() === 'WTD'" (click)="applyPreset('WTD')">Week to date</button>
+        <button type="button" [class.active]="selectedPreset() === 'MTD'" (click)="applyPreset('MTD')">Month to date</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_WEEK'" (click)="applyPreset('LAST_WEEK')">Last week</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_MONTH'" (click)="applyPreset('LAST_MONTH')">Last month</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_3M'" (click)="applyPreset('LAST_3M')">Last 3 months</button>
+      </div>
       <label>
         From
-        <input type="date" [ngModel]="fromDate()" (ngModelChange)="fromDate.set($event)" name="from" />
+        <input type="date" [ngModel]="fromDate()" (ngModelChange)="onFromChange($event)" name="from" />
       </label>
       <label>
         To
-        <input type="date" [ngModel]="toDate()" (ngModelChange)="toDate.set($event)" name="to" />
+        <input type="date" [ngModel]="toDate()" (ngModelChange)="onToChange($event)" name="to" />
       </label>
       <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
     </form>

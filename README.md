@@ -2,6 +2,8 @@
 
 This repository now ships with a Python analytics backend, a PostgreSQL schema, and an Angular frontend that together deliver the Smart Advisor experience.
 
+For contributor/agent guidelines, see `AGENTS.md`.
+
 - `backend/` — Python package that rebuilds positions, computes hypothetical liquidation metrics, and now exposes FastAPI endpoints for multi-user authentication. Includes a Dockerfile for containerized execution and pytest coverage.
 - `frontend/` — Angular workspace with login/registration flows, responsive advisor dashboards, and ngx-echarts visualisations (auto-resize aware navigation + chart layouts). Served through NGINX with SPA routing configured in `frontend/nginx.conf`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
@@ -30,6 +32,47 @@ against Alpha Vantage out of the box.
 > ```
 
 When the compose stack starts, PostgreSQL loads `backend/sql/schema.sql` automatically to provision the required tables. The frontend communicates with the backend using the `environment.apiBaseUrl` value defined under `frontend/src/environments/`.
+
+## Recent UI changes and usage
+
+- Collapsible sidebar (left)
+  - Menu button moved to the left of the top bar next to the brand.
+  - Drawer opens from the left, overlays content, and closes on backdrop click, Esc, or navigation.
+  - Sidebar is scrollable to access all items and contains the user chip and a Sign out button.
+  - Navigation customization (choose pages) now lives inside the drawer.
+  - Files: `frontend/src/app/app.component.html|scss|ts`.
+
+- Timeline date presets
+  - Quick ranges: Week to date, Month to date, Last week, Last month, Last 3 months.
+  - Presets update From/To and auto-refresh data (chart, table, transactions).
+  - Manual editing of dates clears the active preset.
+  - Files: `frontend/src/app/timeline/timeline.component.{html,ts,scss}`.
+
+- Symbol detail ranges and enriched header
+  - Range presets: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y.
+  - Header shows actual data: SYMBOL · Company Name · Region [· Currency] with higher contrast.
+  - Region/currency are sourced via `searchSymbols()` best match when available.
+  - Files: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`.
+
+- Theme toggle (light/dark)
+  - Sun/Moon icon in the top bar toggles theme, persisted in `localStorage`.
+  - Theming driven by CSS variables; dark mode applies `theme-dark` class to `<body>`.
+  - Files: `frontend/src/styles.scss`, `frontend/src/app/app.component.{html,ts,scss}`.
+
+- Global background
+  - Default background switched to white for all pages; top bar now uses theme variables.
+  - Files: `frontend/src/styles.scss`, `frontend/src/app/app.component.scss`.
+
+- CORS and API proxy
+  - Backend CORS expanded to allow `http://localhost[:4200]` and `http://127.0.0.1[:4200]` (fixes preflight 400 for auth).
+  - Frontend NGINX proxies `/api/` → `backend:8000` to simplify production deployments.
+  - Files: `backend/app/main.py`, `frontend/nginx.conf`.
+
+### Tips
+
+- Development login/register issues: if preflight fails, ensure backend is restarted after CORS changes: `docker compose restart backend`.
+- For production, consider setting `environment.prod.ts` `apiBaseUrl` to `/api` to use the NGINX proxy and avoid CORS.
+- The sidebar can be made light-themed by adjusting its background and text colors to theme variables if desired.
 
 ## Backend service layout
 
@@ -69,4 +112,6 @@ Tracing can be enabled without further code changes by exporting the following e
 - `TELEMETRY_OTLP_INSECURE=true` when targeting an unsecured collector endpoint
 - `TELEMETRY_SAMPLE_RATIO=1.0` for probabilistic sampling (0.0–1.0)
 
-When enabled the FastAPI router and SQLAlchemy ORM emit spans through the OTLP gRPC exporter, so traces appear automatically in any standards-compliant collector.
+When enabled the FastAPI router and SQLAlchemy ORM emit spans through the OTLP gRPC exporter, **and** the runtime forwards structured application logs plus CPU/memory metrics (via the System Metrics instrumentation) to the same collector endpoint. Make sure your collector exposes OTLP gRPC on `otel-collector:4317` (or override `TELEMETRY_OTLP_ENDPOINT`) so spans, logs, and metrics land in the same pipeline.
+
+The Angular frontend now boots with OpenTelemetry Web instrumentation as well. During local development (`ng serve`) it pushes document-load + fetch/XMLHttpRequest spans to `http://localhost:4318/v1/traces`; production builds (Docker) default to `http://otel-collector:4318/v1/traces`. Update the endpoints in `frontend/src/environments/` if your collector lives elsewhere, then rebuild the frontend image.

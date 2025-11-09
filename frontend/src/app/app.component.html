@@ -1,55 +1,90 @@
 <header class="topbar">
-  <a class="brand" [routerLink]="brandTarget()">{{ brand }}</a>
-  <nav *ngIf="isAuthenticated()">
-    <button type="button" class="menu-toggle" (click)="toggleMenu($event)" aria-haspopup="true" [attr.aria-expanded]="menuOpen()">
+  <div class="left-actions">
+    <button
+      *ngIf="isAuthenticated()"
+      type="button"
+      class="sidebar-toggle"
+      (click)="toggleSidebar()"
+      [attr.aria-expanded]="sidebarOpen()"
+      aria-controls="app-sidebar"
+      aria-label="Open menu"
+    >
       Menu
-      <span class="chevron" [class.open]="menuOpen()">▾</span>
     </button>
-    <div class="nav-menu" *ngIf="menuOpen()" (click)="keepMenuOpen($event)">
-      <header>
-        <h3>Choose pages</h3>
-        <p>Select which views appear in your quick navigation.</p>
-      </header>
-      <ul>
-        <li *ngFor="let link of allNavLinks">
-          <label>
-            <input type="checkbox" [checked]="isLinkSelected(link.path)" (change)="toggleLink(link.path)" />
-            <span>{{ link.label }}</span>
-          </label>
-        </li>
-      </ul>
-      <footer class="menu-actions">
-        <button type="button" class="link" (click)="selectAll()">Select all</button>
-        <button type="button" class="link" (click)="resetDefaults()">Reset defaults</button>
-      </footer>
+    <a class="brand" [routerLink]="brandTarget()">{{ brand }}</a>
+  </div>
+  <div class="right-actions">
+    <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkTheme() ? 'Switch to light mode' : 'Switch to dark mode'">
+      <svg class="icon" *ngIf="!isDarkTheme()" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="5"></circle>
+        <line x1="12" y1="1" x2="12" y2="3"></line>
+        <line x1="12" y1="21" x2="12" y2="23"></line>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+        <line x1="1" y1="12" x2="3" y2="12"></line>
+        <line x1="21" y1="12" x2="23" y2="12"></line>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+      </svg>
+      <svg class="icon" *ngIf="isDarkTheme()" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+    </button>
+    <ng-container *ngIf="!isAuthenticated()">
+      <a routerLink="/login" class="login">Login</a>
+      <a routerLink="/register" class="register">Register</a>
+    </ng-container>
+  </div>
+  </header>
+
+<!-- Sidebar Backdrop -->
+<div class="sidebar-backdrop" *ngIf="sidebarOpen()" (click)="closeSidebar()"></div>
+
+<!-- Right Sidebar Drawer -->
+<aside id="app-sidebar" class="sidebar" [class.open]="sidebarOpen()" *ngIf="isAuthenticated()">
+  <header class="sidebar-header">
+    <div class="user-chip" aria-label="Signed in user">
+      <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+      <span class="user-name">{{ user()?.name }}</span>
     </div>
+    <button type="button" class="icon close" aria-label="Close menu" (click)="closeSidebar()">×</button>
+  </header>
+
+  <nav class="sidebar-nav">
     <a
       *ngFor="let link of navLinks()"
       [routerLink]="link.path"
       routerLinkActive="active"
       [routerLinkActiveOptions]="{ exact: false }"
-      >{{ link.label }}</a
-    >
+      (click)="closeSidebar()"
+      >{{ link.label }}</a>
   </nav>
-  <div class="session">
-    <ng-container *ngIf="isAuthenticated(); else loginLink">
-      <div class="user-chip" aria-label="Signed in user">
-        <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
-        <span class="user-name">{{ user()?.name }}</span>
-      </div>
-      <button type="button" class="signout" (click)="logout()">Sign out</button>
-    </ng-container>
-    <ng-template #loginLink>
-      <a routerLink="/login" class="login">Login</a>
-      <a routerLink="/register" class="register">Register</a>
-    </ng-template>
-  </div>
-</header>
+
+  <section class="sidebar-customize">
+    <h4>Customize navigation</h4>
+    <ul>
+      <li *ngFor="let link of allNavLinks">
+        <label>
+          <input type="checkbox" [checked]="isLinkSelected(link.path)" (change)="toggleLink(link.path)" />
+          <span>{{ link.label }}</span>
+        </label>
+      </li>
+    </ul>
+    <footer class="menu-actions">
+      <button type="button" class="link" (click)="selectAll()">Select all</button>
+      <button type="button" class="link" (click)="resetDefaults()">Reset defaults</button>
+    </footer>
+  </section>
+
+  <footer class="sidebar-footer">
+    <button type="button" class="signout" (click)="logout()">Sign out</button>
+  </footer>
+</aside>
 
 <main class="app-shell">
   <router-outlet></router-outlet>
-</main>
+  </main>
 
 <footer class="footer">
-  <p>© {{ currentYear }} Smart Advisor. Missed opportunity analytics, elevated.</p>
+  <p>Ac {{ currentYear }} Smart Advisor. Missed opportunity analytics, elevated.</p>
 </footer>

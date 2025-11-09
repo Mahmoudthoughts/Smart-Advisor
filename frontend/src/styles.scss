@@ -2,9 +2,11 @@
   --app-max-width: 1240px;
   --app-gutter: clamp(1rem, 4vw, 3rem);
   --topbar-height: 72px;
-  --color-background: #0f172a;
+  --color-background: #ffffff;
   --color-surface: #ffffff;
   --color-text: #0f172a;
+  --topbar-bg: rgba(255, 255, 255, 0.9);
+  --topbar-border: rgba(148, 163, 184, 0.2);
   --gray-50: #f8fafc;
   --gray-100: #f1f5f9;
   --gray-200: #e2e8f0;
@@ -31,6 +33,16 @@
   color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+}
+
+/* Dark theme overrides */
+.theme-dark {
+  --color-background: #0f172a;
+  --color-surface: #0b1220;
+  --color-text: #e2e8f0;
+  --topbar-bg: rgba(15, 23, 42, 0.9);
+  --topbar-border: rgba(148, 163, 184, 0.2);
+  color-scheme: dark;
 }
 
 *,

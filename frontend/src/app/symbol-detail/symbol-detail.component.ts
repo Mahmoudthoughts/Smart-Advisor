@@ -12,7 +12,8 @@ import {
   TimelinePricePoint,
   TimelineSnapshot,
   TimelineTransaction,
-  WatchlistSymbol
+  WatchlistSymbol,
+  SymbolSearchResult
 } from '../portfolio-data.service';
 
 interface SymbolSummary {
@@ -48,6 +49,10 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);
+  readonly symbolMeta = signal<SymbolSearchResult | null>(null);
+  readonly fromDate = signal<string>('');
+  readonly toDate = signal<string>('');
+  readonly selectedRange = signal<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | null>(null);
 
   readonly chartOption = signal<EChartsOption>({
     tooltip: { trigger: 'axis' },
@@ -93,6 +98,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       this.symbol.set(symbol);
       this.loadWatchlist();
       this.loadTimeline();
+      this.fetchSymbolMeta();
     });
   }
 
@@ -117,7 +123,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     }
     this.isLoading.set(true);
     this.loadError.set(null);
-    this.dataService.getTimeline(ticker).subscribe({
+    this.dataService.getTimeline(ticker, this.fromDate() || undefined, this.toDate() || undefined).subscribe({
       next: (response) => {
         this.snapshots.set(response.snapshots);
         this.prices.set(response.prices);
@@ -134,6 +140,82 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         this.loadError.set('Unable to load analytics for this symbol.');
       }
     });
+  }
+
+  private fetchSymbolMeta(): void {
+    const ticker = this.symbol();
+    if (!ticker) {
+      this.symbolMeta.set(null);
+      return;
+    }
+    this.dataService.searchSymbols(ticker).subscribe({
+      next: (results) => {
+        const exact = results.find((r) => r.symbol.toUpperCase() === ticker);
+        const best = exact || results[0] || null;
+        this.symbolMeta.set(best);
+      },
+      error: () => this.symbolMeta.set(null)
+    });
+  }
+
+  applyRange(range: '1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y'): void {
+    const today = this.atMidnight(new Date());
+    let from = new Date(today);
+    let to = today;
+
+    switch (range) {
+      case '1D':
+        from = this.addDays(today, -1);
+        break;
+      case '1W':
+        from = this.addDays(today, -7);
+        break;
+      case '1M':
+        from = this.addMonths(today, -1);
+        break;
+      case '3M':
+        from = this.addMonths(today, -3);
+        break;
+      case '6M':
+        from = this.addMonths(today, -6);
+        break;
+      case '1Y':
+        from = this.addMonths(today, -12);
+        break;
+      case '5Y':
+        from = this.addMonths(today, -60);
+        break;
+    }
+
+    this.selectedRange.set(range);
+    this.fromDate.set(this.formatDate(from));
+    this.toDate.set(this.formatDate(to));
+    this.loadTimeline();
+  }
+
+  private atMidnight(d: Date): Date {
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }
+
+  private addDays(d: Date, days: number): Date {
+    const result = new Date(d);
+    result.setDate(result.getDate() + days);
+    return this.atMidnight(result);
+  }
+
+  private addMonths(d: Date, months: number): Date {
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const day = d.getDate();
+    const result = new Date(y, m + months, day);
+    return this.atMidnight(result);
+  }
+
+  private formatDate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
   }
 
   refresh(): void {

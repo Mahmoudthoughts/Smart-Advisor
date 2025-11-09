@@ -637,3 +637,40 @@ date,type,symbol,quantity,price,fee,tax,currency,broker_id,notes
 
 ## 17) Changelog
 - **v0.1** â€” Initial endâ€‘toâ€‘end spec with Smart Advisor extensions, APIs, and seeds.
+
+---
+
+## Appendix: Frontend Implementation Notes (2025-11)
+
+- Sidebar & navigation
+  - Collapsible left drawer with scroll; toggle button on the left of the top bar.
+  - User chip and Sign out live in the drawer; quick nav customization moved inside it.
+  - Files: frontend/src/app/app.component.{html,ts,scss}.
+
+- Timeline presets
+  - Quick ranges: Week to date, Month to date, Last week, Last month, Last 3 months.
+  - Presets set From/To and refresh data; manual date edits clear the active preset.
+  - Files: frontend/src/app/timeline/timeline.component.{html,ts,scss}.
+
+- Symbol detail
+  - Range presets: 1D, 1W, 1M, 3M, 6M, 1Y, 5Y.
+  - Header shows actual data: SYMBOL · Company Name · Region [· Currency].
+  - Region/currency populated via searchSymbols() best match when available.
+  - Files: frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}.
+
+- Theme toggle (light/dark)
+  - Sun/Moon icon in top bar toggles theme; persisted in localStorage (key smart-advisor.theme).
+  - Theming via CSS variables; .theme-dark class applied to <body> when dark.
+  - Files: frontend/src/styles.scss, frontend/src/app/app.component.{html,ts,scss}.
+
+- Global background
+  - Default background switched to white (pages on white surface by default).
+  - Files: frontend/src/styles.scss, frontend/src/app/app.component.scss.
+
+- CORS and API proxy
+  - Backend CORS expanded to allow http://localhost[:4200] and http://127.0.0.1[:4200].
+  - Frontend NGINX proxies /api/ -> backend:8000 for production simplicity.
+  - Files: backend/app/main.py, frontend/nginx.conf.
+
+- Production tip
+  - Consider setting environment.prod.ts apiBaseUrl to '/api' to use the NGINX proxy.

@@ -22,9 +22,19 @@ setup_logging()
 setup_telemetry(app, settings, engine=_engine)
 
 # Configure CORS
+# Allow common local development origins (localhost and 127.0.0.1) on port 4200,
+# plus same-origin without port to support different setups.
+allowed_origins = [
+    "http://localhost:4200",
+    "http://127.0.0.1:4200",
+    "http://localhost",
+    "http://127.0.0.1",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:4200"],  # Angular dev server
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

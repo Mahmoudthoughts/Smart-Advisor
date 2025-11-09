@@ -1,6 +1,6 @@
 import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
 import { NgFor, NgIf } from '@angular/common';
-import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { AuthService } from './auth.service';
 
 @Component({
@@ -15,6 +15,7 @@ export class AppComponent {
   private readonly router = inject(Router);
   private readonly navStorageKey = 'smart-advisor.nav-selection';
   private readonly hasStorage = typeof window !== 'undefined' && !!window.localStorage;
+  private readonly themeStorageKey = 'smart-advisor.theme';
 
   readonly brand = 'Smart Advisor';
   readonly isAuthenticated = this.auth.isAuthenticated;
@@ -34,12 +35,14 @@ export class AppComponent {
   ];
 
   readonly menuOpen = signal(false);
+  readonly sidebarOpen = signal(false);
   readonly selectedPaths = signal<string[]>(this.loadSelections());
   readonly navLinks = computed(() =>
     this.allNavLinks.filter((link) => this.selectedPaths().includes(link.path))
   );
   readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
   readonly currentYear = new Date().getFullYear();
+  readonly isDarkTheme = signal(this.restoreTheme());
 
   constructor() {
     effect(() => {
@@ -48,6 +51,24 @@ export class AppComponent {
       }
       const selections = this.selectedPaths();
       localStorage.setItem(this.navStorageKey, JSON.stringify(selections));
+    });
+
+    // Close sidebar on navigation
+    this.router.events.subscribe((evt) => {
+      if (evt instanceof NavigationEnd) {
+        this.sidebarOpen.set(false);
+      }
+    });
+
+    // Apply theme on startup
+    this.applyTheme(this.isDarkTheme());
+    // Persist theme when it changes
+    effect(() => {
+      const dark = this.isDarkTheme();
+      if (this.hasStorage) {
+        localStorage.setItem(this.themeStorageKey, dark ? 'dark' : 'light');
+      }
+      this.applyTheme(dark);
     });
   }
 
@@ -71,6 +92,14 @@ export class AppComponent {
   toggleMenu(event?: MouseEvent): void {
     event?.stopPropagation();
     this.menuOpen.update((open) => !open);
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen.set(false);
   }
 
   keepMenuOpen(event: MouseEvent): void {
@@ -103,6 +132,11 @@ export class AppComponent {
     this.menuOpen.set(false);
   }
 
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeSidebar();
+  }
+
   private loadSelections(): string[] {
     try {
       if (!this.hasStorage) {
@@ -130,5 +164,33 @@ export class AppComponent {
     return Array.from(new Set(paths)).sort(
       (a, b) => order.indexOf(a) - order.indexOf(b)
     );
+  }
+
+  toggleTheme(): void {
+    this.isDarkTheme.update((v) => !v);
+  }
+
+  private applyTheme(dark: boolean): void {
+    if (typeof document === 'undefined') return;
+    const body = document.body;
+    if (dark) {
+      body.classList.add('theme-dark');
+    } else {
+      body.classList.remove('theme-dark');
+    }
+  }
+
+  private restoreTheme(): boolean {
+    try {
+      if (!this.hasStorage) return false;
+      const saved = localStorage.getItem(this.themeStorageKey);
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    } catch {}
+    // Fallback: prefer system setting
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
   }
 }

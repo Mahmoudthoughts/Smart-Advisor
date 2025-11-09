@@ -2,7 +2,20 @@
   <header class="page-header">
     <div>
       <p class="eyebrow">Symbol detail</p>
-      <h1>{{ symbol() }}<span *ngIf="watchlistEntry()?.name"> · {{ watchlistEntry()?.name }}</span></h1>
+      <h1 class="symbol-title">
+        <span class="ticker">{{ symbol() }}</span>
+        <span class="separator" aria-hidden="true">·</span>
+        <span class="company">{{ watchlistEntry()?.name || symbolMeta()?.name || symbol() }}</span>
+        <ng-container *ngIf="symbolMeta()?.region || symbolMeta()?.currency">
+          <span class="separator" aria-hidden="true">·</span>
+          <span class="market">{{ symbolMeta()?.region }}<ng-container *ngIf="symbolMeta()?.currency"> · {{ symbolMeta()?.currency }}</ng-container></span>
+        </ng-container>
+      </h1>
+      <p class="labels">
+        <span>{{ symbol() }}</span>
+        <span>{{ watchlistEntry()?.name || symbolMeta()?.name || symbol() }}</span>
+        <span>{{ symbolMeta()?.region || '—' }}</span>
+      </p>
       <p>Historical performance, trade overlays, and current position analytics for this symbol.</p>
     </div>
     <div class="actions">
@@ -47,6 +60,15 @@
     <header>
       <h2>Timeline &amp; trades</h2>
       <p>Adjusted close, dynamic average cost, and P&amp;L overlays with trade markers.</p>
+      <div class="range-presets" role="group" aria-label="Range presets">
+        <button type="button" [class.active]="selectedRange() === '1D'" (click)="applyRange('1D')">1D</button>
+        <button type="button" [class.active]="selectedRange() === '1W'" (click)="applyRange('1W')">1W</button>
+        <button type="button" [class.active]="selectedRange() === '1M'" (click)="applyRange('1M')">1M</button>
+        <button type="button" [class.active]="selectedRange() === '3M'" (click)="applyRange('3M')">3M</button>
+        <button type="button" [class.active]="selectedRange() === '6M'" (click)="applyRange('6M')">6M</button>
+        <button type="button" [class.active]="selectedRange() === '1Y'" (click)="applyRange('1Y')">1Y</button>
+        <button type="button" [class.active]="selectedRange() === '5Y'" (click)="applyRange('5Y')">5Y</button>
+      </div>
     </header>
     <div echarts [options]="chartOption()" [autoResize]="true" class="chart" *ngIf="!isLoading(); else loading"></div>
     <ng-template #loading>
@@ -89,3 +111,4 @@
 <ng-template #missing>
   <p class="error">Symbol not provided. Return to <a routerLink="/app/stocks">My Stocks</a>.</p>
 </ng-template>
+
