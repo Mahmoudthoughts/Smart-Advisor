@@ -28,7 +28,9 @@ router = APIRouter(dependencies=[InternalAuth])
 def _serialize_transaction(tx: Transaction) -> TransactionSchema:
     qty = float(Decimal(str(tx.qty)))
     price = float(Decimal(str(tx.price)))
-    account = tx.__dict__.get("account")
+    fee = float(Decimal(str(tx.fee)))
+    tax = float(Decimal(str(tx.tax)))
+    account = getattr(tx, "account", None)
     account_label = account.name if account else tx.broker_id
     return TransactionSchema(
         id=tx.id,
@@ -36,8 +38,8 @@ def _serialize_transaction(tx: Transaction) -> TransactionSchema:
         type=tx.type,
         quantity=qty,
         price=price,
-        fee=float(Decimal(str(tx.fee))),
-        tax=float(Decimal(str(tx.tax))),
+        fee=fee,
+        tax=tax,
         currency=tx.currency,
         trade_datetime=tx.datetime,
         account_id=tx.account_id,

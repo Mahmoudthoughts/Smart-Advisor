@@ -5,9 +5,10 @@ This document describes how the Smart Advisor services run together, how to oper
 ## Overview
 
 - Services:
-  - `backend` (FastAPI): API, auth, portfolio logic, snapshot recompute, proxies ingest health.
+  - `backend` (FastAPI): API + auth gateway that proxies portfolio endpoints and orchestrates ingest jobs.
+  - `portfolio` (FastAPI): owns portfolio/watchlist/account CRUD, snapshot recompute, and emits outbox events.
   - `frontend` (Angular + NGINX): UI served on port 4200 (mapped to container port 80).
-  - `db` (PostgreSQL): primary datastore.
+  - `db` (PostgreSQL): primary datastore shared across services.
   - `ingest` (FastAPI): microservice that fetches Alpha Vantage data and writes to DB.
   - Optional: `otel-collector` (not included in this repo) for OpenTelemetry export.
 
@@ -19,6 +20,7 @@ This document describes how the Smart Advisor services run together, how to oper
 - Backend: `http://localhost:8000`
   - Health: `GET /health`
   - Ingest health proxy: `GET /ingest/health`
+- Portfolio service: `http://localhost:8200`
 - Ingest service: `http://localhost:8100`
   - Health: `GET /health`
 
@@ -34,10 +36,22 @@ This document describes how the Smart Advisor services run together, how to oper
 - `DATABASE_URL` – `postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor`
 - `ALPHAVANTAGE_API_KEY` – API key for provider calls (search, etc.).
 - `INGEST_BASE_URL` – base URL for ingest service (default set in Compose to `http://ingest:8100`).
+- `PORTFOLIO_SERVICE_URL` – base URL for the portfolio service (Compose points to `http://portfolio:8200/portfolio`).
+- `PORTFOLIO_SERVICE_TOKEN` – shared secret sent via `X-Internal-Token` when proxying to the portfolio service.
 - Telemetry (optional):
   - `TELEMETRY_ENABLED`: `true|false`
   - `TELEMETRY_SERVICE_NAME`: `smart-advisor`
   - `OTEL_*` envs for OTLP exporters (see `docker-compose.yml`).
+
+### Portfolio (service: `portfolio`)
+
+- `DATABASE_URL` – async SQLAlchemy DSN pointed at the shared Postgres database.
+- `INGEST_SERVICE_URL` – ingest base URL used when watchlist changes require price history.
+- `INTERNAL_AUTH_TOKEN` – optional shared secret that must match the backend `PORTFOLIO_SERVICE_TOKEN` value.
+- Telemetry:
+  - `TELEMETRY_ENABLED`
+  - `TELEMETRY_SERVICE_NAME` (defaults to `portfolio-service`).
+  - `TELEMETRY_OTLP_ENDPOINT`, `TELEMETRY_OTLP_INSECURE`, `TELEMETRY_SAMPLE_RATIO` – configure OTLP exporters similar to backend/ingest.
 
 ### Ingest (service: `ingest`)
 
@@ -57,9 +71,9 @@ This document describes how the Smart Advisor services run together, how to oper
 
 - Backend does not ingest in-process. It always calls ingest microservice.
 - Endpoints triggering ingest:
-  - `POST /portfolio/watchlist` – when adding a symbol, backend calls `POST {INGEST_BASE_URL}/jobs/prices?run_sync=true`.
+  - `POST /portfolio/watchlist` – backend proxies to the portfolio service which, after persisting the symbol, calls `POST {INGEST_SERVICE_URL}/jobs/prices?run_sync=true`.
   - `POST /symbols/{symbol}/refresh` – refresh endpoint calls the same ingest job synchronously.
-- After ingest completes, backend recomputes snapshots and returns counts.
+- After ingest completes, the portfolio service recomputes snapshots and returns counts via the backend proxy.
 - Health proxy:
   - `GET /ingest/health` → backend calls `GET {INGEST_BASE_URL}/health` and returns `{ status: ok, upstream: ... }`, or `{ status: disabled }` if not configured.
 
@@ -84,6 +98,12 @@ This document describes how the Smart Advisor services run together, how to oper
 
 - Controlled by settings in `backend/app/config/settings.py` and enabled in `backend/app/main.py`.
 - Exports traces, metrics, and logs to the configured OTLP collectors.
+
+### Portfolio service
+
+- `services/portfolio/app/core/telemetry.py` instruments FastAPI, SQLAlchemy, logging, and system metrics.
+- Enabled when `TELEMETRY_ENABLED=true` and OTLP exporter options are provided (Compose wires defaults pointing to `otel-collector:4317`).
+- Emits spans for portfolio CRUD, ingest client calls, and snapshot recomputes using the service name `portfolio-service`.
 
 ### Ingest service
 
@@ -112,6 +132,7 @@ This document describes how the Smart Advisor services run together, how to oper
 ### Health checks
 
 - Backend: `GET /health` → readiness metadata.
+- Portfolio: `GET http://localhost:8200/health`.
 - Ingest (direct): `GET http://localhost:8100/health`.
 - Ingest via backend proxy: `GET http://localhost:8000/ingest/health`.
 
@@ -123,9 +144,10 @@ This document describes how the Smart Advisor services run together, how to oper
 ### Troubleshooting
 
 - Backend returns 503 on refresh/add:
+  - Verify the portfolio service is healthy: `curl http://localhost:8200/health`.
   - Verify ingest is running: `curl http://localhost:8100/health`.
   - Verify backend can reach ingest: `curl http://backend:8000/ingest/health` from inside the Compose network or `curl http://localhost:8000/ingest/health` externally.
-  - Check `INGEST_BASE_URL` is set in backend environment.
+  - Check `PORTFOLIO_SERVICE_URL`, `PORTFOLIO_SERVICE_TOKEN`, and `INGEST_BASE_URL` are set in backend environment.
 - Rate limits from Alpha Vantage:
   - Increase `ALPHAVANTAGE_REQUESTS_PER_MINUTE` conservatively; watch provider terms.
 - Telemetry not visible:
@@ -133,6 +155,7 @@ This document describes how the Smart Advisor services run together, how to oper
 
 ## Developer Notes
 
+- Portfolio domain logic lives in `services/portfolio/app`. The FastAPI router under `app/api/routes/portfolio.py` exposes the REST contract consumed by the backend proxy and persists domain events to the `portfolio_outbox` table.
 - Ingest code lives under `services/ingest`. Main entrypoint: `services/ingest/main.py`.
 - Incremental logic: `services/ingest/prices.py` (see comments at the top for the algorithm).
 - Backend-to-ingest client is in `backend/app/ingest/client.py`.
