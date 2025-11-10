@@ -8,6 +8,7 @@ For contributor/agent guidelines, see `AGENTS.md`.
 - `frontend/` — Angular workspace with login/registration flows, responsive advisor dashboards, and ngx-echarts visualisations (auto-resize aware navigation + chart layouts). Served through NGINX with SPA routing configured in `frontend/nginx.conf`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
 - `services/ingest/` — Standalone Alpha Vantage ingest service that can run independently to populate the shared PostgreSQL schema or feed downstream consumers.
+- `services/portfolio/` — Dedicated FastAPI portfolio service that owns transactions, watchlists, accounts, and snapshot recompute logic plus an outbox for domain events.
 
 ## Running with Docker Compose
 
@@ -22,6 +23,7 @@ Services exposed locally:
 - **Backend API:** http://localhost:8000 (FastAPI with `/auth/register`, `/auth/login`, `/health`)
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
 - **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
+- **Portfolio Service:** http://localhost:8200 (FastAPI `/health`, `/portfolio/*` proxied internally by the backend)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
 
 The backend and ingest containers expose the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
@@ -34,6 +36,29 @@ against Alpha Vantage out of the box.
 > ```
 
 When the compose stack starts, PostgreSQL loads `backend/sql/schema.sql` automatically to provision the required tables. The frontend communicates with the backend using the `environment.apiBaseUrl` value defined under `frontend/src/environments/`.
+
+## Portfolio service
+
+The portfolio microservice under `services/portfolio` now owns the portfolio domain models. It exposes the REST contract that the backend previously served and persists domain events into a Postgres-backed outbox table for downstream processing.
+
+### Configuration
+
+Compose wires the following environment variables (override as needed):
+
+- `DATABASE_URL` — Async SQLAlchemy URL pointing at the shared PostgreSQL instance.
+- `INGEST_SERVICE_URL` — Base URL for the ingest service so watchlist additions can request historical prices.
+- `INTERNAL_AUTH_TOKEN` — Optional shared secret the backend must supply via the `X-Internal-Token` header.
+- `TELEMETRY_*` — Mirrors the backend configuration to enable OTLP tracing/logging/metrics.
+
+To run locally:
+
+```bash
+export DATABASE_URL=postgresql+asyncpg://smart_advisor:smart_advisor@localhost:5432/smart_advisor
+export INGEST_SERVICE_URL=http://localhost:8100
+uvicorn services.portfolio.app.main:app --reload --port 8200
+```
+
+The backend now proxies its `/portfolio` and `/accounts` endpoints to this service using the `PORTFOLIO_SERVICE_URL` and `PORTFOLIO_SERVICE_TOKEN` configuration keys.
 
 ## Ingest service
 
