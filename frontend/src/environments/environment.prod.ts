@@ -1,6 +1,7 @@
 export const environment = {
   production: true,
-  apiBaseUrl: 'http://localhost:8000',
+  // In production, prefer same-origin NGINX proxy to the backend
+  apiBaseUrl: '/api',
   telemetry: {
     enabled: true,
     serviceName: 'smart-advisor-frontend',
@@ -9,6 +10,7 @@ export const environment = {
       'deployment.environment': 'prod',
       'service.version': '1.0.0'
     },
-    propagateTraceHeaderCorsUrls: ['http://backend:8000']
+    // Propagate trace headers for cross-origin calls if used; same-origin '/api' needs no CORS allowlist
+    propagateTraceHeaderCorsUrls: ['http://localhost:8000']
   }
 };

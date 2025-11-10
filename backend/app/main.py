@@ -38,6 +38,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[
+        # Expose tracing/debug headers for end-to-end propagation debugging
+        "traceparent",
+        "tracestate",
+        "x-trace-id",
+        "x-request-id",
+    ],
 )
 
 
