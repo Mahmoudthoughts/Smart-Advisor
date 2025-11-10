@@ -22,6 +22,7 @@ async def cors_trace_test(request: Request, response: Response) -> dict[str, Any
     # Capture incoming headers of interest
     received_traceparent = request.headers.get("traceparent")
     received_tracestate = request.headers.get("tracestate")
+    received_baggage = request.headers.get("baggage")
 
     # Inject current context into headers to send back
     injected: dict[str, str] = {}
@@ -45,6 +46,7 @@ async def cors_trace_test(request: Request, response: Response) -> dict[str, Any
         "received": {
             "traceparent": received_traceparent,
             "tracestate": received_tracestate,
+            "baggage": received_baggage,
         },
         "injected": injected,
         "active_trace_id": trace_id_hex,
@@ -52,4 +54,3 @@ async def cors_trace_test(request: Request, response: Response) -> dict[str, Any
 
 
 __all__ = ["router"]
-

@@ -11,6 +11,8 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 from .alpha_vantage import AlphaVantageError, get_alpha_vantage_client
+from opentelemetry import trace
+from opentelemetry.baggage import get_baggage
 from .config import get_settings
 from .db import _session_factory, _engine
 from .fx import ingest_fx_pair
@@ -138,3 +140,17 @@ async def shutdown_event() -> None:
 
     client = get_alpha_vantage_client()
     await client.aclose()
+
+
+# Attach end-user attributes from baggage to ingest server spans as well
+@app.middleware("http")
+async def _attach_user_baggage(request, call_next):  # type: ignore[no-redef]
+    span = trace.get_current_span()
+    try:
+        for key in ("enduser.id", "enduser.role", "enduser.email"):
+            val = get_baggage(key)
+            if val:
+                span.set_attribute(key, val)
+    except Exception:
+        pass
+    return await call_next(request)

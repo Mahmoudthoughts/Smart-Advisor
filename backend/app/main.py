@@ -6,6 +6,8 @@ from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from opentelemetry import trace
+from opentelemetry.baggage import get_baggage
 
 from app.api.routes import api_router
 from app.config import get_settings
@@ -42,6 +44,7 @@ app.add_middleware(
         # Expose tracing/debug headers for end-to-end propagation debugging
         "traceparent",
         "tracestate",
+        "baggage",
         "x-trace-id",
         "x-request-id",
     ],
@@ -76,5 +79,20 @@ def configure_app() -> FastAPI:
 
 
 configure_app()
+
+
+# Attach end-user attributes from W3C Baggage to the active server span
+@app.middleware("http")
+async def _attach_user_baggage(request, call_next):  # type: ignore[no-redef]
+    span = trace.get_current_span()
+    try:
+        for key in ("enduser.id", "enduser.role", "enduser.email"):
+            val = get_baggage(key)
+            if val:
+                span.set_attribute(key, val)
+    except Exception:  # best-effort only
+        pass
+    response = await call_next(request)
+    return response
 
 __all__ = ["app", "configure_app"]

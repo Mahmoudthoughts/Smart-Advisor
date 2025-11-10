@@ -91,6 +91,22 @@ This document describes how the Smart Advisor services run together, how to oper
 - Enabled when `OTEL_*` exporter envs are present (Compose provides defaults pointing to `otel-collector:4317`).
 - Service name: `smart-advisor-ingest`.
 
+### End-user identity propagation (frontend → backend → ingest)
+
+- Frontend:
+  - Use `setUserTelemetry({ id, email?, role? })` from `frontend/src/app/telemetry-user.ts` after login and on user changes.
+  - The interceptor `frontend/src/app/http-baggage.interceptor.ts` adds a W3C `baggage` header on every request with `enduser.*` entries.
+  - Existing fetch/XMLHttpRequest instrumentations propagate `traceparent` headers for tracing.
+- Backend:
+  - Middleware in `backend/app/main.py` reads baggage (`enduser.id`, `enduser.email`, `enduser.role`) and sets these as span attributes.
+  - httpx instrumentation + explicit propagation ties backend → ingest spans in the same trace.
+- Ingest:
+  - Middleware in `services/ingest/main.py` mirrors the same baggage → span attribute mapping.
+- Privacy and PII:
+  - Prefer stable internal user IDs over emails when possible.
+  - Do not include sensitive data (names, phone numbers) in baggage.
+  - Ensure telemetry stores and dashboards are access-controlled.
+
 ## Operations
 
 ### Health checks
@@ -130,4 +146,3 @@ This document describes how the Smart Advisor services run together, how to oper
 ## Versioning
 
 - Compose pins images with tags for frontend/backend; rebuild when code changes.
-

@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { tap } from 'rxjs';
 import { environment } from '../environments/environment';
+import { setUserTelemetry } from './telemetry-user';
 
 export interface AuthUser {
   readonly id: string;
@@ -61,6 +62,10 @@ export class AuthService {
     };
     this.userState.set(authUser);
     this.persistState({ token: response.access_token, user: authUser });
+    // Immediately expose user identity for telemetry baggage
+    try {
+      setUserTelemetry({ id: authUser.id, email: authUser.email, role: 'user' });
+    } catch {}
   }
 
   private restoreUser(): AuthUser | null {

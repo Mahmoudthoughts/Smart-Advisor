@@ -23,7 +23,7 @@ services:
       # Use the standalone ingest microservice from the backend
       INGEST_BASE_URL: http://ingest:8100
       TELEMETRY_ENABLED: "true"
-      TELEMETRY_SERVICE_NAME: smart-advisor
+      TELEMETRY_SERVICE_NAME: smart-advisor-backend
       OTEL_SERVICE_NAME: smart-advisor-backend
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=1.0.0
       OTEL_TRACES_EXPORTER: otlp

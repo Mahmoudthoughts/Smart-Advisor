@@ -2,6 +2,9 @@ import { Component, HostListener, computed, effect, inject, signal } from '@angu
 import { NgFor, NgIf } from '@angular/common';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { AuthService } from './auth.service';
+import { setUserTelemetry } from './telemetry-user';
+import { DebugService } from './debug.service';
+import { environment } from '../environments/environment';
 
 @Component({
   selector: 'app-root',
@@ -13,6 +16,7 @@ import { AuthService } from './auth.service';
 export class AppComponent {
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly debug = inject(DebugService);
   private readonly navStorageKey = 'smart-advisor.nav-selection';
   private readonly hasStorage = typeof window !== 'undefined' && !!window.localStorage;
   private readonly themeStorageKey = 'smart-advisor.theme';
@@ -43,6 +47,8 @@ export class AppComponent {
   readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
   readonly currentYear = new Date().getFullYear();
   readonly isDarkTheme = signal(this.restoreTheme());
+  readonly isDev = !environment.production;
+  readonly debugOutput = signal<string | null>(null);
 
   constructor() {
     effect(() => {
@@ -70,10 +76,21 @@ export class AppComponent {
       }
       this.applyTheme(dark);
     });
+
+    // Keep telemetry user baggage in sync with auth state
+    effect(() => {
+      const u = this.user();
+      if (u) {
+        setUserTelemetry({ id: u.id, email: u.email, role: 'user' });
+      } else {
+        setUserTelemetry(null);
+      }
+    });
   }
 
   logout(): void {
     this.auth.logout();
+    setUserTelemetry(null);
     void this.router.navigate(['/login']);
   }
 
@@ -100,6 +117,25 @@ export class AppComponent {
 
   closeSidebar(): void {
     this.sidebarOpen.set(false);
+  }
+
+  debugTelemetry(): void {
+    this.debugOutput.set(null);
+    this.debug.corsTest().subscribe({
+      next: (data) => {
+        try {
+          this.debugOutput.set(JSON.stringify(data));
+          // eslint-disable-next-line no-console
+          console.debug('[telemetry-debug]', data);
+        } catch {
+          this.debugOutput.set(String(data));
+        }
+      },
+      error: (err) => {
+        const message = err?.error ?? err?.message ?? 'Failed to call /debug/cors-test';
+        this.debugOutput.set(typeof message === 'string' ? message : JSON.stringify(message));
+      }
+    });
   }
 
   keepMenuOpen(event: MouseEvent): void {

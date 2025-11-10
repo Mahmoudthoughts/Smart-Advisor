@@ -61,6 +61,14 @@ Ingest Microservice
   - If last ingested is older than 90 days, microservice uses a one-time `full` fetch to catch up.
 - OpenTelemetry: enabled via OTLP envs (see Compose). Service name `smart-advisor-ingest`.
 
+User Telemetry Propagation
+- Frontend attaches user identity to requests via a baggage-aware HTTP interceptor.
+  - Set the user after login using `setUserTelemetry({ id, email?, role? })` exported from `frontend/src/app/telemetry-user.ts`.
+  - The interceptor `frontend/src/app/http-baggage.interceptor.ts` injects a W3C `baggage` header (keys: `enduser.id`, `enduser.email`, `enduser.role`).
+- Backend and ingest read baggage and annotate server spans with the same keys.
+  - Middleware in `backend/app/main.py` and `services/ingest/main.py` sets span attributes when present.
+- Privacy: avoid placing sensitive PII into baggage; prefer stable, non-guessable IDs.
+
 Do
 - Make minimal, surgical changes; keep existing structure and naming.
 - Prefer CSS variables for color changes; avoid hardcoded colors where a token exists.

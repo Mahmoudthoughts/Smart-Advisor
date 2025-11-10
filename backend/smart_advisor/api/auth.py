@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from opentelemetry import trace
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -33,6 +34,11 @@ def get_auth_router(database: Database) -> APIRouter:
         await session.commit()
         await session.refresh(user)
 
+        # Annotate span with end-user attributes for visibility in traces
+        span = trace.get_current_span()
+        span.set_attribute("enduser.id", str(user.id))
+        span.set_attribute("enduser.email", user.email)
+        span.set_attribute("enduser.role", "user")
         return AuthResponse(access_token=token.token, user=_to_user_out(user))
 
     @router.post("/login", response_model=AuthResponse)
@@ -48,6 +54,11 @@ def get_auth_router(database: Database) -> APIRouter:
         await session.commit()
         await session.refresh(user)
 
+        # Annotate span with end-user attributes for visibility in traces
+        span = trace.get_current_span()
+        span.set_attribute("enduser.id", str(user.id))
+        span.set_attribute("enduser.email", user.email)
+        span.set_attribute("enduser.role", "user")
         return AuthResponse(access_token=token.token, user=_to_user_out(user))
 
     return router

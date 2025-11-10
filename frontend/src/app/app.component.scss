@@ -417,6 +417,12 @@ button[type='button']:hover {
   justify-content: flex-end;
 }
 
+.signout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 @media (max-width: 1024px) {
   .topbar {
     gap: 1.25rem;
