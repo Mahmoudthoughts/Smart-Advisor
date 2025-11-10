@@ -1,0 +1,14 @@
+fastapi>=0.110
+uvicorn[standard]>=0.27
+sqlalchemy[asyncio]>=2.0
+asyncpg>=0.29
+pydantic>=2.6
+pydantic-settings>=2.2
+httpx>=0.25
+opentelemetry-sdk>=1.24
+opentelemetry-exporter-otlp>=1.24
+opentelemetry-exporter-otlp-proto-grpc>=1.24
+opentelemetry-instrumentation-fastapi>=0.45b0
+opentelemetry-instrumentation-sqlalchemy>=0.45b0
+opentelemetry-instrumentation-logging>=0.45b0
+opentelemetry-instrumentation-system-metrics>=0.45b0

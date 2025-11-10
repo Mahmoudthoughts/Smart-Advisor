@@ -1,46 +1,25 @@
-"""Portfolio account management endpoints."""
+"""Proxy portfolio account endpoints to the portfolio service."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter
 
-from app.db.session import get_db
-from app.models import PortfolioAccount
-from app.schemas.portfolio import PortfolioAccountCreateRequest, PortfolioAccountSchema
-from app.services.portfolio import create_account, list_accounts
+from app.schemas import PortfolioAccountCreateRequest, PortfolioAccountSchema
+from app.services import portfolio as portfolio_client
 
 router = APIRouter()
 
 
-def _serialize_account(record: PortfolioAccount) -> PortfolioAccountSchema:
-    return PortfolioAccountSchema(
-        id=record.id,
-        name=record.name,
-        type=record.type,
-        currency=record.currency,
-        notes=record.notes,
-        is_default=record.is_default,
-        created_at=record.created_at,
-    )
-
-
 @router.get("", response_model=list[PortfolioAccountSchema])
-async def get_accounts(session: AsyncSession = Depends(get_db)) -> list[PortfolioAccountSchema]:
-    records = await list_accounts(session)
-    return [_serialize_account(record) for record in records]
+async def get_accounts() -> list[PortfolioAccountSchema]:
+    data = await portfolio_client.list_accounts()
+    return [PortfolioAccountSchema(**item) for item in data]
 
 
-@router.post("", response_model=PortfolioAccountSchema, status_code=status.HTTP_201_CREATED)
-async def post_account(
-    payload: PortfolioAccountCreateRequest,
-    session: AsyncSession = Depends(get_db),
-) -> PortfolioAccountSchema:
-    try:
-        record = await create_account(payload, session)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_account(record)
+@router.post("", response_model=PortfolioAccountSchema, status_code=201)
+async def post_account(payload: PortfolioAccountCreateRequest) -> PortfolioAccountSchema:
+    data = await portfolio_client.create_account(payload.dict())
+    return PortfolioAccountSchema(**data)
 
 
 __all__ = ["router"]
