@@ -1,333 +1,81 @@
-"""Portfolio and transaction orchestration helpers."""
+"""HTTP client for the dedicated portfolio microservice."""
 
 from __future__ import annotations
 
-from datetime import datetime
-from decimal import Decimal
-from zoneinfo import ZoneInfo
+import logging
+from typing import Any
 
-from sqlalchemy import delete, select
-import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
+from fastapi import HTTPException
 
 from app.config import get_settings
-from app.models import (
-    DailyBar,
-    DailyPortfolioSnapshot,
-    Portfolio,
-    PortfolioAccount,
-    PortfolioSymbol,
-    Transaction,
-)
-from app.schemas.portfolio import (
-    PortfolioAccountCreateRequest,
-    TransactionCreateRequest,
-    TransactionUpdateRequest,
-)
-from app.services.snapshots import TransactionInput, compute_daily
+
+logger = logging.getLogger(__name__)
 
 
-async def ensure_portfolio(session: AsyncSession) -> Portfolio:
-    """Return the single demo portfolio, creating it if needed."""
-
-    result = await session.execute(select(Portfolio).limit(1))
-    portfolio = result.scalars().first()
-    if portfolio is not None:
-        return portfolio
+async def _request(method: str, path: str, json: Any | None = None) -> Any:
     settings = get_settings()
-    portfolio = Portfolio(base_currency=settings.base_currency, timezone=settings.timezone)
-    session.add(portfolio)
-    await session.commit()
-    await session.refresh(portfolio)
-    return portfolio
+    base_url = settings.portfolio_service_url.rstrip("/")
+    url = f"{base_url}{path}"
+    headers: dict[str, str] = {}
+    if settings.portfolio_service_token:
+        headers["X-Internal-Token"] = settings.portfolio_service_token
+    timeout = settings.portfolio_service_timeout_seconds
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.request(method, url, json=json, headers=headers)
+    if response.status_code >= 400:
+        logger.warning("Portfolio service error %s for %s", response.status_code, url)
+        detail: Any
+        try:
+            payload = response.json()
+            detail = payload.get("detail", payload)
+        except Exception:  # pragma: no cover - defensive
+            detail = response.text
+        raise HTTPException(status_code=response.status_code, detail=detail)
+    if response.headers.get("content-type", "").startswith("application/json"):
+        return response.json()
+    return response.content
 
 
-async def add_watchlist_symbol(
-    symbol: str,
-    session: AsyncSession,
-    *,
-    display_name: str | None = None,
-) -> PortfolioSymbol:
-    """Ensure a symbol exists on the portfolio watchlist."""
-
-    portfolio = await ensure_portfolio(session)
-    normalized = symbol.strip().upper()
-    if not normalized:
-        raise ValueError("Symbol must not be empty")
-    result = await session.execute(
-        select(PortfolioSymbol).where(
-            PortfolioSymbol.portfolio_id == portfolio.id,
-            PortfolioSymbol.symbol == normalized,
-        )
-    )
-    existing = result.scalars().first()
-    if existing:
-        if display_name and not existing.display_name:
-            existing.display_name = display_name.strip()
-            await session.commit()
-            await session.refresh(existing)
-        return existing
-    record = PortfolioSymbol(
-        portfolio_id=portfolio.id,
-        symbol=normalized,
-        display_name=display_name.strip() if display_name else None,
-    )
-    session.add(record)
-    await session.commit()
-    await session.refresh(record)
-    return record
+async def fetch_watchlist() -> Any:
+    return await _request("GET", "/watchlist")
 
 
-async def list_watchlist(session: AsyncSession) -> list[PortfolioSymbol]:
-    portfolio = await ensure_portfolio(session)
-    result = await session.execute(
-        select(PortfolioSymbol).where(PortfolioSymbol.portfolio_id == portfolio.id).order_by(PortfolioSymbol.symbol)
-    )
-    return list(result.scalars().all())
+async def add_watchlist(payload: dict[str, Any]) -> Any:
+    return await _request("POST", "/watchlist", json=payload)
 
 
-async def list_transactions(session: AsyncSession) -> list[Transaction]:
-    portfolio = await ensure_portfolio(session)
-    result = await session.execute(
-        select(Transaction)
-        .where(Transaction.portfolio_id == portfolio.id)
-        .order_by(Transaction.datetime.desc())
-    )
-    return list(result.scalars().all())
+async def list_transactions() -> Any:
+    return await _request("GET", "/transactions")
 
 
-async def _resolve_account(
-    portfolio: Portfolio,
-    session: AsyncSession,
-    *,
-    account_id: int | None,
-    account_name: str | None,
-) -> tuple[PortfolioAccount | None, str | None]:
-    account_record: PortfolioAccount | None = None
-    normalized = account_name.strip() if account_name else None
-    if account_id is not None:
-        account_record = await session.get(PortfolioAccount, account_id)
-        if account_record is None or account_record.portfolio_id != portfolio.id:
-            raise ValueError("Invalid account selected for transaction")
-    elif normalized:
-        existing_stmt = select(PortfolioAccount).where(
-            PortfolioAccount.portfolio_id == portfolio.id,
-            sa.func.lower(PortfolioAccount.name) == normalized.lower(),
-        )
-        account_record = (await session.execute(existing_stmt)).scalars().first()
-
-    if account_record is None:
-        default_stmt = select(PortfolioAccount).where(
-            PortfolioAccount.portfolio_id == portfolio.id,
-            PortfolioAccount.is_default.is_(True),
-        )
-        account_record = (await session.execute(default_stmt)).scalars().first()
-
-    resolved_name = account_record.name if account_record else normalized
-    return account_record, resolved_name
+async def create_transaction(payload: dict[str, Any]) -> Any:
+    return await _request("POST", "/transactions", json=payload)
 
 
-async def create_transaction(payload: TransactionCreateRequest, session: AsyncSession) -> Transaction:
-    """Persist a manual transaction and recompute snapshots."""
-
-    portfolio = await ensure_portfolio(session)
-    await add_watchlist_symbol(payload.symbol, session)
-
-    settings = get_settings()
-    trade_dt = payload.trade_datetime
-    if trade_dt.tzinfo is None:
-        trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
-
-    account_record, account_name = await _resolve_account(
-        portfolio,
-        session,
-        account_id=payload.account_id,
-        account_name=payload.account,
-    )
-
-    tx = Transaction(
-        portfolio_id=portfolio.id,
-        symbol=payload.symbol.strip().upper(),
-        type=payload.type.upper(),
-        qty=Decimal(str(payload.quantity)),
-        price=Decimal(str(payload.price)),
-        fee=Decimal(str(payload.fee)),
-        tax=Decimal(str(payload.tax)),
-        currency=payload.currency.upper(),
-        datetime=trade_dt,
-        broker_id=account_name,
-        account_id=account_record.id if account_record else None,
-        notes=payload.notes,
-    )
-    session.add(tx)
-    await session.commit()
-    await session.refresh(tx)
-    await recompute_snapshots_for_symbol(tx.symbol, session)
-    return tx
+async def update_transaction(transaction_id: int, payload: dict[str, Any]) -> Any:
+    return await _request("PUT", f"/transactions/{transaction_id}", json=payload)
 
 
-async def update_transaction(
-    transaction_id: int,
-    payload: TransactionUpdateRequest,
-    session: AsyncSession,
-) -> Transaction:
-    portfolio = await ensure_portfolio(session)
-    tx = await session.get(Transaction, transaction_id)
-    if tx is None or tx.portfolio_id != portfolio.id:
-        raise ValueError("Transaction not found for this portfolio")
-
-    previous_symbol = tx.symbol
-    await add_watchlist_symbol(payload.symbol, session)
-
-    settings = get_settings()
-    trade_dt = payload.trade_datetime
-    if trade_dt.tzinfo is None:
-        trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
-
-    account_record, account_name = await _resolve_account(
-        portfolio,
-        session,
-        account_id=payload.account_id,
-        account_name=payload.account,
-    )
-
-    tx.symbol = payload.symbol.strip().upper()
-    tx.type = payload.type.upper()
-    tx.qty = Decimal(str(payload.quantity))
-    tx.price = Decimal(str(payload.price))
-    tx.fee = Decimal(str(payload.fee))
-    tx.tax = Decimal(str(payload.tax))
-    tx.currency = payload.currency.upper()
-    tx.datetime = trade_dt
-    tx.broker_id = account_name
-    tx.account_id = account_record.id if account_record else None
-    tx.notes = payload.notes
-
-    await session.commit()
-    await session.refresh(tx)
-
-    if previous_symbol != tx.symbol:
-        await recompute_snapshots_for_symbol(previous_symbol, session)
-    await recompute_snapshots_for_symbol(tx.symbol, session)
-    return tx
+async def list_accounts() -> Any:
+    return await _request("GET", "/accounts")
 
 
-async def list_accounts(session: AsyncSession) -> list[PortfolioAccount]:
-    portfolio = await ensure_portfolio(session)
-    result = await session.execute(
-        select(PortfolioAccount)
-            .where(PortfolioAccount.portfolio_id == portfolio.id)
-            .order_by(PortfolioAccount.is_default.desc(), PortfolioAccount.name)
-    )
-    return list(result.scalars().all())
+async def create_account(payload: dict[str, Any]) -> Any:
+    return await _request("POST", "/accounts", json=payload)
 
 
-async def create_account(
-    payload: PortfolioAccountCreateRequest,
-    session: AsyncSession,
-) -> PortfolioAccount:
-    portfolio = await ensure_portfolio(session)
-    name = payload.name.strip()
-    if not name:
-        raise ValueError("Account name must not be empty")
-
-    exists_stmt = select(PortfolioAccount).where(
-        PortfolioAccount.portfolio_id == portfolio.id,
-        sa.func.lower(PortfolioAccount.name) == name.lower(),
-    )
-    existing = (await session.execute(exists_stmt)).scalars().first()
-    if existing:
-        raise ValueError("An account with this name already exists")
-
-    if payload.is_default:
-        await session.execute(
-            sa.update(PortfolioAccount)
-            .where(PortfolioAccount.portfolio_id == portfolio.id)
-            .values(is_default=False)
-        )
-
-    record = PortfolioAccount(
-        portfolio_id=portfolio.id,
-        name=name,
-        type=payload.type.strip() if payload.type else None,
-        currency=payload.currency.upper(),
-        notes=payload.notes.strip() if payload.notes else None,
-        is_default=payload.is_default,
-    )
-    session.add(record)
-    await session.commit()
-    await session.refresh(record)
-    return record
-
-
-async def recompute_snapshots_for_symbol(symbol: str, session: AsyncSession) -> list:
-    """Rebuild daily snapshots for a symbol based on current trades and prices."""
-
-    normalized = symbol.strip().upper()
-    price_rows = (
-        await session.execute(
-            select(DailyBar).where(DailyBar.symbol == normalized).order_by(DailyBar.date)
-        )
-    ).scalars().all()
-    if not price_rows:
-        return []
-
-    tx_rows = (
-        await session.execute(
-            select(Transaction)
-            .where(Transaction.symbol == normalized)
-            .order_by(Transaction.datetime)
-        )
-    ).scalars().all()
-
-    price_series = {row.date: Decimal(str(row.adj_close)) for row in price_rows}
-    transactions = [
-        TransactionInput(
-            id=str(tx.id),
-            date=tx.datetime.date(),
-            type=tx.type,
-            quantity=Decimal(str(tx.qty)),
-            price=Decimal(str(tx.price)),
-            fee=Decimal(str(tx.fee)),
-            tax=Decimal(str(tx.tax)),
-        )
-        for tx in tx_rows
-    ]
-
-    settings = get_settings()
-    snapshots = compute_daily(normalized, transactions, price_series, lot_method=settings.lot_allocation_method)
-
-    await session.execute(
-        delete(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == normalized)
-    )
-    for snap in snapshots:
-        session.add(
-            DailyPortfolioSnapshot(
-                symbol=snap.symbol,
-                date=snap.date,
-                shares_open=snap.shares_open,
-                market_value_base=snap.market_value_base,
-                cost_basis_open_base=snap.cost_basis_open_base,
-                unrealized_pl_base=snap.unrealized_pl_base,
-                realized_pl_to_date_base=snap.realized_pl_to_date_base,
-                hypo_liquidation_pl_base=snap.hypo_liquidation_pl_base,
-                day_opportunity_base=snap.day_opportunity_base,
-                peak_hypo_pl_to_date_base=snap.peak_hypo_pl_to_date_base,
-                drawdown_from_peak_pct=snap.drawdown_from_peak_pct,
-            )
-        )
-    await session.commit()
-    return snapshots
+async def recompute_snapshots(symbol: str) -> Any:
+    return await _request("POST", f"/snapshots/{symbol}/recompute")
 
 
 __all__ = [
-    "ensure_portfolio",
-    "add_watchlist_symbol",
-    "list_watchlist",
+    "fetch_watchlist",
+    "add_watchlist",
     "list_transactions",
     "create_transaction",
     "update_transaction",
     "list_accounts",
     "create_account",
-    "recompute_snapshots_for_symbol",
+    "recompute_snapshots",
 ]

@@ -49,6 +49,16 @@ class AppSettings(BaseSettings):
     telemetry_otlp_insecure: bool = Field(default=True)
     telemetry_sample_ratio: float = Field(default=1.0, ge=0.0, le=1.0)
 
+    portfolio_service_url: str = Field(
+        default="http://localhost:8200/portfolio",
+        description="Base URL for the portfolio microservice",
+    )
+    portfolio_service_token: str | None = Field(
+        default=None,
+        description="Optional shared secret for portfolio service authentication",
+    )
+    portfolio_service_timeout_seconds: float = Field(default=15.0)
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
@@ -56,7 +66,7 @@ class AppSettings(BaseSettings):
     def dict_for_logging(self) -> dict[str, Any]:
         """Return a sanitized dict for logging purposes."""
 
-        hidden = {"alphavantage_api_key"}
+        hidden = {"alphavantage_api_key", "portfolio_service_token"}
         return {k: ("***" if k in hidden else v) for k, v in self.model_dump().items()}
 
 
