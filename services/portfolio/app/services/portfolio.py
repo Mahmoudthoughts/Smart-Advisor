@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 from zoneinfo import ZoneInfo
 
 import sqlalchemy as sa
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..core.config import get_settings
 from ..models import (
@@ -19,13 +19,14 @@ from ..models import (
     PortfolioOutbox,
     PortfolioSymbol,
     Transaction,
+    TRANSACTION_TYPES,
 )
 from ..schemas import (
     PortfolioAccountCreateRequest,
     TransactionCreateRequest,
     TransactionUpdateRequest,
 )
-from .snapshots import TransactionInput, compute_daily
+from .snapshots import DailySnapshot, TransactionInput, compute_daily
 
 
 async def ensure_portfolio(session: AsyncSession) -> Portfolio:
@@ -93,6 +94,7 @@ async def list_transactions(session: AsyncSession) -> list[Transaction]:
     portfolio = await ensure_portfolio(session)
     result = await session.execute(
         select(Transaction)
+        .options(selectinload(Transaction.account))
         .where(Transaction.portfolio_id == portfolio.id)
         .order_by(Transaction.datetime.desc())
     )
@@ -139,6 +141,10 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
     if trade_dt.tzinfo is None:
         trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
 
+    tx_type = payload.type.upper()
+    if tx_type not in TRANSACTION_TYPES:
+        raise ValueError("Unsupported transaction type")
+
     account_record, account_name = await _resolve_account(
         portfolio,
         session,
@@ -149,7 +155,7 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
     tx = Transaction(
         portfolio_id=portfolio.id,
         symbol=payload.symbol.strip().upper(),
-        type=payload.type.upper(),
+        type=tx_type,
         qty=Decimal(str(payload.quantity)),
         price=Decimal(str(payload.price)),
         fee=Decimal(str(payload.fee)),
@@ -191,6 +197,10 @@ async def update_transaction(
     if trade_dt.tzinfo is None:
         trade_dt = trade_dt.replace(tzinfo=ZoneInfo(settings.timezone))
 
+    tx_type = payload.type.upper()
+    if tx_type not in TRANSACTION_TYPES:
+        raise ValueError("Unsupported transaction type")
+
     account_record, account_name = await _resolve_account(
         portfolio,
         session,
@@ -199,7 +209,7 @@ async def update_transaction(
     )
 
     tx.symbol = payload.symbol.strip().upper()
-    tx.type = payload.type.upper()
+    tx.type = tx_type
     tx.qty = Decimal(str(payload.quantity))
     tx.price = Decimal(str(payload.price))
     tx.fee = Decimal(str(payload.fee))
@@ -279,7 +289,10 @@ async def create_account(
     return record
 
 
-async def recompute_snapshots_for_symbol(symbol: str, session: AsyncSession) -> list:
+async def recompute_snapshots_for_symbol(
+    symbol: str, session: AsyncSession
+) -> list[DailySnapshot]:
+    portfolio = await ensure_portfolio(session)
     normalized = symbol.strip().upper()
     price_rows = (
         await session.execute(
@@ -292,7 +305,10 @@ async def recompute_snapshots_for_symbol(symbol: str, session: AsyncSession) -> 
     tx_rows = (
         await session.execute(
             select(Transaction)
-            .where(Transaction.symbol == normalized)
+            .where(
+                Transaction.symbol == normalized,
+                Transaction.portfolio_id == portfolio.id,
+            )
             .order_by(Transaction.datetime)
         )
     ).scalars().all()
@@ -340,6 +356,11 @@ async def recompute_snapshots_for_symbol(symbol: str, session: AsyncSession) -> 
                 drawdown_from_peak_pct=snap.drawdown_from_peak_pct,
             )
         )
+    await enqueue_portfolio_event(
+        session,
+        "portfolio.snapshots.recomputed",
+        {"symbol": normalized, "snapshots": len(snapshots)},
+    )
     await session.commit()
     return snapshots
 

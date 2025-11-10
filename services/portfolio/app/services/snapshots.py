@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal, getcontext
-from typing import Iterable, List, Sequence
+from typing import Iterable, Sequence
 
 from ..core.config import get_settings
 
 getcontext().prec = 28
 
 
-@dataclass
+@dataclass(slots=True)
 class TransactionInput:
     id: str
     date: date
@@ -24,14 +24,14 @@ class TransactionInput:
     specific_lot_ids: Sequence[str] | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class LotPosition:
     lot_id: str
     quantity: Decimal
     cost_per_share: Decimal
 
 
-@dataclass
+@dataclass(slots=True)
 class DailySnapshot:
     symbol: str
     date: date
@@ -62,7 +62,7 @@ def compute_daily(
     lot_method: str = "FIFO",
     estimated_sell_fee_bps: Decimal | None = None,
     estimated_sell_fee_flat: Decimal | None = None,
-) -> List[DailySnapshot]:
+) -> list[DailySnapshot]:
     settings = get_settings()
     fee_bps = (
         Decimal(estimated_sell_fee_bps)
@@ -86,13 +86,13 @@ def compute_daily(
     for day in sorted(price_series.keys()):
         day_price = price_series[day]
         for tx in transactions_by_date.get(day, []):
-            if tx.type == "BUY":
+            tx_type = tx.type.upper()
+            if tx_type == "BUY":
                 cost = tx.quantity * tx.price + tx.fee + tx.tax
                 lot = LotPosition(lot_id=tx.id, quantity=tx.quantity, cost_per_share=cost / tx.quantity)
                 lots.append(lot)
-            elif tx.type == "SELL":
-                qty_to_close = -tx.quantity if tx.quantity < 0 else tx.quantity
-                qty_to_close = abs(qty_to_close)
+            elif tx_type == "SELL":
+                qty_to_close = abs(tx.quantity)
                 remaining = qty_to_close
                 proceeds = qty_to_close * tx.price - tx.fee - tx.tax
                 lot_cost_total = Decimal("0")
@@ -105,8 +105,10 @@ def compute_daily(
                     if lot.quantity > 0:
                         if lot_method == "FIFO":
                             lots.insert(0, lot)
-                        else:
+                        elif lot_method == "LIFO":
                             lots.append(lot)
+                        else:
+                            lots.insert(0, lot)
                 realized_pl += proceeds - lot_cost_total
         shares_open = sum(lot.quantity for lot in lots)
         cost_basis_open = sum(lot.quantity * lot.cost_per_share for lot in lots)
