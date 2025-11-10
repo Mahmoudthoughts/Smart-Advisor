@@ -1,4 +1,4 @@
-"""Portfolio watchlist and transaction endpoints."""
+"""Proxy portfolio endpoints that delegate to the portfolio service."""
 
 from __future__ import annotations
 
@@ -15,104 +15,24 @@ from app.config import get_settings
 from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
 from app.providers.alpha_vantage import AlphaVantageError
 from app.schemas import (
+    PortfolioAccountCreateRequest,
+    PortfolioAccountSchema,
     TransactionCreateRequest,
     TransactionSchema,
     TransactionUpdateRequest,
     WatchlistCreateRequest,
     WatchlistSymbolSchema,
 )
-from app.services.portfolio import (
-    add_watchlist_symbol,
-    create_transaction,
-    update_transaction,
-    list_transactions,
-    list_watchlist,
-    recompute_snapshots_for_symbol,
-)
+from app.services import portfolio as portfolio_client
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _serialize_transaction(tx: Transaction) -> TransactionSchema:
-    qty = float(Decimal(str(tx.qty)))
-    price = float(Decimal(str(tx.price)))
-    account = tx.__dict__.get("account")
-    account_label = account.name if account else tx.broker_id
-    return TransactionSchema(
-        id=tx.id,
-        symbol=tx.symbol,
-        type=tx.type,
-        quantity=qty,
-        price=price,
-        fee=float(Decimal(str(tx.fee))),
-        tax=float(Decimal(str(tx.tax))),
-        currency=tx.currency,
-        trade_datetime=tx.datetime,
-        account_id=tx.account_id,
-        account=account_label,
-        notes=tx.notes,
-        notional_value=qty * price,
-    )
-
-
 @router.get("/watchlist", response_model=list[WatchlistSymbolSchema])
-async def get_watchlist(session: AsyncSession = Depends(get_db)) -> list[WatchlistSymbolSchema]:
-    symbols = await list_watchlist(session)
-    response: list[WatchlistSymbolSchema] = []
-    for item in symbols:
-        latest_stmt: Select = (
-            select(DailyBar)
-            .where(DailyBar.symbol == item.symbol)
-            .order_by(DailyBar.date.desc())
-            .limit(2)
-        )
-        latest_rows = (await session.execute(latest_stmt)).scalars().all()
-        latest = latest_rows[0] if latest_rows else None
-        previous = latest_rows[1] if len(latest_rows) > 1 else None
-        snapshot_stmt: Select = (
-            select(DailyPortfolioSnapshot)
-            .where(DailyPortfolioSnapshot.symbol == item.symbol)
-            .order_by(DailyPortfolioSnapshot.date.desc())
-            .limit(1)
-        )
-        snapshot = (await session.execute(snapshot_stmt)).scalars().first()
-        shares_open = float(snapshot.shares_open) if snapshot else None
-        average_cost = None
-        unrealized = None
-        if snapshot and snapshot.shares_open:
-            shares_val = float(snapshot.shares_open)
-            cost_basis = float(snapshot.cost_basis_open_base)
-            average_cost = cost_basis / shares_val if shares_val else None
-            unrealized = float(snapshot.unrealized_pl_base)
-        elif snapshot:
-            shares_open = float(snapshot.shares_open)
-            unrealized = float(snapshot.unrealized_pl_base)
-        day_change = None
-        day_change_pct = None
-        latest_close = float(latest.adj_close) if latest else None
-        previous_close = float(previous.adj_close) if previous else None
-        if latest_close is not None and previous_close is not None:
-            day_change = latest_close - previous_close
-            if previous_close:
-                day_change_pct = (day_change / previous_close) * 100
-        response.append(
-            WatchlistSymbolSchema(
-                id=item.id,
-                symbol=item.symbol,
-                created_at=item.created_at,
-                latest_close=latest_close,
-                latest_close_date=latest.date if latest else None,
-                previous_close=previous_close,
-                day_change=day_change,
-                day_change_percent=day_change_pct,
-                position_qty=shares_open,
-                average_cost=average_cost,
-                unrealized_pl=unrealized,
-                name=item.display_name,
-            )
-        )
-    return response
+async def get_watchlist() -> list[WatchlistSymbolSchema]:
+    data = await portfolio_client.fetch_watchlist()
+    return [WatchlistSymbolSchema(**item) for item in data]
 
 
 @router.post("/watchlist", response_model=WatchlistSymbolSchema, status_code=status.HTTP_201_CREATED)
@@ -167,34 +87,33 @@ async def post_watchlist(
 
 
 @router.get("/transactions", response_model=list[TransactionSchema])
-async def get_transactions(session: AsyncSession = Depends(get_db)) -> list[TransactionSchema]:
-    transactions = await list_transactions(session)
-    return [_serialize_transaction(tx) for tx in transactions]
+async def get_transactions() -> list[TransactionSchema]:
+    data = await portfolio_client.list_transactions()
+    return [TransactionSchema(**item) for item in data]
 
 
-@router.post("/transactions", response_model=TransactionSchema, status_code=status.HTTP_201_CREATED)
-async def post_transaction(
-    payload: TransactionCreateRequest,
-    session: AsyncSession = Depends(get_db),
-) -> TransactionSchema:
-    try:
-        tx = await create_transaction(payload, session)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_transaction(tx)
+@router.post("/transactions", response_model=TransactionSchema, status_code=201)
+async def post_transaction(payload: TransactionCreateRequest) -> TransactionSchema:
+    data = await portfolio_client.create_transaction(payload.dict())
+    return TransactionSchema(**data)
 
 
 @router.put("/transactions/{transaction_id}", response_model=TransactionSchema)
-async def put_transaction(
-    transaction_id: int,
-    payload: TransactionUpdateRequest,
-    session: AsyncSession = Depends(get_db),
-) -> TransactionSchema:
-    try:
-        tx = await update_transaction(transaction_id, payload, session)
-    except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    return _serialize_transaction(tx)
+async def put_transaction(transaction_id: int, payload: TransactionUpdateRequest) -> TransactionSchema:
+    data = await portfolio_client.update_transaction(transaction_id, payload.dict())
+    return TransactionSchema(**data)
+
+
+@router.get("/accounts", response_model=list[PortfolioAccountSchema])
+async def get_accounts() -> list[PortfolioAccountSchema]:
+    data = await portfolio_client.list_accounts()
+    return [PortfolioAccountSchema(**item) for item in data]
+
+
+@router.post("/accounts", response_model=PortfolioAccountSchema, status_code=201)
+async def post_account(payload: PortfolioAccountCreateRequest) -> PortfolioAccountSchema:
+    data = await portfolio_client.create_account(payload.dict())
+    return PortfolioAccountSchema(**data)
 
 
 __all__ = ["router"]

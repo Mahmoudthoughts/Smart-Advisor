@@ -25,7 +25,7 @@ from app.schemas.snapshots import (
     TopMissedDaySchema,
 )
 from app.schemas.symbols import SymbolRefreshResponse, SymbolSearchResultSchema
-from app.services.portfolio import recompute_snapshots_for_symbol
+from app.services import portfolio as portfolio_client
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -197,12 +197,18 @@ async def refresh_symbol(
     except (AlphaVantageError, IngestServiceError) as exc:
         logger.error(f"Ingest refresh failed for {symbol}: {exc}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    snapshots = await recompute_snapshots_for_symbol(normalized, session)
-    logger.info(f"Refreshed {symbol}: ingested {ingested} prices, rebuilt {len(snapshots)} snapshots")
+    response = await portfolio_client.recompute_snapshots(normalized)
+    snapshots_rebuilt = response.get("snapshots_rebuilt", 0) if isinstance(response, dict) else 0
+    logger.info(
+        "Refreshed %s: ingested %s prices, rebuilt %s snapshots",
+        symbol,
+        ingested,
+        snapshots_rebuilt,
+    )
     return SymbolRefreshResponse(
         symbol=normalized,
         prices_ingested=ingested,
-        snapshots_rebuilt=len(snapshots),
+        snapshots_rebuilt=snapshots_rebuilt,
     )
 
 
