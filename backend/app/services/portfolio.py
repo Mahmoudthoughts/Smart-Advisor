@@ -6,6 +6,7 @@ import logging
 from typing import Any
 
 import httpx
+from opentelemetry.propagate import inject
 from fastapi import HTTPException
 
 from app.config import get_settings
@@ -20,6 +21,12 @@ async def _request(method: str, path: str, json: Any | None = None) -> Any:
     headers: dict[str, str] = {}
     if settings.portfolio_service_token:
         headers["X-Internal-Token"] = settings.portfolio_service_token
+    # Inject current trace context so downstream spans link to the backend request
+    try:
+        inject(headers)
+    except Exception:
+        # Best-effort; keep request functional even if tracing is unavailable
+        pass
     timeout = settings.portfolio_service_timeout_seconds
     async with httpx.AsyncClient(timeout=timeout) as client:
         response = await client.request(method, url, json=json, headers=headers)

@@ -24,17 +24,17 @@ services:
       PORTFOLIO_SERVICE_URL: http://portfolio:8200/portfolio
       PORTFOLIO_SERVICE_TOKEN: ${PORTFOLIO_INTERNAL_TOKEN:-portfolio-internal-token}
       TELEMETRY_ENABLED: "true"
-      TELEMETRY_SERVICE_NAME: smart-advisor
+      TELEMETRY_SERVICE_NAME: smart-advisor-backend
       OTEL_SERVICE_NAME: smart-advisor-backend
       OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=1.0.0
       OTEL_TRACES_EXPORTER: otlp
       OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4317
       OTEL_LOGS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: http/protobuf
-      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://1otel-collector:4318/v1/logs
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://1otel-collector:4317/v1/logs
       OTEL_METRICS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4318/v1/metrics
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317/v1/metrics
     depends_on:
       - db
       - portfolio
