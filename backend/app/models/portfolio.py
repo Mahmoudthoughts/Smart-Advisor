@@ -1,7 +1,8 @@
-"""Portfolio, transaction, and lot models."""
+"""Portfolio, transaction, decision, and lot models."""
 
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 from typing import Optional
 from sqlalchemy import (
@@ -35,6 +36,9 @@ class Portfolio(Base):
         back_populates="portfolio", cascade="all, delete-orphan"
     )
     accounts: Mapped[list["PortfolioAccount"]] = relationship(
+        back_populates="portfolio", cascade="all, delete-orphan"
+    )
+    decisions: Mapped[list["InvestmentDecision"]] = relationship(
         back_populates="portfolio", cascade="all, delete-orphan"
     )
 
@@ -103,6 +107,50 @@ class PortfolioAccount(Base):
     transactions: Mapped[list[Transaction]] = relationship(back_populates="account")
 
 
+class DecisionAction(str, enum.Enum):
+    BUY_MORE = "BUY_MORE"
+    TRIM = "TRIM"
+    EXIT = "EXIT"
+    HOLD = "HOLD"
+
+
+class DecisionStatus(str, enum.Enum):
+    OPEN = "OPEN"
+    EXECUTED = "EXECUTED"
+    SKIPPED = "SKIPPED"
+
+
+class InvestmentDecision(Base):
+    __tablename__ = "investment_decision"
+    __table_args__ = (
+        Index("ix_investment_decision_symbol_status", "symbol", "status"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    portfolio_id: Mapped[int | None] = mapped_column(
+        ForeignKey("portfolio.id", ondelete="SET NULL"), nullable=True
+    )
+    investor: Mapped[str] = mapped_column(String(128))
+    symbol: Mapped[str] = mapped_column(String(20), index=True)
+    action: Mapped[DecisionAction] = mapped_column(
+        Enum(DecisionAction, name="decision_action"), default=DecisionAction.BUY_MORE
+    )
+    planned_quantity: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
+    decision_price: Mapped[float | None] = mapped_column(Numeric(18, 6), nullable=True)
+    decision_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    status: Mapped[DecisionStatus] = mapped_column(
+        Enum(DecisionStatus, name="decision_status"), default=DecisionStatus.OPEN
+    )
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_price: Mapped[float | None] = mapped_column(Numeric(18, 6), nullable=True)
+    actual_quantity: Mapped[float | None] = mapped_column(Numeric(18, 4), nullable=True)
+    outcome_price: Mapped[float | None] = mapped_column(Numeric(18, 6), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    outcome_notes: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+    portfolio: Mapped[Optional[Portfolio]] = relationship(back_populates="decisions")
+
+
 class Lot(Base):
     __tablename__ = "lot"
     __table_args__ = (
@@ -126,5 +174,8 @@ __all__ = [
     "Lot",
     "PortfolioSymbol",
     "PortfolioAccount",
+    "InvestmentDecision",
+    "DecisionAction",
+    "DecisionStatus",
     "TRANSACTION_TYPES",
 ]

@@ -4,6 +4,54 @@ import { Observable } from 'rxjs';
 
 import { environment } from '../environments/environment';
 
+export type DecisionAction = 'BUY_MORE' | 'TRIM' | 'EXIT' | 'HOLD';
+export type DecisionStatus = 'OPEN' | 'EXECUTED' | 'SKIPPED';
+
+export interface InvestmentDecisionOutcome {
+  readonly price_change: number | null;
+  readonly price_change_pct: number | null;
+  readonly projected_value_change: number | null;
+}
+
+export interface InvestmentDecision {
+  readonly id: number;
+  readonly portfolio_id: number | null;
+  readonly investor: string;
+  readonly symbol: string;
+  readonly action: DecisionAction;
+  readonly planned_quantity: number | null;
+  readonly decision_price: number | null;
+  readonly decision_at: string;
+  readonly status: DecisionStatus;
+  readonly resolved_at: string | null;
+  readonly resolved_price: number | null;
+  readonly actual_quantity: number | null;
+  readonly outcome_price: number | null;
+  readonly notes: string | null;
+  readonly outcome_notes: string | null;
+  readonly outcome: InvestmentDecisionOutcome;
+}
+
+export interface InvestmentDecisionCreatePayload {
+  readonly investor: string;
+  readonly symbol: string;
+  readonly action: DecisionAction;
+  readonly planned_quantity?: number | null;
+  readonly decision_price?: number | null;
+  readonly decision_at?: string | null;
+  readonly notes?: string | null;
+  readonly portfolio_id?: number | null;
+}
+
+export interface InvestmentDecisionResolvePayload {
+  readonly status: DecisionStatus;
+  readonly resolved_at?: string | null;
+  readonly resolved_price?: number | null;
+  readonly actual_quantity?: number | null;
+  readonly outcome_price?: number | null;
+  readonly outcome_notes?: string | null;
+}
+
 export interface WatchlistSymbol {
   readonly id: number;
   readonly symbol: string;
@@ -177,5 +225,31 @@ export class PortfolioDataService {
 
   refreshSymbol(symbol: string): Observable<SymbolRefreshResponse> {
     return this.http.post<SymbolRefreshResponse>(`${this.baseUrl}/symbols/${symbol}/refresh`, {});
+  }
+
+  getDecisions(params?: {
+    readonly symbol?: string | null;
+    readonly investor?: string | null;
+    readonly status?: DecisionStatus | null;
+  }): Observable<InvestmentDecision[]> {
+    let query = new HttpParams();
+    if (params?.symbol) {
+      query = query.set('symbol', params.symbol);
+    }
+    if (params?.investor) {
+      query = query.set('investor', params.investor);
+    }
+    if (params?.status) {
+      query = query.set('status', params.status);
+    }
+    return this.http.get<InvestmentDecision[]>(`${this.baseUrl}/decisions`, { params: query });
+  }
+
+  logDecision(payload: InvestmentDecisionCreatePayload): Observable<InvestmentDecision> {
+    return this.http.post<InvestmentDecision>(`${this.baseUrl}/decisions`, payload);
+  }
+
+  resolveDecision(id: number, payload: InvestmentDecisionResolvePayload): Observable<InvestmentDecision> {
+    return this.http.put<InvestmentDecision>(`${this.baseUrl}/decisions/${id}`, payload);
   }
 }

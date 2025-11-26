@@ -15,6 +15,7 @@ import { SymbolDetailComponent } from './symbol-detail/symbol-detail.component';
 import { SimulatorComponent } from './simulator/simulator.component';
 import { TimelineComponent } from './timeline/timeline.component';
 import { TransactionsComponent } from './transactions/transactions.component';
+import { DecisionsComponent } from './decisions/decisions.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -58,6 +59,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/opportunities',
     component: OpportunitiesComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/decisions',
+    component: DecisionsComponent,
     canActivate: [authGuard]
   },
   {
