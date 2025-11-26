@@ -30,6 +30,7 @@ export class AppComponent {
     { path: '/app/transactions', label: 'Transactions' },
     { path: '/app/timeline', label: 'Timeline' },
     { path: '/app/opportunities', label: 'Opportunities' },
+    { path: '/app/decisions', label: 'Decisions' },
     { path: '/app/signals', label: 'Signals' },
     { path: '/app/sentiment', label: 'Sentiment' },
     { path: '/app/forecast', label: 'Forecast' },

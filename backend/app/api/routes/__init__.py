@@ -13,9 +13,11 @@ from .sentiment import router as sentiment_router
 from .signals import router as signals_router
 from .simulate import router as simulate_router
 from .symbols import router as symbols_router
+from .decisions import router as decisions_router
 
 api_router = APIRouter()
 api_router.include_router(portfolio_router, prefix="/portfolio", tags=["portfolio"])
+api_router.include_router(decisions_router, prefix="/decisions", tags=["decisions"])
 api_router.include_router(debug_router, prefix="/debug", tags=["debug"])
 api_router.include_router(ingest_router, prefix="/ingest", tags=["ingest"])
 api_router.include_router(accounts_router, prefix="/accounts", tags=["accounts"])

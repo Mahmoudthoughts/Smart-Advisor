@@ -21,6 +21,12 @@ from .snapshots import (
 )
 from .simulate import SimulationRequest, SimulationResponse
 from .symbols import SymbolRefreshResponse, SymbolSearchResultSchema
+from .decisions import (
+    InvestmentDecisionCreateRequest,
+    InvestmentDecisionOutcomeSchema,
+    InvestmentDecisionResolveRequest,
+    InvestmentDecisionSchema,
+)
 
 __all__ = [
     "ForecastResponse",
@@ -43,6 +49,10 @@ __all__ = [
     "WatchlistCreateRequest",
     "PortfolioAccountSchema",
     "PortfolioAccountCreateRequest",
+    "InvestmentDecisionSchema",
+    "InvestmentDecisionOutcomeSchema",
+    "InvestmentDecisionCreateRequest",
+    "InvestmentDecisionResolveRequest",
     "SymbolSearchResultSchema",
     "SymbolRefreshResponse",
 ]

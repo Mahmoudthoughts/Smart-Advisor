@@ -124,6 +124,10 @@ Downstream processors can either read directly from these tables or plug into th
   - Default background switched to white for all pages; top bar now uses theme variables.
   - Files: `frontend/src/styles.scss`, `frontend/src/app/app.component.scss`.
 
+- Decision log
+  - Log per-investor planned moves, filter by symbol or status, and resolve items with outcome prices and notes.
+  - Files: `frontend/src/app/decisions/decisions.component.{html,ts,scss}`.
+
 - CORS and API proxy
   - Backend CORS expanded to allow `http://localhost[:4200]` and `http://127.0.0.1[:4200]` (fixes preflight 400 for auth).
   - Frontend NGINX proxies `/api/` → `backend:8000` to simplify production deployments.
@@ -148,7 +152,7 @@ The `/backend/app` package now provides the Missed Opportunity Analyzer + Smart 
 - `app/indicators/compute.py` — Pandas-powered SMA/EMA/RSI/MACD/ATR/volume-multiple indicators with caching.
 - `app/rules/engine.py` — Boolean expression evaluation with cooldown tracking per rule.
 - `app/services/snapshots.py` — FIFO/LIFO lot builder and daily P&L metrics per §3–§4 of the spec.
-- `app/api/routes/` — Endpoints for timelines, top missed days, signal definitions/events, sentiment series, forecast stub, and simulator stub.
+- `app/api/routes/` — Endpoints for timelines, top missed days, signal definitions/events, sentiment series, forecast stub, simulator stub, and the new `/decisions` log for investor choices and outcomes.
 - `app/migrations/` — Alembic environment plus initial revision (see `app/migrations/versions/0001_initial.py` for SQL operations).
 
 Utility scripts under `/backend/scripts` support ingestion, indicator recompute, snapshot rebuilds, and seed loading. Common workflows are wrapped in the backend `Makefile`:
