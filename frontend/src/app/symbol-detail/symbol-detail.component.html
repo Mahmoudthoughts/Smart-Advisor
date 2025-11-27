@@ -20,6 +20,7 @@
     </div>
     <div class="actions">
       <button type="button" (click)="refresh()">Refresh data</button>
+      <a routerLink="/app/decisions" [queryParams]="{ symbol: symbol() }" class="secondary">Log decision</a>
       <a routerLink="/app/transactions" [queryParams]="{ symbol: symbol() }" class="secondary">Add transaction</a>
     </div>
   </header>
@@ -111,4 +112,3 @@
 <ng-template #missing>
   <p class="error">Symbol not provided. Return to <a routerLink="/app/stocks">My Stocks</a>.</p>
 </ng-template>
-

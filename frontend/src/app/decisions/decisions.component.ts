@@ -1,6 +1,7 @@
 import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe, PercentPipe } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import {
   DecisionAction,
   DecisionStatus,
@@ -26,6 +27,7 @@ interface Option<T> {
 export class DecisionsComponent implements OnInit {
   private readonly data = inject(PortfolioDataService);
   private readonly fb = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
 
   readonly isLoading = signal(true);
   readonly isSubmitting = signal(false);
@@ -86,6 +88,7 @@ export class DecisionsComponent implements OnInit {
   });
 
   ngOnInit(): void {
+    this.applyQueryParams();
     this.loadDecisions();
   }
 
@@ -208,6 +211,29 @@ export class DecisionsComponent implements OnInit {
 
   private normalizeSymbol(value: string): string {
     return value.trim().toUpperCase();
+  }
+
+  private applyQueryParams(): void {
+    const params = this.route.snapshot.queryParamMap;
+    const symbolParam = params.get('symbol');
+    const investorParam = params.get('investor');
+    const statusParam = (params.get('status') ?? '').toUpperCase() as DecisionStatus | '';
+
+    if (symbolParam) {
+      const normalized = this.normalizeSymbol(symbolParam);
+      this.symbolFilter.set(normalized);
+      this.createForm.controls.symbol.setValue(normalized);
+    }
+
+    if (investorParam) {
+      const trimmed = investorParam.trim();
+      this.investorFilter.set(trimmed);
+      this.createForm.controls.investor.setValue(trimmed);
+    }
+
+    if (statusParam === 'OPEN' || statusParam === 'EXECUTED' || statusParam === 'SKIPPED') {
+      this.statusFilter.set(statusParam);
+    }
   }
 
   private replaceDecision(updated: InvestmentDecision): void {
