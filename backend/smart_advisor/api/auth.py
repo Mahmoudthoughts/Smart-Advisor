@@ -25,7 +25,12 @@ def get_auth_router(database: Database) -> APIRouter:
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
 
-        user = User(name=payload.name.strip(), email=normalized_email, password_hash=hash_password(payload.password))
+        user = User(
+            name=payload.name.strip(),
+            email=normalized_email,
+            password_hash=hash_password(payload.password),
+            role=payload.role,
+        )
         session.add(user)
         await session.flush()
 
@@ -38,7 +43,7 @@ def get_auth_router(database: Database) -> APIRouter:
         span = trace.get_current_span()
         span.set_attribute("enduser.id", str(user.id))
         span.set_attribute("enduser.email", user.email)
-        span.set_attribute("enduser.role", "user")
+        span.set_attribute("enduser.role", user.role)
         return AuthResponse(access_token=token.token, user=_to_user_out(user))
 
     @router.post("/login", response_model=AuthResponse)
@@ -58,12 +63,18 @@ def get_auth_router(database: Database) -> APIRouter:
         span = trace.get_current_span()
         span.set_attribute("enduser.id", str(user.id))
         span.set_attribute("enduser.email", user.email)
-        span.set_attribute("enduser.role", "user")
+        span.set_attribute("enduser.role", user.role)
         return AuthResponse(access_token=token.token, user=_to_user_out(user))
 
     return router
 
 
 def _to_user_out(user: User) -> UserOut:
-    return UserOut(id=user.id, name=user.name, email=user.email, created_at=user.created_at or datetime.utcnow())
+    return UserOut(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        role=user.role,
+        created_at=user.created_at or datetime.utcnow(),
+    )
 

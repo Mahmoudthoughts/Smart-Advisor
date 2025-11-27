@@ -36,7 +36,8 @@ export class AppComponent {
     { path: '/app/forecast', label: 'Forecast' },
     { path: '/app/simulator', label: 'Simulator' },
     { path: '/app/macro', label: 'Macro' },
-    { path: '/app/alerts', label: 'Alerts' }
+    { path: '/app/alerts', label: 'Alerts' },
+    { path: '/app/admin', label: 'Admin' }
   ];
 
   readonly menuOpen = signal(false);
@@ -82,7 +83,7 @@ export class AppComponent {
     effect(() => {
       const u = this.user();
       if (u) {
-        setUserTelemetry({ id: u.id, email: u.email, role: 'user' });
+        setUserTelemetry({ id: u.id, email: u.email, role: u.role });
       } else {
         setUserTelemetry(null);
       }
@@ -187,6 +188,9 @@ export class AppComponent {
       if (Array.isArray(parsed) && parsed.every((value) => typeof value === 'string')) {
         const valid = parsed.filter((path) => this.allNavLinks.some((link) => link.path === path));
         if (valid.length > 0) {
+          if (!valid.includes('/app/admin')) {
+            valid.push('/app/admin');
+          }
           return this.sortPaths(valid);
         }
       }
