@@ -15,6 +15,7 @@ from app.core.logging import setup_logging
 from app.core.telemetry import setup_telemetry
 from app.db.init import init_database
 from app.db.session import _engine
+from smart_advisor.api.admin import get_admin_router
 from smart_advisor.api.auth import get_auth_router
 from smart_advisor.api.database import database as legacy_database
 
@@ -75,6 +76,7 @@ def configure_app() -> FastAPI:
 
     app.include_router(api_router)
     app.include_router(get_auth_router(legacy_database))
+    app.include_router(get_admin_router(legacy_database))
     return app
 
 

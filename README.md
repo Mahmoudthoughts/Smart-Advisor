@@ -127,6 +127,9 @@ Downstream processors can either read directly from these tables or plug into th
 - Decision log
   - Log per-investor planned moves, filter by symbol or status, and resolve items with outcome prices and notes.
   - Files: `frontend/src/app/decisions/decisions.component.{html,ts,scss}`.
+- Administration dashboard
+  - Manage Smart Advisor users (create, promote to admin, reset passwords) and configure stock list data providers with API keys/default selection.
+  - Files: `frontend/src/app/admin/admin.component.{html,ts,scss}`, `frontend/src/app/admin.service.ts`, backend admin routes in `backend/smart_advisor/api/admin.py`.
 
 - CORS and API proxy
   - Backend CORS expanded to allow `http://localhost[:4200]` and `http://127.0.0.1[:4200]` (fixes preflight 400 for auth).

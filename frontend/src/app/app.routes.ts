@@ -16,6 +16,7 @@ import { SimulatorComponent } from './simulator/simulator.component';
 import { TimelineComponent } from './timeline/timeline.component';
 import { TransactionsComponent } from './transactions/transactions.component';
 import { DecisionsComponent } from './decisions/decisions.component';
+import { AdminComponent } from './admin/admin.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -94,6 +95,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/alerts',
     component: AlertsComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/admin',
+    component: AdminComponent,
     canActivate: [authGuard]
   },
   {

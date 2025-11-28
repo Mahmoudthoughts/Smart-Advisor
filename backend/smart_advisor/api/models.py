@@ -23,6 +23,7 @@ class User(Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
     name: Mapped[str] = mapped_column(String(255))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    role: Mapped[str] = mapped_column(String(32), default="user")
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -71,4 +72,19 @@ class UserPortfolioAccess(Base):
     portfolio_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("portfolios.id", ondelete="CASCADE"))
     role: Mapped[str] = mapped_column(String(32), default="owner")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+
+
+class StockListProvider(Base):
+    __tablename__ = "stock_list_providers"
+    __table_args__ = (UniqueConstraint("provider", name="uq_stock_list_provider"),)
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    provider: Mapped[str] = mapped_column(String(64))
+    display_name: Mapped[str] = mapped_column(String(255))
+    api_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    base_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 

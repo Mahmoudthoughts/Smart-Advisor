@@ -9,6 +9,7 @@ export interface AuthUser {
   readonly name: string;
   readonly email: string;
   readonly createdAt: string;
+  readonly role: string;
 }
 
 export interface AuthResponse {
@@ -18,6 +19,7 @@ export interface AuthResponse {
     readonly id: string;
     readonly name: string;
     readonly email: string;
+    readonly role: string;
     readonly created_at: string;
   };
 }
@@ -58,13 +60,14 @@ export class AuthService {
       id: response.user.id,
       name: response.user.name,
       email: response.user.email,
-      createdAt: response.user.created_at
+      createdAt: response.user.created_at,
+      role: response.user.role
     };
     this.userState.set(authUser);
     this.persistState({ token: response.access_token, user: authUser });
     // Immediately expose user identity for telemetry baggage
     try {
-      setUserTelemetry({ id: authUser.id, email: authUser.email, role: 'user' });
+      setUserTelemetry({ id: authUser.id, email: authUser.email, role: authUser.role });
     } catch {}
   }
 
@@ -78,6 +81,9 @@ export class AuthService {
         return null;
       }
       const parsed = JSON.parse(stored) as StoredAuthState;
+      if (!parsed.user.role) {
+        return { ...parsed.user, role: 'user' };
+      }
       return parsed.user;
     } catch {
       return null;
