@@ -1,13 +1,15 @@
 from __future__ import annotations
 
+from datetime import datetime
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import Database
-from .models import StockListProvider, User
+from .models import AuthToken, StockListProvider, User
 from .schemas import (
     AdminCreateUserRequest,
     AdminUpdateUserRequest,
@@ -20,16 +22,52 @@ from .security import hash_password
 
 def get_admin_router(database: Database) -> APIRouter:
     router = APIRouter(prefix="/admin", tags=["admin"])
+    bearer_scheme = HTTPBearer(auto_error=False)
+
+    async def _get_current_user(
+        credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
+        session: AsyncSession = Depends(database.get_session),
+    ) -> User:
+        if credentials is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+
+        token_value = credentials.credentials
+        query = await session.execute(
+            select(AuthToken).where(
+                AuthToken.token == token_value,
+                AuthToken.is_active.is_(True),
+                AuthToken.expires_at > datetime.utcnow(),
+            )
+        )
+        token = query.scalar_one_or_none()
+        if token is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
+
+        user = await session.get(User, token.user_id)
+        if user is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+        return user
+
+    async def _require_admin_user(current_user: User = Depends(_get_current_user)) -> User:
+        if current_user.role != "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required")
+        return current_user
 
     @router.get("/users", response_model=list[UserOut])
-    async def list_users(session: AsyncSession = Depends(database.get_session)) -> list[UserOut]:
+    async def list_users(
+        session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
+    ) -> list[UserOut]:
         result = await session.execute(select(User))
         users = result.scalars().all()
         return [_to_user_out(user) for user in users]
 
     @router.post("/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
     async def create_user(
-        payload: AdminCreateUserRequest, session: AsyncSession = Depends(database.get_session)
+        payload: AdminCreateUserRequest,
+        session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
     ) -> UserOut:
         normalized_email = payload.email.strip().lower()
         existing = await session.execute(select(User).where(User.email == normalized_email))
@@ -49,7 +87,10 @@ def get_admin_router(database: Database) -> APIRouter:
 
     @router.patch("/users/{user_id}", response_model=UserOut)
     async def update_user(
-        user_id: UUID, payload: AdminUpdateUserRequest, session: AsyncSession = Depends(database.get_session)
+        user_id: UUID,
+        payload: AdminUpdateUserRequest,
+        session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
     ) -> UserOut:
         user = await session.get(User, user_id)
         if user is None:
@@ -67,7 +108,11 @@ def get_admin_router(database: Database) -> APIRouter:
         return _to_user_out(user)
 
     @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-    async def delete_user(user_id: UUID, session: AsyncSession = Depends(database.get_session)) -> None:
+    async def delete_user(
+        user_id: UUID,
+        session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
+    ) -> None:
         user = await session.get(User, user_id)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -78,6 +123,7 @@ def get_admin_router(database: Database) -> APIRouter:
     @router.get("/providers", response_model=list[StockListProviderOut])
     async def list_providers(
         session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
     ) -> list[StockListProviderOut]:
         result = await session.execute(select(StockListProvider))
         providers = result.scalars().all()
@@ -85,7 +131,9 @@ def get_admin_router(database: Database) -> APIRouter:
 
     @router.post("/providers", response_model=StockListProviderOut, status_code=status.HTTP_201_CREATED)
     async def create_provider(
-        payload: StockListProviderUpsert, session: AsyncSession = Depends(database.get_session)
+        payload: StockListProviderUpsert,
+        session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
     ) -> StockListProviderOut:
         provider = StockListProvider(
             provider=payload.provider.strip(),
@@ -110,6 +158,7 @@ def get_admin_router(database: Database) -> APIRouter:
         provider_id: UUID,
         payload: StockListProviderUpsert,
         session: AsyncSession = Depends(database.get_session),
+        _: User = Depends(_require_admin_user),
     ) -> StockListProviderOut:
         provider = await session.get(StockListProvider, provider_id)
         if provider is None:

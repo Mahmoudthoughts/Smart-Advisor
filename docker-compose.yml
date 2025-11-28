@@ -10,6 +10,7 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
+      - ./backend/sql/001_add_user_role_column.sql:/docker-entrypoint-initdb.d/01-add-user-role.sql:ro
     ports:
       - '5432:5432'
 

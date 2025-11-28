@@ -25,11 +25,17 @@ def get_auth_router(database: Database) -> APIRouter:
         if existing.scalar_one_or_none() is not None:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email is already registered")
 
+        if payload.role not in (None, "user"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Self-service registration only supports the 'user' role",
+            )
+
         user = User(
             name=payload.name.strip(),
             email=normalized_email,
             password_hash=hash_password(payload.password),
-            role=payload.role,
+            role="user",
         )
         session.add(user)
         await session.flush()
