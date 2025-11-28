@@ -59,10 +59,17 @@ services:
       ALPHAVANTAGE_API_KEY: ${ALPHAVANTAGE_API_KEY:-demo}
       ALPHAVANTAGE_REQUESTS_PER_MINUTE: ${ALPHAVANTAGE_REQUESTS_PER_MINUTE:-5}
       BASE_CURRENCY: ${BASE_CURRENCY:-USD}
+      PRICE_PROVIDER: ${PRICE_PROVIDER:-ibkr}
+      IBKR_HOST: ${IBKR_HOST:-host.docker.internal}
+      IBKR_PORT: ${IBKR_PORT:-4001}
+      IBKR_CLIENT_ID: ${IBKR_CLIENT_ID:-1}
+      IBKR_MARKET_DATA_TYPE: ${IBKR_MARKET_DATA_TYPE:-3}
     depends_on:
       - db
     ports:
       - '8100:8100'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   portfolio:
     build:
