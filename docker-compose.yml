@@ -7,12 +7,29 @@ services:
       POSTGRES_DB: smart_advisor
       POSTGRES_USER: smart_advisor
       POSTGRES_PASSWORD: smart_advisor
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart_advisor -d smart_advisor"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/00-schema.sql:ro
-      - ./backend/sql/001_add_user_role_column.sql:/docker-entrypoint-initdb.d/01-add-user-role.sql:ro
     ports:
       - '5432:5432'
+
+  db-migrator:
+    image: postgres:16
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: smart_advisor
+    volumes:
+      - ./backend/sql/001_add_user_role_column.sql:/migrations/001_add_user_role_column.sql:ro
+    entrypoint: ["bash", "-c"]
+    command: >
+      psql -h db -U smart_advisor -d smart_advisor -f /migrations/001_add_user_role_column.sql
 
   backend:
     build:
@@ -37,8 +54,12 @@ services:
       OTEL_METRICS_EXPORTER: otlp
       OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317/v1/metrics
     depends_on:
-      - db
-      - portfolio
+      db:
+        condition: service_healthy
+      db-migrator:
+        condition: service_completed_successfully
+      portfolio:
+        condition: service_started
     ports:
       - '8000:8000'
 
