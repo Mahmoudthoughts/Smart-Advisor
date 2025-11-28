@@ -30,7 +30,7 @@ export class AdminComponent implements OnInit {
   readonly isLoadingUsers = signal<boolean>(true);
   readonly isLoadingProviders = signal<boolean>(true);
   readonly passwordDrafts = signal<Record<string, string>>({});
-  readonly providerDrafts = signal<Record<string, StockListProviderUpsert>>({});
+  readonly providerDrafts = signal<Record<string, StockListProviderUpsert | undefined>>({});
 
   readonly userForm = this.formBuilder.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -224,7 +224,7 @@ export class AdminComponent implements OnInit {
   }
 
   private syncProviderDrafts(providers: StockListProviderConfig[]): void {
-    const drafts: Record<string, StockListProviderUpsert> = {};
+    const drafts: Record<string, StockListProviderUpsert | undefined> = {};
     providers.forEach((provider) => {
       drafts[provider.id] = this.buildProviderDraft(provider)!;
     });

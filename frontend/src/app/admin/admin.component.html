@@ -57,7 +57,7 @@
           <div class="user-controls">
             <label>
               <span>Role</span>
-              <select [value]="user.role" (change)="changeUserRole(user, ($any($event.target).value as string))">
+              <select [value]="user.role" (change)="changeUserRole(user, $any($event.target).value)">
                 <option value="user">User</option>
                 <option value="admin">Admin</option>
               </select>
@@ -67,7 +67,7 @@
               <input
                 type="password"
                 [value]="passwordDrafts()[user.id] || ''"
-                (input)="setPasswordDraft(user.id, ($any($event.target).value as string))"
+                (input)="setPasswordDraft(user.id, $any($event.target).value)"
                 placeholder="New password"
               />
             </label>
@@ -142,7 +142,7 @@
               <input
                 type="text"
                 [value]="providerDrafts()[provider.id]?.display_name || provider.display_name"
-                (input)="editProviderField(provider.id, 'display_name', ($any($event.target).value as string))"
+                (input)="editProviderField(provider.id, 'display_name', $any($event.target).value)"
               />
             </label>
             <label>
@@ -150,7 +150,7 @@
               <input
                 type="text"
                 [value]="providerDrafts()[provider.id]?.api_key || ''"
-                (input)="editProviderField(provider.id, 'api_key', ($any($event.target).value as string))"
+                (input)="editProviderField(provider.id, 'api_key', $any($event.target).value)"
                 placeholder="Optional"
               />
             </label>
@@ -159,7 +159,7 @@
               <input
                 type="text"
                 [value]="providerDrafts()[provider.id]?.base_url || ''"
-                (input)="editProviderField(provider.id, 'base_url', ($any($event.target).value as string))"
+                (input)="editProviderField(provider.id, 'base_url', $any($event.target).value)"
                 placeholder="Optional"
               />
             </label>
@@ -168,7 +168,7 @@
                 <input
                   type="checkbox"
                   [checked]="providerDrafts()[provider.id]?.is_active ?? provider.is_active"
-                  (change)="editProviderField(provider.id, 'is_active', $any($event.target).checked as boolean)"
+                  (change)="editProviderField(provider.id, 'is_active', $any($event.target).checked)"
                 />
                 <span>Active</span>
               </label>
@@ -176,7 +176,7 @@
                 <input
                   type="checkbox"
                   [checked]="providerDrafts()[provider.id]?.is_default ?? provider.is_default"
-                  (change)="editProviderField(provider.id, 'is_default', $any($event.target).checked as boolean)"
+                  (change)="editProviderField(provider.id, 'is_default', $any($event.target).checked)"
                 />
                 <span>Default</span>
               </label>
