@@ -57,6 +57,7 @@ async def startup() -> None:
     """Initialise the database schema when the service boots."""
 
     await init_database()
+    await legacy_database.ensure_user_role_column()
     await legacy_database.create_all()
 
 
