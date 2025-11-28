@@ -1,4 +1,4 @@
-"""Price ingest job for Alpha Vantage daily price series.
+"""Price ingest job for Alpha Vantage or IBKR daily price series.
 
 This implementation performs incremental upserts:
 - On first run (no existing rows), it fetches the full series.
@@ -18,10 +18,15 @@ from app.models import DailyBar
 
 from .alpha_vantage import AlphaVantageClient, get_alpha_vantage_client
 from .config import get_settings
+from .ibkr import ingest_prices_ibkr
 
 
 async def ingest_prices(symbol: str, session: AsyncSession, client: AlphaVantageClient | None = None) -> int:
-    """Fetch and persist Alpha Vantage TIME_SERIES_DAILY data incrementally."""
+    """Fetch and persist daily data using the configured price provider."""
+
+    settings = get_settings()
+    if settings.price_provider == "ibkr":
+        return await ingest_prices_ibkr(symbol, session)
 
     client = client or get_alpha_vantage_client()
     # Determine last ingested date for incremental fetch
@@ -42,7 +47,6 @@ async def ingest_prices(symbol: str, session: AsyncSession, client: AlphaVantage
     payload = await client.daily_adjusted(symbol, output=output_size)
     series = payload.get("Time Series (Daily)", {})
     total = 0
-    settings = get_settings()
     metadata = payload.get("Meta Data", {})
     currency_hint = metadata.get("7. Time Zone") or metadata.get("6. Time Zone") or metadata.get("5. Time Zone")
     currency = (

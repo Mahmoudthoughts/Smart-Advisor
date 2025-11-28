@@ -10,12 +10,13 @@ from typing import Any
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
-from .alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from opentelemetry import trace
 from opentelemetry.baggage import get_baggage
+from .alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from .config import get_settings
 from .db import _session_factory, _engine
 from .fx import ingest_fx_pair
+from .ibkr import close_ib_client
 from .prices import ingest_prices
 from .telemetry import setup_telemetry
 
@@ -69,6 +70,7 @@ async def health() -> dict[str, Any]:
     settings = get_settings()
     return {
         "status": "ok",
+        "price_provider": settings.price_provider,
         "rate_limit": settings.alphavantage_requests_per_minute,
         "base_currency": settings.base_currency,
     }
@@ -140,6 +142,7 @@ async def shutdown_event() -> None:
 
     client = get_alpha_vantage_client()
     await client.aclose()
+    await close_ib_client()
 
 
 # Attach end-user attributes from baggage to ingest server spans as well

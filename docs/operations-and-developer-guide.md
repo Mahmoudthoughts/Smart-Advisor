@@ -9,7 +9,7 @@ This document describes how the Smart Advisor services run together, how to oper
   - `portfolio` (FastAPI): owns portfolio/watchlist/account CRUD, snapshot recompute, and emits outbox events.
   - `frontend` (Angular + NGINX): UI served on port 4200 (mapped to container port 80).
   - `db` (PostgreSQL): primary datastore shared across services.
-  - `ingest` (FastAPI): microservice that fetches Alpha Vantage data and writes to DB.
+  - `ingest` (FastAPI): microservice that fetches price data (Alpha Vantage or IBKR) and writes to DB.
   - Optional: `otel-collector` (not included in this repo) for OpenTelemetry export.
 
 ## Quick Start
@@ -56,9 +56,16 @@ This document describes how the Smart Advisor services run together, how to oper
 ### Ingest (service: `ingest`)
 
 - `DATABASE_URL` – same DSN used by backend.
-- `ALPHAVANTAGE_API_KEY` – provider key.
-- `ALPHAVANTAGE_REQUESTS_PER_MINUTE` – throttle (default 5).
+- `PRICE_PROVIDER` – `alpha_vantage` (default) or `ibkr` to switch sources without changing callers.
+- `ALPHAVANTAGE_API_KEY` – provider key (required when `PRICE_PROVIDER=alpha_vantage`).
+- `ALPHAVANTAGE_REQUESTS_PER_MINUTE` – throttle (default 5 for Alpha Vantage).
 - `BASE_CURRENCY` – fallback currency for rows when provider omits it (default `USD`).
+- IBKR provider tuning (used when `PRICE_PROVIDER=ibkr`):
+  - `IBKR_HOST` (default `host.docker.internal`) and `IBKR_PORT` (default `4001`) to reach a local Gateway/TWS.
+  - `IBKR_CLIENT_ID` – stable client ID (default `1`).
+  - `IBKR_MARKET_DATA_TYPE` – `1` real-time, `3` delayed (default `3`).
+  - `IBKR_USE_RTH` – use regular trading hours (default `true`).
+  - `IBKR_DURATION_DAYS`, `IBKR_BAR_SIZE`, `IBKR_WHAT_TO_SHOW` – historical window and bar settings.
 - OpenTelemetry:
   - `OTEL_SERVICE_NAME`: `smart-advisor-ingest`.
   - `OTEL_RESOURCE_ATTRIBUTES`: e.g., `deployment.environment=dev,service.version=1.0.0`.
@@ -79,7 +86,7 @@ This document describes how the Smart Advisor services run together, how to oper
 
 ### Ingest microservice API
 
-- `GET /health` → `{ status, rate_limit, base_currency }`
+- `GET /health` → `{ status, price_provider, rate_limit, base_currency }`
 - `POST /jobs/prices?run_sync=true|false` body `{ "symbol": "AAPL" }`
   - `run_sync=true` (used by backend): runs job inline and returns `{ symbol, rows }`.
   - `run_sync=false`: schedules job in background and returns `{ status: "scheduled", symbol }`.
@@ -91,6 +98,7 @@ This document describes how the Smart Advisor services run together, how to oper
 - On subsequent runs: uses `outputsize=compact` (last ~100 days) and only upserts rows whose `date >= last_ingested_date - 5 days`.
 - Large gaps: if `today - last_ingested_date > 90 days`, service switches to a one-time `full` fetch to catch up.
 - All writes are idempotent via `ON CONFLICT DO UPDATE` on `(symbol, date)`.
+- Setting `PRICE_PROVIDER=ibkr` routes `/jobs/prices` to the IBKR client, which connects once to the configured Gateway/TWS host, pulls historical bars, and upserts to `DailyBar` with the same schema.
 
 ## Telemetry
 
