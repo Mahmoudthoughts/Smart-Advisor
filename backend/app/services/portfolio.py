@@ -64,6 +64,10 @@ async def update_transaction(transaction_id: int, payload: dict[str, Any]) -> An
     return await _request("PUT", f"/transactions/{transaction_id}", json=payload)
 
 
+async def delete_transaction(transaction_id: int) -> None:
+    await _request("DELETE", f"/transactions/{transaction_id}")
+
+
 async def list_accounts() -> Any:
     return await _request("GET", "/accounts")
 
@@ -82,6 +86,7 @@ __all__ = [
     "list_transactions",
     "create_transaction",
     "update_transaction",
+    "delete_transaction",
     "list_accounts",
     "create_account",
     "recompute_snapshots",

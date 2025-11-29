@@ -23,6 +23,7 @@ services:
       INGEST_BASE_URL: http://ingest:8100
       PORTFOLIO_SERVICE_URL: http://portfolio:8200/portfolio
       PORTFOLIO_SERVICE_TOKEN: ${PORTFOLIO_INTERNAL_TOKEN:-portfolio-internal-token}
+      IBKR_SERVICE_URL: http://ibkr:8110
       TELEMETRY_ENABLED: "true"
       TELEMETRY_SERVICE_NAME: smart-advisor-backend
       OTEL_SERVICE_NAME: smart-advisor-backend

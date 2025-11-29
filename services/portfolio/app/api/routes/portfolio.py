@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -30,7 +30,8 @@ def _serialize_transaction(tx: Transaction) -> TransactionSchema:
     price = float(Decimal(str(tx.price)))
     fee = float(Decimal(str(tx.fee)))
     tax = float(Decimal(str(tx.tax)))
-    account = getattr(tx, "account", None)
+    # Fetch relationship via __dict__ to avoid lazy-load in async context
+    account = tx.__dict__.get("account")
     account_label = account.name if account else tx.broker_id
     return TransactionSchema(
         id=tx.id,
@@ -174,6 +175,18 @@ async def put_transaction(
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _serialize_transaction(tx)
+
+
+@router.delete("/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transaction(
+    transaction_id: int,
+    session: AsyncSession = Depends(get_db_session),
+) -> Response:
+    try:
+        await portfolio_service.delete_transaction(transaction_id, session)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/accounts", response_model=list[PortfolioAccountSchema])

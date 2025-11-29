@@ -41,6 +41,7 @@ Backend Conventions
 - Auth endpoints under `/auth`: `POST /auth/register`, `POST /auth/login`. See `backend/smart_advisor/api/auth.py` for token generation.
 - DB sessions via async dependencies (`Depends(get_db)` or legacy `.get_session`).
 - Migrations under `backend/app/migrations`.
+- Symbol search (`GET /symbols/search`) uses the IBKR bridge (`services/ibkr_service`) whenever `IBKR_SERVICE_URL` is configured so watchlist search/add flows share the same provider as refresh.
  - Ingest flow:
    - All price ingests are routed via the ingest microservice (no in-process fallback).
    - Backend endpoints that trigger ingest:
@@ -60,6 +61,7 @@ Ingest Microservice
   - Subsequent runs: `outputsize=compact`; only upsert days ≥ (last_ingested_date − 5 days).
   - If last ingested is older than 90 days, microservice uses a one-time `full` fetch to catch up.
 - OpenTelemetry: enabled via OTLP envs (see Compose). Service name `smart-advisor-ingest`.
+- IBKR bridge: FastAPI app under `services/ibkr_service` exposes `/prices` (ingest uses this when `PRICE_PROVIDER=ibkr`) and `/symbols/search` (backend search calls this when `IBKR_SERVICE_URL` is set).
 
 User Telemetry Propagation
 - Frontend attaches user identity to requests via a baggage-aware HTTP interceptor.
@@ -91,6 +93,7 @@ Common Tasks
 - Add a new nav item: update `allNavLinks` in `app.component.ts`, ensure route exists, and theme colors use CSS variables.
 - Add a date preset: follow Timeline or Symbol Detail patterns; compute ISO `YYYY-MM-DD` strings and reload data.
 - Extend symbol header data: enrich via `PortfolioDataService.searchSymbols()`; avoid blocking UI if provider data is missing.
+- Manage transactions: inline edit/delete live in `frontend/src/app/transactions/transactions.component.*`; backend proxies (`/portfolio/transactions/{id}`) to the portfolio service, which now implements `DELETE` alongside POST/PUT.
 
 File Map (UI features)
 - Header, sidebar, theme toggle: `frontend/src/app/app.component.{html,ts,scss}`
@@ -105,7 +108,7 @@ Notes for Agents
 - Prefer additive patches; avoid file deletes unless replacing the full content (and only when necessary).
 - If you must introduce new env vars or tokens, document them in README and here.
  - Ingest-related env vars to keep in sync:
-   - Backend: `INGEST_BASE_URL`.
+   - Backend: `INGEST_BASE_URL`, `IBKR_SERVICE_URL`.
    - Ingest: `DATABASE_URL`, `ALPHAVANTAGE_API_KEY`, `ALPHAVANTAGE_REQUESTS_PER_MINUTE`, `BASE_CURRENCY`, OTEL envs.
 
 This document applies to all subdirectories unless overridden by a deeper AGENTS.md.

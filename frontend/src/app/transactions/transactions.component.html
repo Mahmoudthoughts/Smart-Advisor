@@ -199,6 +199,14 @@
             <td>{{ tx.notes || '—' }}</td>
             <td class="actions">
               <button type="button" (click)="beginEdit(tx)">Edit</button>
+              <button
+                type="button"
+                class="danger"
+                [disabled]="deletingId() === tx.id"
+                (click)="deleteTransaction(tx)"
+              >
+                {{ deletingId() === tx.id ? 'Deleting…' : 'Delete' }}
+              </button>
             </td>
           </ng-template>
         </tr>
@@ -208,6 +216,8 @@
 
   <p class="error" *ngIf="saveError()">{{ saveError() }}</p>
   <p class="status" *ngIf="saveStatus()">{{ saveStatus() }}</p>
+  <p class="error" *ngIf="deleteError()">{{ deleteError() }}</p>
+  <p class="status" *ngIf="deleteStatus()">{{ deleteStatus() }}</p>
 
   <ng-template #emptyState>
     <div class="empty">

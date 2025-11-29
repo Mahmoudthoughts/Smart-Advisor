@@ -61,6 +61,9 @@ export class TransactionsComponent implements OnInit {
   readonly createError = signal<string | null>(null);
   readonly createStatus = signal<string | null>(null);
   readonly isSaving = signal<boolean>(false);
+  readonly deletingId = signal<number | null>(null);
+  readonly deleteError = signal<string | null>(null);
+  readonly deleteStatus = signal<string | null>(null);
 
   readonly filteredTransactions = computed(() => {
     const { symbol, type, account, from, to } = this.filters();
@@ -278,6 +281,34 @@ export class TransactionsComponent implements OnInit {
     } catch (error: any) {
       const message = error?.error?.detail ?? 'Unable to save changes. Please retry.';
       this.saveError.set(message);
+    }
+  }
+
+  async deleteTransaction(transaction: PortfolioTransaction): Promise<void> {
+    const confirmed = window.confirm(
+      `Delete the ${transaction.type} transaction for ${transaction.symbol} recorded on ${new Date(
+        transaction.trade_datetime
+      ).toLocaleString()}?`
+    );
+    if (!confirmed) {
+      return;
+    }
+    this.deletingId.set(transaction.id);
+    this.deleteError.set(null);
+    this.deleteStatus.set(null);
+    try {
+      await firstValueFrom(this.dataService.deleteTransaction(transaction.id));
+      this.transactions.update((current) => current.filter((item) => item.id !== transaction.id));
+      if (this.editingId() === transaction.id) {
+        this.editingId.set(null);
+        this.editModel.set(null);
+      }
+      this.deleteStatus.set('Transaction removed. Portfolio metrics will refresh shortly.');
+    } catch (error: any) {
+      const message = error?.error?.detail ?? 'Unable to delete the transaction. Please retry.';
+      this.deleteError.set(message);
+    } finally {
+      this.deletingId.set(null);
     }
   }
 

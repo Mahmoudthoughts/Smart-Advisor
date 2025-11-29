@@ -203,6 +203,16 @@ td.actions button {
   color: var(--primary-700);
 }
 
+td.actions button.danger {
+  background: var(--danger-50);
+  color: var(--danger-700);
+}
+
+td.actions button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 td.actions button.link,
 table button.link {
   background: transparent;

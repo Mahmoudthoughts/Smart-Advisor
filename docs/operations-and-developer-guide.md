@@ -10,6 +10,7 @@ This document describes how the Smart Advisor services run together, how to oper
   - `frontend` (Angular + NGINX): UI served on port 4200 (mapped to container port 80).
   - `db` (PostgreSQL): primary datastore shared across services.
   - `ingest` (FastAPI): microservice that fetches price data (Alpha Vantage or IBKR) and writes to DB.
+  - `ibkr` (FastAPI): bridge over the IB Gateway/TWS session that delivers historical bars and symbol search.
   - Optional: `otel-collector` (not included in this repo) for OpenTelemetry export.
 
 ## Quick Start
@@ -38,6 +39,7 @@ This document describes how the Smart Advisor services run together, how to oper
 - `INGEST_BASE_URL` – base URL for ingest service (default set in Compose to `http://ingest:8100`).
 - `PORTFOLIO_SERVICE_URL` – base URL for the portfolio service (Compose points to `http://portfolio:8200/portfolio`).
 - `PORTFOLIO_SERVICE_TOKEN` – shared secret sent via `X-Internal-Token` when proxying to the portfolio service.
+- `IBKR_SERVICE_URL` – base URL for the IBKR bridge (`http://ibkr:8110` in Compose) used by `/symbols/search`.
 - Telemetry (optional):
   - `TELEMETRY_ENABLED`: `true|false`
   - `TELEMETRY_SERVICE_NAME`: `smart-advisor`
@@ -160,6 +162,14 @@ This document describes how the Smart Advisor services run together, how to oper
   - Increase `ALPHAVANTAGE_REQUESTS_PER_MINUTE` conservatively; watch provider terms.
 - Telemetry not visible:
   - Ensure `otel-collector` is reachable at the configured endpoints and exporters are enabled.
+
+## IBKR bridge service
+
+- Location: `services/ibkr_service` (FastAPI app served on port 8110 by Compose).
+- Endpoints:
+  - `POST /prices` – fetch historical bars for a symbol through the Gateway/TWS session (ingest service consumes this when `PRICE_PROVIDER=ibkr`).
+  - `GET /symbols/search?query=...` – lightweight wrapper around IBKR’s `reqMatchingSymbols`; backend `/symbols/search` uses this when `IBKR_SERVICE_URL` is set so watchlist search/add/refresh all share the same data provider.
+- Configure the backend with `IBKR_SERVICE_URL` (default `http://ibkr:8110` in Compose) so symbol search requests can reach the bridge. For local development outside Compose, run `uvicorn services.ibkr_service.main:app --reload --port 8110` (requires a reachable IB Gateway/TWS host).
 
 ## Developer Notes
 

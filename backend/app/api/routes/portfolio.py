@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Response, status
 
 from app.schemas import (
     PortfolioAccountCreateRequest,
@@ -51,6 +51,12 @@ async def post_transaction(payload: TransactionCreateRequest) -> TransactionSche
 async def put_transaction(transaction_id: int, payload: TransactionUpdateRequest) -> TransactionSchema:
     data = await portfolio_client.update_transaction(transaction_id, payload.model_dump(mode="json"))
     return TransactionSchema(**data)
+
+
+@router.delete("/transactions/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_transaction(transaction_id: int) -> Response:
+    await portfolio_client.delete_transaction(transaction_id)
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/accounts", response_model=list[PortfolioAccountSchema])

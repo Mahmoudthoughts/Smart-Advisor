@@ -235,6 +235,25 @@ async def update_transaction(
     return tx
 
 
+async def delete_transaction(transaction_id: int, session: AsyncSession) -> None:
+    portfolio = await ensure_portfolio(session)
+    tx = await session.get(Transaction, transaction_id)
+    if tx is None or tx.portfolio_id != portfolio.id:
+        raise ValueError("Transaction not found for this portfolio")
+
+    symbol = tx.symbol
+    await session.delete(tx)
+    await session.commit()
+
+    await recompute_snapshots_for_symbol(symbol, session)
+    await enqueue_portfolio_event(
+        session,
+        "portfolio.transaction.deleted",
+        {"transaction_id": transaction_id, "symbol": symbol},
+    )
+    await session.commit()
+
+
 async def list_accounts(session: AsyncSession) -> list[PortfolioAccount]:
     portfolio = await ensure_portfolio(session)
     result = await session.execute(
@@ -378,6 +397,7 @@ __all__ = [
     "list_transactions",
     "create_transaction",
     "update_transaction",
+    "delete_transaction",
     "list_accounts",
     "create_account",
     "recompute_snapshots_for_symbol",

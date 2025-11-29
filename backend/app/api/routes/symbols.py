@@ -17,6 +17,7 @@ from app.db.session import get_db
 from app.ingest.client import IngestServiceError, trigger_price_ingest
 from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
 from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
+from app.providers.ibkr_service import IBKRServiceError, search_symbols as search_ibkr_service
 from app.schemas.snapshots import (
     DailyPortfolioSnapshotSchema,
     TimelinePricePointSchema,
@@ -37,6 +38,15 @@ async def search_symbols(
     client=Depends(get_alpha_vantage_client),
 ) -> list[SymbolSearchResultSchema]:
     logger.info(f"Searching symbols with query: {query}")
+    settings = get_settings()
+    if settings.ibkr_service_url:
+        try:
+            results = await search_ibkr_service(query, base_url=settings.ibkr_service_url)
+            logger.info("Returning %d IBKR matches for query: %s", len(results), query)
+            return results
+        except IBKRServiceError as exc:
+            logger.error(f"IBKR search failed: {exc}")
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
     try:
         payload = await client.symbol_search(query)
         logger.debug(f"Raw AlphaVantage response: {payload}")
@@ -78,10 +88,7 @@ async def search_symbols(
                 continue
                 
         logger.info(f"Returning {len(results)} processed matches for query: {query}")
-        # Validate the entire response
-        response_data = [r.dict() for r in results]
-        logger.debug(f"Final response data: {response_data}")
-        return response_data
+        return results
         
     except AlphaVantageError as exc:
         logger.error(f"AlphaVantage search failed: {exc}")

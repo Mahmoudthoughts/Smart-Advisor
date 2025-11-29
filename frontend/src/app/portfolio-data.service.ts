@@ -199,6 +199,10 @@ export class PortfolioDataService {
     return this.http.put<PortfolioTransaction>(`${this.baseUrl}/portfolio/transactions/${id}`, payload);
   }
 
+  deleteTransaction(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/portfolio/transactions/${id}`);
+  }
+
   getAccounts(): Observable<PortfolioAccount[]> {
     return this.http.get<PortfolioAccount[]>(`${this.baseUrl}/accounts`);
   }

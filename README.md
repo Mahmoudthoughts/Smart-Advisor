@@ -23,6 +23,7 @@ Services exposed locally:
 - **Backend API:** http://localhost:8000 (FastAPI with `/auth/register`, `/auth/login`, `/health`)
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
 - **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
+- **IBKR Bridge:** http://localhost:8110 (FastAPI `/prices`, `/symbols/search` — talks to your IB Gateway/TWS session)
 - **Portfolio Service:** http://localhost:8200 (FastAPI `/health`, `/portfolio/*` proxied internally by the backend)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
 
@@ -58,7 +59,7 @@ export INGEST_SERVICE_URL=http://localhost:8100
 uvicorn services.portfolio.app.main:app --reload --port 8200
 ```
 
-The backend now proxies its `/portfolio` and `/accounts` endpoints to this service using the `PORTFOLIO_SERVICE_URL` and `PORTFOLIO_SERVICE_TOKEN` configuration keys.
+The backend now proxies its `/portfolio` and `/accounts` endpoints to this service using the `PORTFOLIO_SERVICE_URL` and `PORTFOLIO_SERVICE_TOKEN` configuration keys. Set `IBKR_SERVICE_URL` (Compose defaults to `http://ibkr:8110`) so `/symbols/search` and watchlist actions fetch data through the IBKR bridge instead of Alpha Vantage.
 
 ## Ingest service
 
@@ -127,6 +128,9 @@ Downstream processors can either read directly from these tables or plug into th
 - Decision log
   - Log per-investor planned moves, filter by symbol or status, and resolve items with outcome prices and notes.
   - Files: `frontend/src/app/decisions/decisions.component.{html,ts,scss}`.
+- Transactions ledger
+  - Inline editing plus delete actions keep the manual trade history clean; ledger recomputes portfolio metrics after each change.
+  - Files: `frontend/src/app/transactions/transactions.component.{html,ts,scss}`, backend proxy `backend/app/api/routes/portfolio.py`, portfolio service routes/services.
 - Administration dashboard
   - Manage Smart Advisor users (create, promote to admin, reset passwords) and configure stock list data providers with API keys/default selection.
   - Files: `frontend/src/app/admin/admin.component.{html,ts,scss}`, `frontend/src/app/admin.service.ts`, backend admin routes in `backend/smart_advisor/api/admin.py`.
