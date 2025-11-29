@@ -1,4 +1,4 @@
-"""Configuration helpers for the ingest service."""
+﻿"""Configuration helpers for the ingest service."""
 
 from __future__ import annotations
 
@@ -24,6 +24,7 @@ class IngestSettings(BaseSettings):
     ibkr_duration_days: int = Field(365, description="Historical lookback days")
     ibkr_bar_size: str = Field("1 day", description="IB bar size setting")
     ibkr_what_to_show: str = Field("TRADES", description="TRADES/ADJUSTED_LAST/etc")
+    ibkr_service_url: str = Field("http://ibkr:8110", description="IBKR microservice base URL")
 
     model_config = SettingsConfigDict(env_file=".env")
 

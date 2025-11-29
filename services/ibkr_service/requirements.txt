@@ -1,0 +1,4 @@
+fastapi
+uvicorn[standard]
+ib_insync
+pydantic-settings

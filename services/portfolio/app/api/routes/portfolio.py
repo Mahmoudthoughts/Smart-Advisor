@@ -1,4 +1,4 @@
-"""Portfolio watchlist, transactions, and accounts endpoints."""
+﻿"""Portfolio watchlist, transactions, and accounts endpoints."""
 
 from __future__ import annotations
 
@@ -214,9 +214,10 @@ async def post_account(
 
 
 @router.post("/snapshots/{symbol}/recompute")
-async def post_recompute_snapshots(symbol: str, session: AsyncSession = Depends(get_db_session)) -> dict[str, int]:
+async def post_recompute_snapshots(symbol: str, session: AsyncSession = Depends(get_db_session)) -> dict[str, str | int]:
     snapshots = await portfolio_service.recompute_snapshots_for_symbol(symbol, session)
     return {"symbol": symbol.strip().upper(), "snapshots_rebuilt": len(snapshots)}
 
 
 __all__ = ["router"]
+

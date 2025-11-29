@@ -9,7 +9,15 @@ CREATE TABLE IF NOT EXISTS users (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
+CREATE TABLE portfolio_outbox (
+    id SERIAL PRIMARY KEY,
+    event_type VARCHAR NOT NULL,
+    payload JSONB NOT NULL,
+    status VARCHAR NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    available_at TIMESTAMPTZ,
+    processed_at TIMESTAMPTZ
+  );
 CREATE TABLE IF NOT EXISTS auth_tokens (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+﻿FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -17,4 +17,4 @@ COPY backend/app ./app
 
 ENV PYTHONPATH=/app
 
-CMD ["uvicorn", "services.ingest.main:app", "--host", "0.0.0.0", "--port", "8100"]
+CMD ["uvicorn", "services.ingest.main:app", "--host", "0.0.0.0", "--port", "8100", "--loop", "asyncio"]

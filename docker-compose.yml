@@ -60,14 +60,37 @@ services:
       ALPHAVANTAGE_REQUESTS_PER_MINUTE: ${ALPHAVANTAGE_REQUESTS_PER_MINUTE:-5}
       BASE_CURRENCY: ${BASE_CURRENCY:-USD}
       PRICE_PROVIDER: ${PRICE_PROVIDER:-ibkr}
-      IBKR_HOST: ${IBKR_HOST:-host.docker.internal}
+      IBKR_HOST: ${IBKR_HOST:-192.168.1.193}
       IBKR_PORT: ${IBKR_PORT:-4001}
       IBKR_CLIENT_ID: ${IBKR_CLIENT_ID:-1}
       IBKR_MARKET_DATA_TYPE: ${IBKR_MARKET_DATA_TYPE:-3}
+      IBKR_SERVICE_URL: ${IBKR_SERVICE_URL:-http://ibkr:8110}
+    depends_on:
+      - db
+      - ibkr
+    ports:
+      - '8100:8100'
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  ibkr:
+    build:
+      context: .
+      dockerfile: services/ibkr_service/Dockerfile
+    environment:
+      IBKR_HOST: ${IBKR_HOST:-192.168.1.193}
+      IBKR_PORT: ${IBKR_PORT:-4001}
+      IBKR_CLIENT_ID: ${IBKR_CLIENT_ID:-1}
+      IBKR_MARKET_DATA_TYPE: ${IBKR_MARKET_DATA_TYPE:-3}
+      IBKR_DURATION_DAYS: ${IBKR_DURATION_DAYS:-365}
+      IBKR_BAR_SIZE: ${IBKR_BAR_SIZE:-"1 day"}
+      IBKR_WHAT_TO_SHOW: ${IBKR_WHAT_TO_SHOW:-TRADES}
+      IBKR_USE_RTH: ${IBKR_USE_RTH:-true}
+      IBKR_BASE_CURRENCY: ${IBKR_BASE_CURRENCY:-USD}
     depends_on:
       - db
     ports:
-      - '8100:8100'
+      - '8110:8110'
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
