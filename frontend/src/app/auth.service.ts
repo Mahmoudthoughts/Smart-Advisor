@@ -53,6 +53,9 @@ export class AuthService {
   logout(): void {
     this.userState.set(null);
     this.persistState(null);
+    try {
+      setUserTelemetry(null);
+    } catch {}
   }
 
   private persistAuth(response: AuthResponse): void {

@@ -26,6 +26,7 @@ class Portfolio(Base):
     __tablename__ = "portfolio"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[str | None] = mapped_column(String(64), index=True, nullable=True)
     base_currency: Mapped[str] = mapped_column(String(3), default="USD")
     timezone: Mapped[str] = mapped_column(String(64), default="Asia/Dubai")
 

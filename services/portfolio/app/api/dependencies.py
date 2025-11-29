@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
+from dataclasses import dataclass
+
 from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,4 +28,15 @@ def verify_internal_token(x_internal_token: str | None = Header(default=None)) -
 
 InternalAuth = Depends(verify_internal_token)
 
-__all__ = ["get_db_session", "InternalAuth"]
+@dataclass
+class RequestContext:
+    user_id: str
+
+
+def get_request_context(x_user_id: str | None = Header(default=None)) -> RequestContext:
+    if not x_user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing user context")
+    return RequestContext(user_id=x_user_id)
+
+
+__all__ = ["get_db_session", "InternalAuth", "RequestContext", "get_request_context"]

@@ -41,6 +41,7 @@ Backend Conventions
 - Auth endpoints under `/auth`: `POST /auth/register`, `POST /auth/login`. See `backend/smart_advisor/api/auth.py` for token generation.
 - DB sessions via async dependencies (`Depends(get_db)` or legacy `.get_session`).
 - Migrations under `backend/app/migrations`.
+- Portfolio data is user-scoped: attach `Depends(get_current_user)` to routes touching watchlists/transactions/timelines and pass `str(current_user.id)` into `app/services/portfolio` helpers so the `X-User-Id` header is forwarded downstream.
 - Symbol search (`GET /symbols/search`) uses the IBKR bridge (`services/ibkr_service`) whenever `IBKR_SERVICE_URL` is configured so watchlist search/add flows share the same provider as refresh.
  - Ingest flow:
    - All price ingests are routed via the ingest microservice (no in-process fallback).
@@ -110,5 +111,6 @@ Notes for Agents
  - Ingest-related env vars to keep in sync:
    - Backend: `INGEST_BASE_URL`, `IBKR_SERVICE_URL`.
    - Ingest: `DATABASE_URL`, `ALPHAVANTAGE_API_KEY`, `ALPHAVANTAGE_REQUESTS_PER_MINUTE`, `BASE_CURRENCY`, OTEL envs.
+- Portfolio service calls must include both `X-Internal-Token` (when configured) and `X-User-Id`; reuse the helpers under `app/services/portfolio.py` rather than issuing ad-hoc httpx requests.
 
 This document applies to all subdirectories unless overridden by a deeper AGENTS.md.

@@ -20,7 +20,7 @@ from ...schemas import (
 )
 from ...services import portfolio as portfolio_service
 from ...services.ingest_client import ingest_prices
-from ..dependencies import InternalAuth, get_db_session
+from ..dependencies import InternalAuth, RequestContext, get_db_session, get_request_context
 
 router = APIRouter(dependencies=[InternalAuth])
 
@@ -51,8 +51,11 @@ def _serialize_transaction(tx: Transaction) -> TransactionSchema:
 
 
 @router.get("/watchlist", response_model=list[WatchlistSymbolSchema])
-async def get_watchlist(session: AsyncSession = Depends(get_db_session)) -> list[WatchlistSymbolSchema]:
-    symbols = await portfolio_service.list_watchlist(session)
+async def get_watchlist(
+    session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
+) -> list[WatchlistSymbolSchema]:
+    symbols = await portfolio_service.list_watchlist(session, owner_id=context.user_id)
     response: list[WatchlistSymbolSchema] = []
     for item in symbols:
         latest_stmt: Select = (
@@ -66,7 +69,10 @@ async def get_watchlist(session: AsyncSession = Depends(get_db_session)) -> list
         previous = latest_rows[1] if len(latest_rows) > 1 else None
         snapshot_stmt: Select = (
             select(DailyPortfolioSnapshot)
-            .where(DailyPortfolioSnapshot.symbol == item.symbol)
+            .where(
+                DailyPortfolioSnapshot.symbol == item.symbol,
+                DailyPortfolioSnapshot.portfolio_id == item.portfolio_id,
+            )
             .order_by(DailyPortfolioSnapshot.date.desc())
             .limit(1)
         )
@@ -113,9 +119,12 @@ async def get_watchlist(session: AsyncSession = Depends(get_db_session)) -> list
 async def post_watchlist(
     payload: WatchlistCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
 ) -> WatchlistSymbolSchema:
     try:
-        record = await portfolio_service.add_watchlist_symbol(payload.symbol, session, display_name=payload.name)
+        record = await portfolio_service.add_watchlist_symbol(
+            payload.symbol, session, owner_id=context.user_id, display_name=payload.name
+        )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -124,7 +133,7 @@ async def post_watchlist(
     except Exception as exc:  # pragma: no cover - defensive
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Unable to fetch market data") from exc
 
-    await portfolio_service.recompute_snapshots_for_symbol(record.symbol, session)
+    await portfolio_service.recompute_snapshots_for_symbol(record.symbol, session, owner_id=context.user_id)
 
     latest_stmt: Select = (
         select(DailyBar).where(DailyBar.symbol == record.symbol).order_by(DailyBar.date.desc()).limit(1)
@@ -147,8 +156,11 @@ async def post_watchlist(
 
 
 @router.get("/transactions", response_model=list[TransactionSchema])
-async def get_transactions(session: AsyncSession = Depends(get_db_session)) -> list[TransactionSchema]:
-    transactions = await portfolio_service.list_transactions(session)
+async def get_transactions(
+    session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
+) -> list[TransactionSchema]:
+    transactions = await portfolio_service.list_transactions(session, owner_id=context.user_id)
     return [_serialize_transaction(tx) for tx in transactions]
 
 
@@ -156,9 +168,10 @@ async def get_transactions(session: AsyncSession = Depends(get_db_session)) -> l
 async def post_transaction(
     payload: TransactionCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
 ) -> TransactionSchema:
     try:
-        tx = await portfolio_service.create_transaction(payload, session)
+        tx = await portfolio_service.create_transaction(payload, session, owner_id=context.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _serialize_transaction(tx)
@@ -169,9 +182,10 @@ async def put_transaction(
     transaction_id: int,
     payload: TransactionUpdateRequest,
     session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
 ) -> TransactionSchema:
     try:
-        tx = await portfolio_service.update_transaction(transaction_id, payload, session)
+        tx = await portfolio_service.update_transaction(transaction_id, payload, session, owner_id=context.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return _serialize_transaction(tx)
@@ -181,17 +195,21 @@ async def put_transaction(
 async def delete_transaction(
     transaction_id: int,
     session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
 ) -> Response:
     try:
-        await portfolio_service.delete_transaction(transaction_id, session)
+        await portfolio_service.delete_transaction(transaction_id, session, owner_id=context.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/accounts", response_model=list[PortfolioAccountSchema])
-async def get_accounts(session: AsyncSession = Depends(get_db_session)) -> list[PortfolioAccountSchema]:
-    records = await portfolio_service.list_accounts(session)
+async def get_accounts(
+    session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
+) -> list[PortfolioAccountSchema]:
+    records = await portfolio_service.list_accounts(session, owner_id=context.user_id)
     return [
         PortfolioAccountSchema(
             id=record.id,
@@ -210,9 +228,10 @@ async def get_accounts(session: AsyncSession = Depends(get_db_session)) -> list[
 async def post_account(
     payload: PortfolioAccountCreateRequest,
     session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
 ) -> PortfolioAccountSchema:
     try:
-        record = await portfolio_service.create_account(payload, session)
+        record = await portfolio_service.create_account(payload, session, owner_id=context.user_id)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
     return PortfolioAccountSchema(
@@ -227,8 +246,12 @@ async def post_account(
 
 
 @router.post("/snapshots/{symbol}/recompute")
-async def post_recompute_snapshots(symbol: str, session: AsyncSession = Depends(get_db_session)) -> dict[str, str | int]:
-    snapshots = await portfolio_service.recompute_snapshots_for_symbol(symbol, session)
+async def post_recompute_snapshots(
+    symbol: str,
+    session: AsyncSession = Depends(get_db_session),
+    context: RequestContext = Depends(get_request_context),
+) -> dict[str, str | int]:
+    snapshots = await portfolio_service.recompute_snapshots_for_symbol(symbol, session, owner_id=context.user_id)
     return {"symbol": symbol.strip().upper(), "snapshots_rebuilt": len(snapshots)}
 
 

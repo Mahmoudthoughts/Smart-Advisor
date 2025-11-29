@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import get_settings
 from app.db.session import get_db
 from app.ingest.client import IngestServiceError, trigger_price_ingest
-from app.models import DailyBar, DailyPortfolioSnapshot, Transaction
+from app.models import DailyBar, DailyPortfolioSnapshot, Portfolio, Transaction
 from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from app.providers.ibkr_service import IBKRServiceError, search_symbols as search_ibkr_service
 from app.schemas.snapshots import (
@@ -27,6 +27,8 @@ from app.schemas.snapshots import (
 )
 from app.schemas.symbols import SymbolRefreshResponse, SymbolSearchResultSchema
 from app.services import portfolio as portfolio_client
+from app.api.dependencies.auth import get_current_user
+from smart_advisor.api.models import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -98,16 +100,29 @@ async def search_symbols(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error")
 
 
+async def _get_portfolio_id(session: AsyncSession, owner_id: str) -> int | None:
+    stmt: Select = select(Portfolio.id).where(Portfolio.owner_id == owner_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
 @router.get("/{symbol}/timeline", response_model=TimelineResponse)
 async def get_symbol_timeline(
     symbol: str,
     from_date: Optional[date] = Query(default=None, alias="from"),
     to_date: Optional[date] = Query(default=None, alias="to"),
     session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> TimelineResponse:
     logger.info(f"Getting timeline for {symbol} from {from_date} to {to_date}")
     normalized = symbol.strip().upper()
-    stmt: Select = select(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == normalized)
+    owner_id = str(current_user.id)
+    portfolio_id = await _get_portfolio_id(session, owner_id)
+    if portfolio_id is None:
+        return TimelineResponse(symbol=normalized, snapshots=[], prices=[], transactions=[])
+    stmt: Select = select(DailyPortfolioSnapshot).where(
+        DailyPortfolioSnapshot.symbol == normalized, DailyPortfolioSnapshot.portfolio_id == portfolio_id
+    )
     if from_date:
         stmt = stmt.where(DailyPortfolioSnapshot.date >= from_date)
     if to_date:
@@ -145,7 +160,9 @@ async def get_symbol_timeline(
 
     settings = get_settings()
     tz = ZoneInfo(settings.timezone)
-    tx_stmt: Select = select(Transaction).where(Transaction.symbol == normalized)
+    tx_stmt: Select = select(Transaction).where(
+        Transaction.symbol == normalized, Transaction.portfolio_id == portfolio_id
+    )
     if from_date:
         start_dt = datetime.combine(from_date, time.min, tzinfo=tz)
         tx_stmt = tx_stmt.where(Transaction.datetime >= start_dt)
@@ -180,6 +197,7 @@ async def refresh_symbol(
     symbol: str,
     session: AsyncSession = Depends(get_db),
     client=Depends(get_alpha_vantage_client),
+    current_user: User = Depends(get_current_user),
 ) -> SymbolRefreshResponse:
     logger.info(f"Refreshing symbol: {symbol}")
     normalized = symbol.strip().upper()
@@ -204,7 +222,7 @@ async def refresh_symbol(
     except (AlphaVantageError, IngestServiceError) as exc:
         logger.error(f"Ingest refresh failed for {symbol}: {exc}")
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    response = await portfolio_client.recompute_snapshots(normalized)
+    response = await portfolio_client.recompute_snapshots(normalized, str(current_user.id))
     snapshots_rebuilt = response.get("snapshots_rebuilt", 0) if isinstance(response, dict) else 0
     logger.info(
         "Refreshed %s: ingested %s prices, rebuilt %s snapshots",
@@ -224,11 +242,16 @@ async def get_top_missed_days(
     symbol: str,
     limit: int = Query(default=5, ge=1, le=50),
     session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
 ) -> list[TopMissedDaySchema]:
     logger.info(f"Getting top {limit} missed days for {symbol}")
+    owner_id = str(current_user.id)
+    portfolio_id = await _get_portfolio_id(session, owner_id)
+    if portfolio_id is None:
+        return []
     stmt = (
         select(DailyPortfolioSnapshot)
-        .where(DailyPortfolioSnapshot.symbol == symbol)
+        .where(DailyPortfolioSnapshot.symbol == symbol, DailyPortfolioSnapshot.portfolio_id == portfolio_id)
         .order_by(DailyPortfolioSnapshot.day_opportunity_base.desc())
         .limit(limit)
     )
@@ -236,7 +259,7 @@ async def get_top_missed_days(
     rows = result.scalars().all()
     today_stmt = (
         select(DailyPortfolioSnapshot)
-        .where(DailyPortfolioSnapshot.symbol == symbol)
+        .where(DailyPortfolioSnapshot.symbol == symbol, DailyPortfolioSnapshot.portfolio_id == portfolio_id)
         .order_by(DailyPortfolioSnapshot.date.desc())
         .limit(1)
     )

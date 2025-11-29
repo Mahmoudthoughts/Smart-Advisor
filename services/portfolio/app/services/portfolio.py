@@ -29,13 +29,14 @@ from ..schemas import (
 from .snapshots import DailySnapshot, TransactionInput, compute_daily
 
 
-async def ensure_portfolio(session: AsyncSession) -> Portfolio:
-    result = await session.execute(select(Portfolio).limit(1))
+async def ensure_portfolio(session: AsyncSession, owner_id: str) -> Portfolio:
+    normalized = owner_id.strip()
+    result = await session.execute(select(Portfolio).where(Portfolio.owner_id == normalized))
     portfolio = result.scalars().first()
     if portfolio is not None:
         return portfolio
     settings = get_settings()
-    portfolio = Portfolio(base_currency=settings.base_currency, timezone=settings.timezone)
+    portfolio = Portfolio(owner_id=normalized, base_currency=settings.base_currency, timezone=settings.timezone)
     session.add(portfolio)
     await session.commit()
     await session.refresh(portfolio)
@@ -46,9 +47,10 @@ async def add_watchlist_symbol(
     symbol: str,
     session: AsyncSession,
     *,
+    owner_id: str,
     display_name: str | None = None,
 ) -> PortfolioSymbol:
-    portfolio = await ensure_portfolio(session)
+    portfolio = await ensure_portfolio(session, owner_id)
     normalized = symbol.strip().upper()
     if not normalized:
         raise ValueError("Symbol must not be empty")
@@ -82,16 +84,16 @@ async def add_watchlist_symbol(
     return record
 
 
-async def list_watchlist(session: AsyncSession) -> list[PortfolioSymbol]:
-    portfolio = await ensure_portfolio(session)
+async def list_watchlist(session: AsyncSession, *, owner_id: str) -> list[PortfolioSymbol]:
+    portfolio = await ensure_portfolio(session, owner_id)
     result = await session.execute(
         select(PortfolioSymbol).where(PortfolioSymbol.portfolio_id == portfolio.id).order_by(PortfolioSymbol.symbol)
     )
     return list(result.scalars().all())
 
 
-async def list_transactions(session: AsyncSession) -> list[Transaction]:
-    portfolio = await ensure_portfolio(session)
+async def list_transactions(session: AsyncSession, *, owner_id: str) -> list[Transaction]:
+    portfolio = await ensure_portfolio(session, owner_id)
     result = await session.execute(
         select(Transaction)
         .options(selectinload(Transaction.account))
@@ -132,9 +134,9 @@ async def _resolve_account(
     return account_record, resolved_name
 
 
-async def create_transaction(payload: TransactionCreateRequest, session: AsyncSession) -> Transaction:
-    portfolio = await ensure_portfolio(session)
-    await add_watchlist_symbol(payload.symbol, session)
+async def create_transaction(payload: TransactionCreateRequest, session: AsyncSession, *, owner_id: str) -> Transaction:
+    portfolio = await ensure_portfolio(session, owner_id)
+    await add_watchlist_symbol(payload.symbol, session, owner_id=owner_id)
 
     settings = get_settings()
     trade_dt = payload.trade_datetime
@@ -169,7 +171,7 @@ async def create_transaction(payload: TransactionCreateRequest, session: AsyncSe
     session.add(tx)
     await session.commit()
     await session.refresh(tx)
-    await recompute_snapshots_for_symbol(tx.symbol, session)
+    await recompute_snapshots_for_symbol(tx.symbol, session, owner_id=owner_id)
     await enqueue_portfolio_event(
         session,
         "portfolio.transaction.created",
@@ -183,14 +185,16 @@ async def update_transaction(
     transaction_id: int,
     payload: TransactionUpdateRequest,
     session: AsyncSession,
+    *,
+    owner_id: str,
 ) -> Transaction:
-    portfolio = await ensure_portfolio(session)
+    portfolio = await ensure_portfolio(session, owner_id)
     tx = await session.get(Transaction, transaction_id)
     if tx is None or tx.portfolio_id != portfolio.id:
         raise ValueError("Transaction not found for this portfolio")
 
     previous_symbol = tx.symbol
-    await add_watchlist_symbol(payload.symbol, session)
+    await add_watchlist_symbol(payload.symbol, session, owner_id=owner_id)
 
     settings = get_settings()
     trade_dt = payload.trade_datetime
@@ -224,8 +228,8 @@ async def update_transaction(
     await session.refresh(tx)
 
     if previous_symbol != tx.symbol:
-        await recompute_snapshots_for_symbol(previous_symbol, session)
-    await recompute_snapshots_for_symbol(tx.symbol, session)
+    await recompute_snapshots_for_symbol(previous_symbol, session, owner_id=owner_id)
+    await recompute_snapshots_for_symbol(tx.symbol, session, owner_id=owner_id)
     await enqueue_portfolio_event(
         session,
         "portfolio.transaction.updated",
@@ -235,8 +239,8 @@ async def update_transaction(
     return tx
 
 
-async def delete_transaction(transaction_id: int, session: AsyncSession) -> None:
-    portfolio = await ensure_portfolio(session)
+async def delete_transaction(transaction_id: int, session: AsyncSession, *, owner_id: str) -> None:
+    portfolio = await ensure_portfolio(session, owner_id)
     tx = await session.get(Transaction, transaction_id)
     if tx is None or tx.portfolio_id != portfolio.id:
         raise ValueError("Transaction not found for this portfolio")
@@ -245,7 +249,7 @@ async def delete_transaction(transaction_id: int, session: AsyncSession) -> None
     await session.delete(tx)
     await session.commit()
 
-    await recompute_snapshots_for_symbol(symbol, session)
+    await recompute_snapshots_for_symbol(symbol, session, owner_id=owner_id)
     await enqueue_portfolio_event(
         session,
         "portfolio.transaction.deleted",
@@ -254,8 +258,8 @@ async def delete_transaction(transaction_id: int, session: AsyncSession) -> None
     await session.commit()
 
 
-async def list_accounts(session: AsyncSession) -> list[PortfolioAccount]:
-    portfolio = await ensure_portfolio(session)
+async def list_accounts(session: AsyncSession, *, owner_id: str) -> list[PortfolioAccount]:
+    portfolio = await ensure_portfolio(session, owner_id)
     result = await session.execute(
         select(PortfolioAccount)
         .where(PortfolioAccount.portfolio_id == portfolio.id)
@@ -267,8 +271,10 @@ async def list_accounts(session: AsyncSession) -> list[PortfolioAccount]:
 async def create_account(
     payload: PortfolioAccountCreateRequest,
     session: AsyncSession,
+    *,
+    owner_id: str,
 ) -> PortfolioAccount:
-    portfolio = await ensure_portfolio(session)
+    portfolio = await ensure_portfolio(session, owner_id)
     name = payload.name.strip()
     if not name:
         raise ValueError("Account name must not be empty")
@@ -309,9 +315,9 @@ async def create_account(
 
 
 async def recompute_snapshots_for_symbol(
-    symbol: str, session: AsyncSession
+    symbol: str, session: AsyncSession, *, owner_id: str
 ) -> list[DailySnapshot]:
-    portfolio = await ensure_portfolio(session)
+    portfolio = await ensure_portfolio(session, owner_id)
     normalized = symbol.strip().upper()
     price_rows = (
         await session.execute(
@@ -357,11 +363,15 @@ async def recompute_snapshots_for_symbol(
     )
 
     await session.execute(
-        delete(DailyPortfolioSnapshot).where(DailyPortfolioSnapshot.symbol == normalized)
+        delete(DailyPortfolioSnapshot).where(
+            DailyPortfolioSnapshot.symbol == normalized,
+            DailyPortfolioSnapshot.portfolio_id == portfolio.id,
+        )
     )
     for snap in snapshots:
         session.add(
             DailyPortfolioSnapshot(
+                portfolio_id=portfolio.id,
                 symbol=snap.symbol,
                 date=snap.date,
                 shares_open=snap.shares_open,

@@ -25,9 +25,11 @@ def upgrade() -> None:
         op.create_table(
             "portfolio",
             sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("owner_id", sa.String(length=64), nullable=True),
             sa.Column("base_currency", sa.String(length=3), nullable=False, server_default="USD"),
             sa.Column("timezone", sa.String(length=64), nullable=False, server_default="Asia/Dubai"),
         )
+        op.create_index("ix_portfolio_owner_id", "portfolio", ["owner_id"], unique=True)
 
     if not _has_table(bind, "portfolio_account"):
         op.create_table(
@@ -80,6 +82,7 @@ def upgrade() -> None:
         op.create_table(
             "daily_portfolio_snapshot",
             sa.Column("id", sa.Integer, primary_key=True),
+            sa.Column("portfolio_id", sa.Integer, sa.ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=True),
             sa.Column("symbol", sa.String(length=20), nullable=False),
             sa.Column("date", sa.Date, nullable=False),
             sa.Column("shares_open", sa.Numeric(18, 6), nullable=False),
@@ -91,8 +94,8 @@ def upgrade() -> None:
             sa.Column("day_opportunity_base", sa.Numeric(18, 6), nullable=False),
             sa.Column("peak_hypo_pl_to_date_base", sa.Numeric(18, 6), nullable=False),
             sa.Column("drawdown_from_peak_pct", sa.Numeric(10, 4), nullable=False),
-            sa.UniqueConstraint("symbol", "date", name="uq_snapshot_symbol_date"),
-            sa.Index("ix_snapshot_symbol_date", "symbol", "date"),
+            sa.UniqueConstraint("portfolio_id", "symbol", "date", name="uq_snapshot_symbol_date"),
+            sa.Index("ix_snapshot_portfolio_symbol_date", "portfolio_id", "symbol", "date"),
         )
 
     if not _has_table(bind, "portfolio_outbox"):
@@ -111,8 +114,10 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("portfolio_outbox")
+    op.drop_index("ix_snapshot_portfolio_symbol_date", table_name="daily_portfolio_snapshot")
     op.drop_table("daily_portfolio_snapshot")
     op.drop_table("transaction")
     op.drop_table("portfolio_symbol")
     op.drop_table("portfolio_account")
+    op.drop_index("ix_portfolio_owner_id", table_name="portfolio")
     op.drop_table("portfolio")

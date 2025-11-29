@@ -40,6 +40,7 @@ This document describes how the Smart Advisor services run together, how to oper
 - `PORTFOLIO_SERVICE_URL` – base URL for the portfolio service (Compose points to `http://portfolio:8200/portfolio`).
 - `PORTFOLIO_SERVICE_TOKEN` – shared secret sent via `X-Internal-Token` when proxying to the portfolio service.
 - `IBKR_SERVICE_URL` – base URL for the IBKR bridge (`http://ibkr:8110` in Compose) used by `/symbols/search`.
+- `AUTHORIZATION` / `X-User-Id` headers – every application request now carries a bearer token; the backend uses it to resolve the current user and forwards their ID to the portfolio service via `X-User-Id` so each account sees only its own trades.
 - Telemetry (optional):
   - `TELEMETRY_ENABLED`: `true|false`
   - `TELEMETRY_SERVICE_NAME`: `smart-advisor`
@@ -50,6 +51,7 @@ This document describes how the Smart Advisor services run together, how to oper
 - `DATABASE_URL` – async SQLAlchemy DSN pointed at the shared Postgres database.
 - `INGEST_SERVICE_URL` – ingest base URL used when watchlist changes require price history.
 - `INTERNAL_AUTH_TOKEN` – optional shared secret that must match the backend `PORTFOLIO_SERVICE_TOKEN` value.
+- `X-User-Id` header – required on all proxied calls; identifies the requesting user’s portfolio.
 - Telemetry:
   - `TELEMETRY_ENABLED`
   - `TELEMETRY_SERVICE_NAME` (defaults to `portfolio-service`).
@@ -83,6 +85,7 @@ This document describes how the Smart Advisor services run together, how to oper
   - `POST /portfolio/watchlist` – backend proxies to the portfolio service which, after persisting the symbol, calls `POST {INGEST_SERVICE_URL}/jobs/prices?run_sync=true`.
   - `POST /symbols/{symbol}/refresh` – refresh endpoint calls the same ingest job synchronously.
 - After ingest completes, the portfolio service recomputes snapshots and returns counts via the backend proxy.
+- Requests hitting `/portfolio/*`, `/accounts/*`, and `/symbols/*` (timeline/refresh/missed-days) must include a valid bearer token; the backend uses it to look up the current user and forwards that identity via `X-User-Id` when calling the portfolio service so data stays tenant-scoped.
 - Health proxy:
   - `GET /ingest/health` → backend calls `GET {INGEST_BASE_URL}/health` and returns `{ status: ok, upstream: ... }`, or `{ status: disabled }` if not configured.
 

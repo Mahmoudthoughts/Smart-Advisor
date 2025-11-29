@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import Date, Float, Index, Numeric, String, UniqueConstraint
+from sqlalchemy import Date, Float, ForeignKey, Index, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db.base import Base
@@ -30,11 +30,12 @@ class DailyBar(Base):
 class DailyPortfolioSnapshot(Base):
     __tablename__ = "daily_portfolio_snapshot"
     __table_args__ = (
-        UniqueConstraint("symbol", "date", name="uq_snapshot_symbol_date"),
-        Index("ix_snapshot_symbol_date", "symbol", "date"),
+        UniqueConstraint("portfolio_id", "symbol", "date", name="uq_snapshot_symbol_date"),
+        Index("ix_snapshot_symbol_date", "portfolio_id", "symbol", "date"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    portfolio_id: Mapped[int | None] = mapped_column(ForeignKey("portfolio.id", ondelete="CASCADE"), nullable=True)
     symbol: Mapped[str] = mapped_column(String(20))
     date: Mapped[date] = mapped_column(Date)
     shares_open: Mapped[float] = mapped_column(Numeric(18, 6))

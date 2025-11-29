@@ -49,6 +49,7 @@ Compose wires the following environment variables (override as needed):
 - `DATABASE_URL` — Async SQLAlchemy URL pointing at the shared PostgreSQL instance.
 - `INGEST_SERVICE_URL` — Base URL for the ingest service so watchlist additions can request historical prices.
 - `INTERNAL_AUTH_TOKEN` — Optional shared secret the backend must supply via the `X-Internal-Token` header.
+- `X-User-Id` header — required on every request; identifies the authenticated user so the service can map calls to the correct portfolio.
 - `TELEMETRY_*` — Mirrors the backend configuration to enable OTLP tracing/logging/metrics.
 
 To run locally:
@@ -59,7 +60,7 @@ export INGEST_SERVICE_URL=http://localhost:8100
 uvicorn services.portfolio.app.main:app --reload --port 8200
 ```
 
-The backend now proxies its `/portfolio` and `/accounts` endpoints to this service using the `PORTFOLIO_SERVICE_URL` and `PORTFOLIO_SERVICE_TOKEN` configuration keys. Set `IBKR_SERVICE_URL` (Compose defaults to `http://ibkr:8110`) so `/symbols/search` and watchlist actions fetch data through the IBKR bridge instead of Alpha Vantage.
+The backend now proxies its `/portfolio` and `/accounts` endpoints to this service using the `PORTFOLIO_SERVICE_URL` and `PORTFOLIO_SERVICE_TOKEN` configuration keys. Set `IBKR_SERVICE_URL` (Compose defaults to `http://ibkr:8110`) so `/symbols/search` and watchlist actions fetch data through the IBKR bridge instead of Alpha Vantage. Every proxied call includes a bearer token plus `X-User-Id`; requests missing that identity are rejected to keep each user’s trades isolated.
 
 ## Ingest service
 

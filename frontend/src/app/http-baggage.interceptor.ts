@@ -8,10 +8,24 @@ type TelemetryUser = {
   role?: string | null;
 };
 
+interface StoredAuthState {
+  token: string;
+  user: TelemetryUser & { name?: string };
+}
+
 function readUser(): TelemetryUser | null {
   try {
     const raw = localStorage.getItem('smart-advisor.userTelemetry');
     return raw ? (JSON.parse(raw) as TelemetryUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readAuthState(): StoredAuthState | null {
+  try {
+    const raw = localStorage.getItem('smart-advisor-auth');
+    return raw ? (JSON.parse(raw) as StoredAuthState) : null;
   } catch {
     return null;
   }
@@ -33,6 +47,11 @@ function buildBaggage(user: TelemetryUser): string | null {
 }
 
 export const userBaggageInterceptor: HttpInterceptorFn = (req, next) => {
+  const headers: Record<string, string> = {};
+  const authState = readAuthState();
+  if (authState?.token) {
+    headers['Authorization'] = `Bearer ${authState.token}`;
+  }
   // Prefer live auth state; fallback to stored telemetry
   let user = readUser();
   try {
@@ -47,8 +66,11 @@ export const userBaggageInterceptor: HttpInterceptorFn = (req, next) => {
   if (user) {
     const baggage = buildBaggage(user);
     if (baggage) {
-      req = req.clone({ setHeaders: { baggage } });
+      headers['baggage'] = baggage;
     }
+  }
+  if (Object.keys(headers).length) {
+    req = req.clone({ setHeaders: headers });
   }
   return next(req);
 };
