@@ -228,7 +228,7 @@ async def update_transaction(
     await session.refresh(tx)
 
     if previous_symbol != tx.symbol:
-    await recompute_snapshots_for_symbol(previous_symbol, session, owner_id=owner_id)
+        await recompute_snapshots_for_symbol(previous_symbol, session, owner_id=owner_id)
     await recompute_snapshots_for_symbol(tx.symbol, session, owner_id=owner_id)
     await enqueue_portfolio_event(
         session,

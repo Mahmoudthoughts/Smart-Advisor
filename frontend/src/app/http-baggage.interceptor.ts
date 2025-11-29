@@ -68,6 +68,9 @@ export const userBaggageInterceptor: HttpInterceptorFn = (req, next) => {
     if (baggage) {
       headers['baggage'] = baggage;
     }
+    if (user.id !== undefined && user.id !== null) {
+      headers['X-User-Id'] = String(user.id);
+    }
   }
   if (Object.keys(headers).length) {
     req = req.clone({ setHeaders: headers });
