@@ -26,6 +26,7 @@ export class AppComponent {
   readonly user = this.auth.user;
   readonly allNavLinks = [
     { path: '/app/overview', label: 'Overview' },
+    { path: '/app/analysis', label: 'Analysis' },
     { path: '/app/stocks', label: 'My Stocks' },
     { path: '/app/transactions', label: 'Transactions' },
     { path: '/app/timeline', label: 'Timeline' },

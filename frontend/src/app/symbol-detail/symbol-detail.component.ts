@@ -57,7 +57,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   readonly chartOption = signal<EChartsOption>({
     tooltip: { trigger: 'axis' },
     legend: { data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'] },
-    grid: { left: 32, right: 24, top: 32, bottom: 48 },
+    grid: { left: 40, right: 24, top: 32, bottom: 48, containLabel: true },
     xAxis: { type: 'category', boundaryGap: false, data: [] },
     yAxis: [
       {
@@ -128,6 +128,13 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         this.snapshots.set(response.snapshots);
         this.prices.set(response.prices);
         this.transactions.set(response.transactions);
+        const firstTxDate = this.findFirstTransactionDate(response.transactions);
+        if (!this.fromDate() && firstTxDate) {
+          this.fromDate.set(firstTxDate);
+        }
+        if (!this.toDate()) {
+          this.toDate.set(this.formatDate(this.atMidnight(new Date())));
+        }
         this.updateChart();
         this.isLoading.set(false);
       },
@@ -218,6 +225,15 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
+  private findFirstTransactionDate(transactions: TimelineTransaction[]): string | null {
+    if (!transactions.length) {
+      return null;
+    }
+    return transactions
+      .map((tx) => tx.trade_datetime.split('T')[0])
+      .reduce((earliest, current) => (current < earliest ? current : earliest));
+  }
+
   refresh(): void {
     const ticker = this.symbol();
     if (!ticker) {
@@ -241,9 +257,14 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   }
 
   private updateChart(): void {
-    const snapshots = this.snapshots();
-    const prices = this.prices();
-    const transactions = this.transactions();
+    const rangeStart = this.fromDate();
+    const rangeEnd = this.toDate() || this.formatDate(this.atMidnight(new Date()));
+    const snapshots = this.snapshots().filter((snapshot) => this.isWithinRange(snapshot.date, rangeStart, rangeEnd));
+    const prices = this.prices().filter((price) => this.isWithinRange(price.date, rangeStart, rangeEnd));
+    const transactions = this.transactions().filter((tx) => {
+      const tradeDate = tx.trade_datetime.split('T')[0];
+      return this.isWithinRange(tradeDate, rangeStart, rangeEnd);
+    });
     if (!snapshots.length && !prices.length) {
       this.chartOption.update((option) => ({
         ...option,
@@ -357,7 +378,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'],
         formatter: legendFormatter
       },
-      grid: { left: 32, right: 24, top: 32, bottom: 48 },
+      grid: { left: 40, right: 24, top: 32, bottom: 48, containLabel: true },
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -442,5 +463,15 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         }
       ]
     });
+  }
+
+  private isWithinRange(date: string, start?: string | null, end?: string | null): boolean {
+    if (start && date < start) {
+      return false;
+    }
+    if (end && date > end) {
+      return false;
+    }
+    return true;
   }
 }
