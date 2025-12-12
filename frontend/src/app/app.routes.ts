@@ -18,6 +18,7 @@ import { TimelineComponent } from './timeline/timeline.component';
 import { TransactionsComponent } from './transactions/transactions.component';
 import { DecisionsComponent } from './decisions/decisions.component';
 import { AdminComponent } from './admin/admin.component';
+import { UnrealizedComponent } from './unrealized/unrealized.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -51,6 +52,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/transactions',
     component: TransactionsComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/unrealized',
+    component: UnrealizedComponent,
     canActivate: [authGuard]
   },
   {
