@@ -160,6 +160,7 @@ The `/backend/app` package now provides the Missed Opportunity Analyzer + Smart 
 - `app/indicators/compute.py` — Pandas-powered SMA/EMA/RSI/MACD/ATR/volume-multiple indicators with caching.
 - `app/rules/engine.py` — Boolean expression evaluation with cooldown tracking per rule.
 - `app/services/snapshots.py` — FIFO/LIFO lot builder and daily P&L metrics per §3–§4 of the spec.
+- `app/services/unrealized.py` — Unrealized gain/loss module with FIFO/LIFO/average cost aggregation, price-source abstraction, caching wrapper, and profit-target helper.
 - `app/api/routes/` — Endpoints for timelines, top missed days, signal definitions/events, sentiment series, forecast stub, simulator stub, and the new `/decisions` log for investor choices and outcomes.
 - `app/migrations/` — Alembic environment plus initial revision (see `app/migrations/versions/0001_initial.py` for SQL operations).
 
@@ -188,3 +189,54 @@ Tracing can be enabled without further code changes by exporting the following e
 When enabled the FastAPI router and SQLAlchemy ORM emit spans through the OTLP gRPC exporter, **and** the runtime forwards structured application logs plus CPU/memory metrics (via the System Metrics instrumentation) to the same collector endpoint. Make sure your collector exposes OTLP gRPC on `otel-collector:4317` (or override `TELEMETRY_OTLP_ENDPOINT`) so spans, logs, and metrics land in the same pipeline.
 
 The Angular frontend now boots with OpenTelemetry Web instrumentation as well. During local development (`ng serve`) it pushes document-load + fetch/XMLHttpRequest spans to `http://localhost:4318/v1/traces`; production builds (Docker) default to `http://otel-collector:4318/v1/traces`. Update the endpoints in `frontend/src/environments/` if your collector lives elsewhere, then rebuild the frontend image.
+
+## Unrealized gain and profit-target module
+
+`backend/app/services/unrealized.py` implements real + hypothetical lot tracking, unrealized P/L series generation, and profit-first target conversion with a swappable price provider.
+
+- Configure a price provider: plug in `CachingPriceSource` around any provider that implements `get_price_series()`/`get_latest_price()`. The included `InMemoryPriceSource` is useful for fixtures; wire your own adapter to Alpha Vantage/IBKR and surface `price_field` plus `non_trading_day_policy` (snap prev/next or skip) as needed.
+- Add lots:
+
+```python
+from decimal import Decimal
+from datetime import date
+from app.services.unrealized import LotStore, LotInput, LotType
+
+store = LotStore()
+store.add_lot(LotInput(lot_id="real-1", ticker="AAPL", buy_date=date(2024, 1, 2), shares=Decimal("10"), buy_price=Decimal("100"), type=LotType.REAL))
+store.add_lot(LotInput(lot_id="hypo-1", ticker="AAPL", buy_date=date(2024, 2, 1), shares=Decimal("5"), buy_price=Decimal("90"), type=LotType.HYPOTHETICAL))
+```
+
+- Generate a report (date range, last N trading days, or explicit dates):
+
+```python
+from app.services.unrealized import InMemoryPriceSource, SimulationRequest, simulate_unrealized_series
+
+prices = InMemoryPriceSource({"AAPL": {date(2024, 1, 2): {"close": "100"}, date(2024, 1, 3): {"close": "110"}}})
+series = simulate_unrealized_series(
+    prices,
+    store,
+    SimulationRequest(
+        ticker="AAPL",
+        last_n_trading_days=30,
+        cost_mode="FIFO",
+        price_field="close",
+        non_trading_day_policy="SNAP_PREV_TRADING_DAY",
+    ),
+)
+```
+
+- Select a chart point and derive the equivalent target price:
+
+```python
+from decimal import Decimal
+from app.services.unrealized import compute_target_from_point
+
+target = compute_target_from_point(store, "AAPL", Decimal("500"))
+```
+
+Fees/tax controls live on `SimulationRequest` (`buy_fee`, `sell_fee`, `tax_rate`) and are applied uniformly across the series. To run the module tests locally:
+
+```bash
+pytest backend/tests/test_unrealized.py
+```
