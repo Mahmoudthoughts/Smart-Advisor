@@ -4,7 +4,7 @@
       <h1>Portfolio Timeline</h1>
       <p>Track hypothetical liquidation, unrealized P&amp;L, and daily opportunities across your portfolio.</p>
     </div>
-    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()">
+    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()" novalidate>
       <label>
         Symbol
         <select [ngModel]="selectedSymbol()" (ngModelChange)="onSymbolChange($event)" name="symbol">
@@ -26,7 +26,7 @@
         To
         <input type="date" [ngModel]="toDate()" (ngModelChange)="onToChange($event)" name="to" />
       </label>
-      <button type="submit" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
+      <button type="button" (click)="loadTimeline()" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
     </form>
   </header>
 
