@@ -1,3 +1,4 @@
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -10,7 +11,10 @@ class Settings(BaseSettings):
     ibkr_bar_size: str = "1 day"
     ibkr_what_to_show: str = "TRADES"
     ibkr_use_rth: bool = True
-    base_currency: str = "USD"
+    base_currency: str = Field(
+        default="USD",
+        validation_alias=AliasChoices("IBKR_BASE_CURRENCY", "BASE_CURRENCY"),
+    )
     ibkr_timeout_seconds: int = 20
     ibkr_max_retries: int = 1
 
