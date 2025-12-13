@@ -11,9 +11,11 @@ from ib_insync import BarData, IB, Stock
 from pydantic import BaseModel
 
 from .settings import get_settings
+from .telemetry import setup_telemetry
 
 app = FastAPI()
 log = logging.getLogger("ibkr_service")
+setup_telemetry(app)
 
 
 class PriceRequest(BaseModel):
@@ -36,62 +38,76 @@ def _to_iso_date(raw: object) -> str:
 
 def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
     settings = get_settings()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    ib = IB()
     start = time.perf_counter()
-    try:
-        log.info(
-            "Connecting to IBKR host=%s port=%s clientId=%s",
-            settings.ibkr_host,
-            settings.ibkr_port,
-            settings.ibkr_client_id,
-        )
-        ib.connect(settings.ibkr_host, settings.ibkr_port, clientId=settings.ibkr_client_id, timeout=10)
-        log.info("Connected to IBKR in %.2fs", time.perf_counter() - start)
-        ib.reqMarketDataType(settings.ibkr_market_data_type)
-        contract = Stock(symbol, "SMART", settings.base_currency)
-        ib.qualifyContracts(contract)
-        bars_iter: Iterable[BarData] = ib.reqHistoricalData(
-            contract,
-            "",
-            f"{settings.ibkr_duration_days} D",
-            settings.ibkr_bar_size,
-            settings.ibkr_what_to_show,
-            settings.ibkr_use_rth,
-            1,
-            False,
-        )
-        currency = contract.currency or settings.base_currency
-        payload = [
-            {
-                "symbol": symbol,
-                "date": _to_iso_date(bar.date),
-                "adj_close": float(bar.close),
-                "volume": float(bar.volume),
-                "currency": currency,
-                "dividend_amount": 0.0,
-                "split_coefficient": 1.0,
-            }
-            for bar in bars_iter
-        ]
-        return payload, currency
-    except Exception as exc:  # noqa: BLE001
-        log.error(
-            "IBKR connection/fetch failed after %.2fs for %s: %s",
-            time.perf_counter() - start,
-            symbol,
-            exc,
-        )
-        raise
-    finally:
+    attempt = 0
+    while attempt < max(1, settings.ibkr_max_retries):
+        attempt += 1
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        ib = IB()
         try:
-            ib.disconnect()
+            log.info(
+                "Connecting to IBKR host=%s port=%s clientId=%s (attempt %s/%s)",
+                settings.ibkr_host,
+                settings.ibkr_port,
+                settings.ibkr_client_id,
+                attempt,
+                settings.ibkr_max_retries,
+            )
+            ib.connect(
+                settings.ibkr_host,
+                settings.ibkr_port,
+                clientId=settings.ibkr_client_id,
+                timeout=settings.ibkr_timeout_seconds,
+            )
+            log.info("Connected to IBKR in %.2fs", time.perf_counter() - start)
+            ib.reqMarketDataType(settings.ibkr_market_data_type)
+            contract = Stock(symbol, "SMART", settings.base_currency)
+            ib.qualifyContracts(contract)
+            bars_iter: Iterable[BarData] = ib.reqHistoricalData(
+                contract,
+                "",
+                f"{settings.ibkr_duration_days} D",
+                settings.ibkr_bar_size,
+                settings.ibkr_what_to_show,
+                settings.ibkr_use_rth,
+                1,
+                False,
+            )
+            currency = contract.currency or settings.base_currency
+            payload = [
+                {
+                    "symbol": symbol,
+                    "date": _to_iso_date(bar.date),
+                    "adj_close": float(bar.close),
+                    "volume": float(bar.volume),
+                    "currency": currency,
+                    "dividend_amount": 0.0,
+                    "split_coefficient": 1.0,
+                }
+                for bar in bars_iter
+            ]
+            return payload, currency
+        except Exception as exc:  # noqa: BLE001
+            log.error(
+                "IBKR connection/fetch failed after %.2fs for %s (attempt %s/%s): %s",
+                time.perf_counter() - start,
+                symbol,
+                attempt,
+                settings.ibkr_max_retries,
+                exc,
+            )
+            if attempt >= settings.ibkr_max_retries:
+                raise
+            time.sleep(1.5)
         finally:
             try:
-                loop.stop()
+                ib.disconnect()
             finally:
-                loop.close()
+                try:
+                    loop.stop()
+                finally:
+                    loop.close()
 
 
 async def _fetch_bars_async(symbol: str) -> tuple[list[dict], str]:

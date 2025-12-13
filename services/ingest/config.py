@@ -25,6 +25,7 @@ class IngestSettings(BaseSettings):
     ibkr_bar_size: str = Field("1 day", description="IB bar size setting")
     ibkr_what_to_show: str = Field("TRADES", description="TRADES/ADJUSTED_LAST/etc")
     ibkr_service_url: str = Field("http://ibkr:8110", description="IBKR microservice base URL")
+    ibkr_http_timeout_seconds: int = Field(30, description="HTTP timeout when calling IBKR microservice")
 
     model_config = SettingsConfigDict(env_file=".env")
 

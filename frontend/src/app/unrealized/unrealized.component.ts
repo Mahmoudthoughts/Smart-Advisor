@@ -179,6 +179,15 @@ export class UnrealizedComponent {
     this.generateReport();
   }
 
+  removeLot(id: string): void {
+    this.lots.update((current) => current.filter((lot) => lot.id !== id));
+    const remainingTickers = this.tickers();
+    if (!remainingTickers.includes(this.selectedTicker())) {
+      this.selectedTicker.set(remainingTickers[0] ?? '');
+    }
+    this.generateReport();
+  }
+
   generateReport(): void {
     const ticker = this.selectedTicker().trim().toUpperCase();
     const lots = this.activeLots();
@@ -225,9 +234,9 @@ export class UnrealizedComponent {
     return Number.isNaN(numeric) ? 0 : numeric;
   }
 
-  onChartClick(event: { name: string }): void {
+  onChartClick(event: any): void {
     const rows = this.reportRows();
-    const row = rows.find((r) => r.date === event.name);
+    const row = event?.name ? rows.find((r) => r.date === event.name) : undefined;
     if (!row) {
       return;
     }

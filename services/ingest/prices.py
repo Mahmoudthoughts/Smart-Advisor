@@ -103,7 +103,8 @@ async def _ingest_via_alpha_vantage(symbol: str, session: AsyncSession, client: 
 async def _ingest_via_ibkr_service(symbol: str, session: AsyncSession) -> int:
     settings = get_settings()
     ibkr_url = settings.ibkr_service_url.rstrip("/")
-    async with httpx.AsyncClient() as http:
+    timeout = httpx.Timeout(settings.ibkr_http_timeout_seconds)
+    async with httpx.AsyncClient(timeout=timeout) as http:
         resp = await http.post(f"{ibkr_url}/prices", json={"symbol": symbol})
         resp.raise_for_status()
         data = resp.json().get("bars", [])

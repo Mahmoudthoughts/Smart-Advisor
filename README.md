@@ -190,6 +190,14 @@ When enabled the FastAPI router and SQLAlchemy ORM emit spans through the OTLP g
 
 The Angular frontend now boots with OpenTelemetry Web instrumentation as well. During local development (`ng serve`) it pushes document-load + fetch/XMLHttpRequest spans to `http://localhost:4318/v1/traces`; production builds (Docker) default to `http://otel-collector:4318/v1/traces`. Update the endpoints in `frontend/src/environments/` if your collector lives elsewhere, then rebuild the frontend image.
 
+The IBKR bridge service (`services/ibkr_service`) now emits OTLP traces/logs/metrics when `TELEMETRY_ENABLED=true`. Configure it via:
+
+- `TELEMETRY_SERVICE_NAME` (default `ibkr-service`)
+- `TELEMETRY_OTLP_ENDPOINT` (default `http://otel-collector:4317`)
+- `TELEMETRY_OTLP_INSECURE` (default `true`)
+- `TELEMETRY_SAMPLE_RATIO` (default `1.0`)
+- Connection parameters are read directly from `IBKR_HOST`, `IBKR_PORT`, `IBKR_CLIENT_ID`, `IBKR_MARKET_DATA_TYPE`, `IBKR_DURATION_DAYS`, `IBKR_BAR_SIZE`, `IBKR_WHAT_TO_SHOW`, `IBKR_USE_RTH`, and `IBKR_BASE_CURRENCY` (no extra prefix).
+
 ## Unrealized gain and profit-target module
 
 `backend/app/services/unrealized.py` implements real + hypothetical lot tracking, unrealized P/L series generation, and profit-first target conversion with a swappable price provider.

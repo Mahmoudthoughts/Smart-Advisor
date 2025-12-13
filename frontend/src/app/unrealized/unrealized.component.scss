@@ -159,6 +159,12 @@ h3 {
   background: var(--gray-50);
 }
 
+.lot__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .lot__ticker {
   margin: 0;
   font-weight: 700;
@@ -182,6 +188,19 @@ h3 {
 .pill--ghost {
   background: var(--gray-100);
   color: var(--gray-600);
+}
+
+.icon-button {
+  border: 1px solid var(--gray-200);
+  background: transparent;
+  color: var(--gray-600);
+  border-radius: 8px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.icon-button:hover {
+  background: var(--gray-100);
 }
 
 .controls {

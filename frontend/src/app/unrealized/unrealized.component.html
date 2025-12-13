@@ -57,9 +57,12 @@
         <div class="lot" *ngFor="let lot of lots(); trackBy: trackByLotId">
           <div>
             <p class="lot__ticker">{{ lot.ticker }} · {{ lot.type.toLowerCase() }}</p>
-            <p class="lot__meta">{{ lot.shares | number : '1.2-2' }} shares @ {{ lot.buyPrice | number : '1.2-2' }} · {{ lot.buyDate | date }}</p>
+            <p class="lot__meta">{{ lot.shares | number : '1.2-2' }} shares &#64; {{ lot.buyPrice | number : '1.2-2' }} · {{ lot.buyDate | date }}</p>
           </div>
-          <span class="pill" [class.pill--ghost]="lot.type === 'HYPOTHETICAL'">{{ lot.type === 'REAL' ? 'Real' : 'Hypo' }}</span>
+          <div class="lot__actions">
+            <span class="pill" [class.pill--ghost]="lot.type === 'HYPOTHETICAL'">{{ lot.type === 'REAL' ? 'Real' : 'Hypo' }}</span>
+            <button type="button" class="icon-button" (click)="removeLot(lot.id)" aria-label="Delete lot">✕</button>
+          </div>
         </div>
       </div>
     </article>
@@ -116,7 +119,7 @@
       </div>
 
       <div class="chart-wrapper" *ngIf="reportRows().length">
-        <div ngx-echarts [options]="chartOption()" (chartClick)="onChartClick($event)" class="chart"></div>
+        <div echarts [options]="chartOption()" (chartClick)="onChartClick($event)" class="chart"></div>
       </div>
 
       <div class="target" *ngIf="target()">
