@@ -6,6 +6,24 @@ import { setUserTelemetry } from './telemetry-user';
 import { DebugService } from './debug.service';
 import { environment } from '../environments/environment';
 
+type NavItem = {
+  path: string;
+  label: string;
+  badge?: string;
+};
+
+type NavGroup = {
+  title?: string;
+  items: NavItem[];
+};
+
+type NavLink = {
+  path: string;
+  label: string;
+  children?: NavItem[];
+  groups?: NavGroup[];
+};
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -24,7 +42,7 @@ export class AppComponent {
   readonly brand = 'Smart Advisor';
   readonly isAuthenticated = this.auth.isAuthenticated;
   readonly user = this.auth.user;
-  readonly allNavLinks = [
+  readonly allNavLinks: NavLink[] = [
     { path: '/app/overview', label: 'Overview' },
     { path: '/app/analysis', label: 'Analysis' },
     { path: '/app/stocks', label: 'My Stocks' },
@@ -42,12 +60,20 @@ export class AppComponent {
     { path: '/app/admin', label: 'Admin' }
   ];
 
+  readonly openMegaMenu = signal<string | null>(null);
   readonly menuOpen = signal(false);
   readonly sidebarOpen = signal(false);
   readonly selectedPaths = signal<string[]>(this.loadSelections());
   readonly navLinks = computed(() =>
     this.allNavLinks.filter((link) => this.selectedPaths().includes(link.path))
   );
+  readonly openMegaLink = computed(() => {
+    const openPath = this.openMegaMenu();
+    if (!openPath) {
+      return null;
+    }
+    return this.navLinks().find((link) => link.path === openPath) ?? null;
+  });
   readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
   readonly currentYear = new Date().getFullYear();
   readonly isDarkTheme = signal(this.restoreTheme());
@@ -67,6 +93,7 @@ export class AppComponent {
     this.router.events.subscribe((evt) => {
       if (evt instanceof NavigationEnd) {
         this.sidebarOpen.set(false);
+        this.openMegaMenu.set(null);
       }
     });
 
@@ -146,6 +173,53 @@ export class AppComponent {
     event.stopPropagation();
   }
 
+  openMegaOnHover(link: NavLink): void {
+    if (this.hasChildren(link)) {
+      this.openMegaMenu.set(link.path);
+    }
+  }
+
+  onTabClick(event: MouseEvent, link: NavLink): void {
+    if (!this.hasChildren(link)) {
+      this.openMegaMenu.set(null);
+      return;
+    }
+    if (this.openMegaMenu() !== link.path) {
+      event.preventDefault();
+      this.openMegaMenu.set(link.path);
+    }
+  }
+
+  closeMegaMenu(): void {
+    this.openMegaMenu.set(null);
+  }
+
+  isMegaOpen(link: NavLink): boolean {
+    return this.openMegaMenu() === link.path;
+  }
+
+  hasChildren(link: NavLink): boolean {
+    return (link.children?.length ?? 0) > 0 || (link.groups?.length ?? 0) > 0;
+  }
+
+  getMegaGroups(link: NavLink): NavGroup[] {
+    if (link.groups?.length) {
+      return link.groups;
+    }
+    if (link.children?.length) {
+      return [{ items: link.children }];
+    }
+    return [];
+  }
+
+  megaColumns(link: NavLink): number {
+    const total = this.getMegaGroups(link).reduce(
+      (sum, group) => sum + group.items.length,
+      0
+    );
+    return total > 6 ? 2 : 1;
+  }
+
   toggleLink(path: string): void {
     this.selectedPaths.update((current) => {
       const next = current.includes(path)
@@ -167,14 +241,19 @@ export class AppComponent {
     return this.selectedPaths().includes(path);
   }
 
-  @HostListener('document:click')
-  closeMenu(): void {
+  @HostListener('document:click', ['$event'])
+  closeMenu(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target?.closest('.topbar-mega')) {
+      this.openMegaMenu.set(null);
+    }
     this.menuOpen.set(false);
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
     this.closeSidebar();
+    this.openMegaMenu.set(null);
   }
 
   private loadSelections(): string[] {

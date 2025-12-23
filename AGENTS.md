@@ -97,7 +97,7 @@ Common Tasks
 - Manage transactions: inline edit/delete live in `frontend/src/app/transactions/transactions.component.*`; backend proxies (`/portfolio/transactions/{id}`) to the portfolio service, which now implements `DELETE` alongside POST/PUT.
 
 File Map (UI features)
-- Header, sidebar, theme toggle: `frontend/src/app/app.component.{html,ts,scss}`
+ - Header, sidebar, theme toggle, top tabs + mega dropdown: `frontend/src/app/app.component.{html,ts,scss}`
 - Timeline presets: `frontend/src/app/timeline/timeline.component.{html,ts,scss}`
 - Symbol ranges + header: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`
 - Global styles + theme variables: `frontend/src/styles.scss`

@@ -21,6 +21,7 @@
   border-bottom: 1px solid var(--topbar-border);
   z-index: 10;
   min-height: var(--topbar-height);
+  overflow: visible;
 }
 
 .brand {
@@ -32,24 +33,146 @@
   color: var(--color-text);
 }
 
-.topbar nav {
+.topbar-mega {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  position: relative;
+}
+
+.primary-tabs {
   display: flex;
   align-items: center;
   gap: 1.5rem;
   position: relative;
+  padding: 0 0.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
 }
 
-.topbar nav a {
-  color: rgba(226, 232, 240, 0.9);
+.top-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.65rem 0.1rem;
+  color: var(--gray-500);
   text-decoration: none;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  transition: color 0.2s ease;
+  letter-spacing: 0.04em;
+  transition: color 0.15s ease;
 }
 
-.topbar nav a:hover,
-.topbar nav a.active {
-  color: #38bdf8;
+.top-tab::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.45rem;
+  height: 2px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.top-tab:hover {
+  color: var(--color-text);
+}
+
+.top-tab:hover::after {
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.top-tab.active {
+  color: var(--color-text);
+}
+
+.top-tab.active::after {
+  background: var(--color-primary);
+}
+
+.tab-caret {
+  position: absolute;
+  left: 50%;
+  bottom: -0.75rem;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid var(--color-surface);
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.top-tab.open .tab-caret {
+  opacity: 1;
+}
+
+.mega-panel {
+  position: absolute;
+  top: calc(100% + 0.55rem);
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: min(760px, 92vw);
+  background: var(--color-surface);
+  border: 1px solid var(--topbar-border);
+  border-radius: 16px;
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.12);
+  padding: 1.25rem;
+  z-index: 20;
+}
+
+.mega-panel-inner {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.mega-panel-inner.two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mega-group {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.mega-group h4 {
+  margin: 0 0 0.25rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--gray-500);
+}
+
+.mega-group a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  text-decoration: none;
+  color: var(--color-text);
+  font-weight: 600;
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.mega-group a:hover,
+.mega-group a.active {
+  background: rgba(148, 163, 184, 0.18);
+  color: var(--color-text);
+}
+
+.mega-group .badge {
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .session {
@@ -436,7 +559,7 @@ button[type='button']:hover {
     padding: 1rem var(--app-gutter);
   }
 
-  .topbar nav {
+  .primary-tabs {
     order: 3;
     width: 100%;
     flex-wrap: nowrap;
@@ -445,11 +568,11 @@ button[type='button']:hover {
     padding-bottom: 0.35rem;
   }
 
-  .topbar nav::-webkit-scrollbar {
+  .primary-tabs::-webkit-scrollbar {
     height: 4px;
   }
 
-  .topbar nav::-webkit-scrollbar-thumb {
+  .primary-tabs::-webkit-scrollbar-thumb {
     background: rgba(148, 163, 184, 0.4);
     border-radius: 999px;
   }
@@ -460,19 +583,30 @@ button[type='button']:hover {
     justify-content: space-between;
   }
 
-  .nav-menu {
-    width: clamp(240px, 82vw, 360px);
-    right: 0;
-    left: auto;
+  .topbar-mega {
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .mega-panel {
+    position: static;
+    transform: none;
+    margin-top: 0.75rem;
+    min-width: 100%;
+  }
+
+  .mega-panel-inner.two-columns {
+    grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 560px) {
-  .topbar nav {
+  .primary-tabs {
     gap: 0.75rem;
   }
 
-  .topbar nav a {
+  .top-tab {
     white-space: nowrap;
     font-size: 0.9rem;
   }

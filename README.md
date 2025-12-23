@@ -105,6 +105,11 @@ Downstream processors can either read directly from these tables or plug into th
   - Navigation customization (choose pages) now lives inside the drawer.
   - Files: `frontend/src/app/app.component.html|scss|ts`.
 
+- IBKR-style top navigation tabs
+  - Primary tabs render across the top bar with an active underline and subtle hover states.
+  - Mega dropdown panels open on hover/click for grouped links (2-column on wide screens, 1-column on mobile).
+  - Files: `frontend/src/app/app.component.html|scss|ts`.
+
 - Timeline date presets
   - Quick ranges: Week to date, Month to date, Last week, Last month, Last 3 months.
   - Presets update From/To and auto-refresh data (chart, table, transactions).

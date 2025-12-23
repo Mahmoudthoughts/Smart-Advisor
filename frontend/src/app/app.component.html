@@ -1,4 +1,4 @@
-<header class="topbar">
+<header class="topbar" (mouseleave)="closeMegaMenu()">
   <div class="left-actions">
     <button
       *ngIf="isAuthenticated()"
@@ -12,6 +12,44 @@
       Menu
     </button>
     <a class="brand" [routerLink]="brandTarget()">{{ brand }}</a>
+  </div>
+  <div class="topbar-mega" *ngIf="isAuthenticated()" (click)="keepMenuOpen($event)">
+    <nav class="primary-tabs" aria-label="Primary">
+      <a
+        *ngFor="let link of navLinks()"
+        class="top-tab"
+        [routerLink]="link.path"
+        routerLinkActive="active"
+        [routerLinkActiveOptions]="{ exact: false }"
+        [class.has-dropdown]="hasChildren(link)"
+        [class.open]="isMegaOpen(link)"
+        [attr.aria-haspopup]="hasChildren(link) ? 'true' : null"
+        [attr.aria-expanded]="hasChildren(link) ? isMegaOpen(link) : null"
+        (mouseenter)="openMegaOnHover(link)"
+        (focus)="openMegaOnHover(link)"
+        (click)="onTabClick($event, link)"
+      >
+        <span class="tab-label">{{ link.label }}</span>
+        <span class="tab-caret" *ngIf="hasChildren(link)" aria-hidden="true"></span>
+      </a>
+    </nav>
+    <section class="mega-panel" *ngIf="openMegaLink() as openLink">
+      <div class="mega-panel-inner" [class.two-columns]="megaColumns(openLink) === 2">
+        <div class="mega-group" *ngFor="let group of getMegaGroups(openLink)">
+          <h4 *ngIf="group.title">{{ group.title }}</h4>
+          <a
+            *ngFor="let item of group.items"
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: false }"
+            (click)="closeMegaMenu()"
+          >
+            <span>{{ item.label }}</span>
+            <span class="badge" *ngIf="item.badge">{{ item.badge }}</span>
+          </a>
+        </div>
+      </div>
+    </section>
   </div>
   <div class="right-actions">
     <button type="button" class="theme-toggle" (click)="toggleTheme()" [attr.aria-label]="isDarkTheme() ? 'Switch to light mode' : 'Switch to dark mode'">
