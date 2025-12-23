@@ -28,6 +28,8 @@ export interface MonteCarloResponse {
 }
 
 export interface MonteCarloRequestPayload {
+  readonly symbol?: string;
+  readonly lookback_days?: number;
   readonly starting_capital: number;
   readonly runs: number;
   readonly trades_per_run: number;

@@ -127,6 +127,10 @@ Downstream processors can either read directly from these tables or plug into th
   - Theming driven by CSS variables; dark mode applies `theme-dark` class to `<body>`.
   - Files: `frontend/src/styles.scss`, `frontend/src/app/app.component.{html,ts,scss}`.
 
+- Monte Carlo symbol-driven runs
+  - Optional stock code input seeds win/loss assumptions from recent price history.
+  - Files: `frontend/src/app/montecarlo/montecarlo.component.{html,ts,scss}`, `backend/app/api/routes/montecarlo.py`.
+
 - Global background
   - Default background switched to white for all pages; top bar now uses theme variables.
   - Files: `frontend/src/styles.scss`, `frontend/src/app/app.component.scss`.

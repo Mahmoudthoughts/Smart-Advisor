@@ -20,6 +20,7 @@ import {
 export class MontecarloComponent {
   private readonly monteCarloService = inject(MonteCarloService);
 
+  readonly symbol = signal<string>('');
   readonly startingCapital = signal<number>(5000);
   readonly tradesPerRun = signal<number>(500);
   readonly simulations = signal<number>(5000);
@@ -38,6 +39,7 @@ export class MontecarloComponent {
   readonly maxDrawdownsOption = signal<EChartsOption>(this.createHistogramOption('Max drawdowns', [], [], 'var(--danger-600)'));
 
   readonly requestPayload = computed<MonteCarloRequestPayload>(() => ({
+    symbol: this.normalizeSymbol(this.symbol()) || undefined,
     starting_capital: this.cleanNumber(this.startingCapital(), 5000),
     runs: this.cleanInteger(this.simulations(), 5000),
     trades_per_run: this.cleanInteger(this.tradesPerRun(), 500),
@@ -60,10 +62,15 @@ export class MontecarloComponent {
         this.updateCharts(response);
         this.isLoading.set(false);
       },
-      error: () => {
+      error: (err) => {
         this.results.set(null);
         this.resetCharts();
-        this.loadError.set('Unable to run the Monte Carlo simulation. Please try again.');
+        const detail = err?.error?.detail;
+        this.loadError.set(
+          typeof detail === 'string'
+            ? detail
+            : 'Unable to run the Monte Carlo simulation. Please try again.'
+        );
         this.isLoading.set(false);
       }
     });
@@ -94,6 +101,10 @@ export class MontecarloComponent {
       return fallback;
     }
     return Math.max(1, Math.round(parsed));
+  }
+
+  normalizeSymbol(value: string): string {
+    return value.trim().toUpperCase();
   }
 
   private updateCharts(response: MonteCarloResponse): void {

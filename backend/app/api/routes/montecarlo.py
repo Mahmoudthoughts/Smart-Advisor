@@ -5,8 +5,12 @@ from __future__ import annotations
 import random
 from math import ceil, floor
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.session import get_db
+from app.models import DailyBar
 from app.schemas import MonteCarloPercentiles, MonteCarloRequest, MonteCarloResponse, MonteCarloSeries
 
 try:  # pragma: no cover - optional dependency
@@ -15,6 +19,8 @@ except ImportError:  # pragma: no cover
     np = None
 
 router = APIRouter()
+MIN_HISTORY_DAYS = 30
+
 
 
 def _percentiles(values: list[float]) -> MonteCarloPercentiles:
@@ -147,24 +153,74 @@ def _score_candidate(
     }
 
 
-def _generate_candidates(request: MonteCarloRequest) -> list[dict[str, float]]:
+def _derive_params_from_returns(
+    request: MonteCarloRequest, returns_pct: list[float]
+) -> tuple[float, float, float]:
+    wins = [value for value in returns_pct if value > 0]
+    losses = [-value for value in returns_pct if value < 0]
+    if not wins or not losses:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Not enough mixed return history to derive win/loss stats.",
+        )
+    win_rate = len(wins) / len(returns_pct)
+    avg_win_pct = sum(wins) / len(wins)
+    avg_loss_pct = sum(losses) / len(losses)
+    avg_win = (avg_win_pct / 100.0) * request.starting_capital
+    avg_loss = (avg_loss_pct / 100.0) * request.starting_capital
+    return win_rate, avg_win, avg_loss
+
+
+async def _get_symbol_returns(
+    session: AsyncSession,
+    symbol: str,
+    lookback_days: int,
+) -> list[float]:
+    stmt = (
+        select(DailyBar)
+        .where(DailyBar.symbol == symbol)
+        .order_by(DailyBar.date.desc())
+        .limit(lookback_days + 1)
+    )
+    rows = (await session.execute(stmt)).scalars().all()
+    if len(rows) < 2:
+        return []
+    rows_sorted = sorted(rows, key=lambda row: row.date)
+    prices = [float(row.adj_close) for row in rows_sorted if row.adj_close is not None]
+    returns_pct: list[float] = []
+    for index in range(1, len(prices)):
+        prev = prices[index - 1]
+        curr = prices[index]
+        if prev <= 0 or curr <= 0:
+            continue
+        returns_pct.append((curr / prev - 1.0) * 100.0)
+    return returns_pct
+
+
+def _generate_candidates(
+    *,
+    win_rate: float,
+    avg_win: float,
+    avg_loss: float,
+    risk_multiplier: float,
+) -> list[dict[str, float]]:
     candidate_count = random.randint(20, 50)
     candidates = [
         {
-            "win_rate": request.win_rate,
-            "avg_win": request.avg_win,
-            "avg_loss": request.avg_loss,
-            "risk_multiplier": request.risk_multiplier,
+            "win_rate": win_rate,
+            "avg_win": avg_win,
+            "avg_loss": avg_loss,
+            "risk_multiplier": risk_multiplier,
         }
     ]
     for _ in range(candidate_count - 1):
         candidates.append(
             {
-                "win_rate": min(max(request.win_rate + random.uniform(-0.03, 0.03), 0.0), 1.0),
-                "avg_win": max(request.avg_win * (1 + random.uniform(-0.1, 0.1)), 0.0),
-                "avg_loss": max(request.avg_loss * (1 + random.uniform(-0.1, 0.1)), 0.0),
+                "win_rate": min(max(win_rate + random.uniform(-0.03, 0.03), 0.0), 1.0),
+                "avg_win": max(avg_win * (1 + random.uniform(-0.1, 0.1)), 0.0),
+                "avg_loss": max(avg_loss * (1 + random.uniform(-0.1, 0.1)), 0.0),
                 "risk_multiplier": max(
-                    request.risk_multiplier * (1 + random.uniform(-0.05, 0.05)),
+                    risk_multiplier * (1 + random.uniform(-0.05, 0.05)),
                     0.01,
                 ),
             }
@@ -173,7 +229,10 @@ def _generate_candidates(request: MonteCarloRequest) -> list[dict[str, float]]:
 
 
 @router.post("/run", response_model=MonteCarloResponse)
-async def run_monte_carlo(request: MonteCarloRequest) -> MonteCarloResponse:
+async def run_monte_carlo(
+    request: MonteCarloRequest,
+    session: AsyncSession = Depends(get_db),
+) -> MonteCarloResponse:
     """Run Monte Carlo risk simulations based on the provided assumptions."""
 
     selected_params: dict[str, float] | None = None
@@ -183,10 +242,30 @@ async def run_monte_carlo(request: MonteCarloRequest) -> MonteCarloResponse:
     avg_loss = request.avg_loss
     risk_multiplier = request.risk_multiplier
 
+    if request.symbol:
+        normalized = request.symbol.strip().upper()
+        if not normalized:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Symbol must not be empty.",
+            )
+        returns_pct = await _get_symbol_returns(session, normalized, request.lookback_days)
+        if len(returns_pct) < MIN_HISTORY_DAYS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Not enough price history to run symbol-driven simulation.",
+            )
+        win_rate, avg_win, avg_loss = _derive_params_from_returns(request, returns_pct)
+
     if request.use_ai:
         candidate_runs = min(800, request.runs)
         best_score = float("-inf")
-        for candidate in _generate_candidates(request):
+        for candidate in _generate_candidates(
+            win_rate=win_rate,
+            avg_win=avg_win,
+            avg_loss=avg_loss,
+            risk_multiplier=risk_multiplier,
+        ):
             final_returns_list, max_drawdowns_list, ruin_probability, _ = _run_simulation(
                 request,
                 runs=candidate_runs,

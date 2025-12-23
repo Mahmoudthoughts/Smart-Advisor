@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class MonteCarloRequest(BaseModel):
+    symbol: str | None = Field(default=None, min_length=1, max_length=16)
+    lookback_days: int = Field(252, ge=30, le=1500)
     starting_capital: float = Field(..., gt=0)
     runs: int = Field(..., gt=0)
     trades_per_run: int = Field(..., gt=0)

@@ -12,9 +12,18 @@
   <section class="panel inputs">
     <header>
       <h2>Simulation Inputs</h2>
-      <p class="muted">Adjust assumptions to see how capital outcomes shift over time.</p>
+      <p class="muted">Adjust assumptions or add a stock code to seed win/loss inputs from price history.</p>
     </header>
     <div class="input-grid">
+      <label>
+        <span>Stock code</span>
+        <input
+          type="text"
+          placeholder="AAPL"
+          [ngModel]="symbol()"
+          (ngModelChange)="symbol.set(normalizeSymbol($event))"
+        />
+      </label>
       <label>
         <span>Starting capital ($)</span>
         <input
