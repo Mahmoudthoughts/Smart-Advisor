@@ -170,6 +170,43 @@ export interface SymbolRefreshResponse {
   readonly snapshots_rebuilt: number;
 }
 
+export interface MonteCarloPercentiles {
+  readonly p5: number;
+  readonly p25: number;
+  readonly p50: number;
+  readonly p75: number;
+  readonly p95: number;
+}
+
+export interface MonteCarloSeries {
+  readonly final_returns: number[];
+  readonly max_drawdowns: number[];
+}
+
+export interface MonteCarloResponse {
+  readonly final_return_pct: MonteCarloPercentiles;
+  readonly max_drawdown_pct: MonteCarloPercentiles;
+  readonly probability_ruin: number;
+  readonly probability_max_drawdown_over_30: number;
+  readonly series: MonteCarloSeries | null;
+  readonly ai_selected_params?: Record<string, number> | null;
+  readonly ai_score_breakdown?: Record<string, number> | null;
+}
+
+export interface MonteCarloRequestPayload {
+  readonly starting_capital: number;
+  readonly runs: number;
+  readonly trades_per_run: number;
+  readonly win_rate: number;
+  readonly avg_win: number;
+  readonly avg_loss: number;
+  readonly risk_multiplier?: number;
+  readonly fee_per_trade?: number;
+  readonly slippage_pct?: number;
+  readonly include_series?: boolean;
+  readonly use_ai?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class PortfolioDataService {
   private readonly http = inject(HttpClient);
@@ -197,6 +234,10 @@ export class PortfolioDataService {
 
   updateTransaction(id: number, payload: TransactionPayload): Observable<PortfolioTransaction> {
     return this.http.put<PortfolioTransaction>(`${this.baseUrl}/portfolio/transactions/${id}`, payload);
+  }
+
+  runMonteCarlo(payload: MonteCarloRequestPayload): Observable<MonteCarloResponse> {
+    return this.http.post<MonteCarloResponse>(`${this.baseUrl}/risk/montecarlo/run`, payload);
   }
 
   deleteTransaction(id: number): Observable<void> {

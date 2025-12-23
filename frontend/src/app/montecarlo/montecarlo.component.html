@@ -1,0 +1,200 @@
+<div class="montecarlo">
+  <header class="page-header">
+    <div>
+      <h1>Monte Carlo Risk Simulator</h1>
+      <p>Model trade-by-trade performance and view distributional risk metrics.</p>
+    </div>
+    <button type="button" class="run-button" (click)="runSimulation()" [disabled]="isLoading()">
+      {{ isLoading() ? 'Running...' : 'Run Simulation' }}
+    </button>
+  </header>
+
+  <section class="panel inputs">
+    <header>
+      <h2>Simulation Inputs</h2>
+      <p class="muted">Adjust assumptions to see how capital outcomes shift over time.</p>
+    </header>
+    <div class="input-grid">
+      <label>
+        <span>Starting capital ($)</span>
+        <input
+          type="number"
+          min="0"
+          step="100"
+          [ngModel]="startingCapital()"
+          (ngModelChange)="startingCapital.set(toNumber($event, 5000))"
+        />
+      </label>
+      <label>
+        <span>Trades per run</span>
+        <input
+          type="number"
+          min="1"
+          step="10"
+          [ngModel]="tradesPerRun()"
+          (ngModelChange)="tradesPerRun.set(toInteger($event, 500))"
+        />
+      </label>
+      <label>
+        <span>Simulations</span>
+        <input
+          type="number"
+          min="100"
+          step="100"
+          [ngModel]="simulations()"
+          (ngModelChange)="simulations.set(toInteger($event, 5000))"
+        />
+      </label>
+      <label>
+        <span>Win rate</span>
+        <input
+          type="number"
+          min="0"
+          max="1"
+          step="0.001"
+          [ngModel]="winRate()"
+          (ngModelChange)="winRate.set(toNumber($event, 0.596))"
+        />
+      </label>
+      <label>
+        <span>Avg win ($)</span>
+        <input
+          type="number"
+          step="1"
+          [ngModel]="avgWin()"
+          (ngModelChange)="avgWin.set(toNumber($event, 320))"
+        />
+      </label>
+      <label>
+        <span>Avg loss ($)</span>
+        <input
+          type="number"
+          step="1"
+          [ngModel]="avgLoss()"
+          (ngModelChange)="avgLoss.set(toNumber($event, -168))"
+        />
+      </label>
+      <label>
+        <span>Slippage (%)</span>
+        <input
+          type="number"
+          min="0"
+          step="0.05"
+          [ngModel]="slippagePct()"
+          (ngModelChange)="slippagePct.set(toNumber($event, 0))"
+        />
+      </label>
+      <label>
+        <span>Fee per trade ($)</span>
+        <input
+          type="number"
+          min="0"
+          step="0.25"
+          [ngModel]="feePerTrade()"
+          (ngModelChange)="feePerTrade.set(toNumber($event, 0))"
+        />
+      </label>
+      <label class="toggle">
+        <span>Use AI tuning</span>
+        <input type="checkbox" [ngModel]="useAi()" (ngModelChange)="useAi.set($event)" />
+      </label>
+    </div>
+  </section>
+
+  <section class="panel results">
+    <header>
+      <h2>Results</h2>
+      <p class="muted">Percentiles show distribution shifts; probabilities highlight downside risk.</p>
+    </header>
+
+    <p class="status" *ngIf="isLoading()">Running Monte Carlo simulation...</p>
+    <p class="status error" *ngIf="loadError()">{{ loadError() }}</p>
+
+    <div *ngIf="results() as result; else emptyState">
+      <div class="metric-grid">
+        <div class="metric-card">
+          <h3>Final return percentiles</h3>
+          <dl>
+            <div>
+              <dt>P5</dt>
+              <dd>{{ formatPercent(result.final_return_pct.p5) }}</dd>
+            </div>
+            <div>
+              <dt>P25</dt>
+              <dd>{{ formatPercent(result.final_return_pct.p25) }}</dd>
+            </div>
+            <div>
+              <dt>P50</dt>
+              <dd>{{ formatPercent(result.final_return_pct.p50) }}</dd>
+            </div>
+            <div>
+              <dt>P75</dt>
+              <dd>{{ formatPercent(result.final_return_pct.p75) }}</dd>
+            </div>
+            <div>
+              <dt>P95</dt>
+              <dd>{{ formatPercent(result.final_return_pct.p95) }}</dd>
+            </div>
+          </dl>
+        </div>
+        <div class="metric-card">
+          <h3>Max drawdown percentiles</h3>
+          <dl>
+            <div>
+              <dt>P5</dt>
+              <dd>{{ formatPercent(result.max_drawdown_pct.p5) }}</dd>
+            </div>
+            <div>
+              <dt>P25</dt>
+              <dd>{{ formatPercent(result.max_drawdown_pct.p25) }}</dd>
+            </div>
+            <div>
+              <dt>P50</dt>
+              <dd>{{ formatPercent(result.max_drawdown_pct.p50) }}</dd>
+            </div>
+            <div>
+              <dt>P75</dt>
+              <dd>{{ formatPercent(result.max_drawdown_pct.p75) }}</dd>
+            </div>
+            <div>
+              <dt>P95</dt>
+              <dd>{{ formatPercent(result.max_drawdown_pct.p95) }}</dd>
+            </div>
+          </dl>
+        </div>
+      </div>
+
+      <div class="probabilities">
+        <div class="pill danger">
+          <span>Ruin probability (&lt; -50%)</span>
+          <strong>{{ formatProbability(result.probability_ruin) }}</strong>
+        </div>
+        <div class="pill warning">
+          <span>Max drawdown &gt; 30%</span>
+          <strong>{{ formatProbability(result.probability_max_drawdown_over_30) }}</strong>
+        </div>
+      </div>
+    </div>
+
+    <ng-template #emptyState>
+      <p class="status" *ngIf="!isLoading() && !loadError()">Run the simulation to see percentiles and risk odds.</p>
+    </ng-template>
+  </section>
+
+  <section class="panel charts">
+    <header>
+      <h2>Distribution Histograms</h2>
+      <p class="muted">Each bar counts how many simulations landed in the range.</p>
+    </header>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart" echarts [options]="finalReturnsOption()"></div>
+        <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
+      </div>
+      <div class="chart-card">
+        <div class="chart" echarts [options]="maxDrawdownsOption()"></div>
+        <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
+      </div>
+    </div>
+  </section>
+</div>
