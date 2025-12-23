@@ -7,8 +7,8 @@ import { NgxEchartsDirective } from 'ngx-echarts';
 import {
   MonteCarloRequestPayload,
   MonteCarloResponse,
-  PortfolioDataService,
-} from '../portfolio-data.service';
+  MonteCarloService,
+} from '../services/montecarlo.service';
 
 @Component({
   selector: 'app-montecarlo-page',
@@ -18,7 +18,7 @@ import {
   styleUrls: ['./montecarlo.component.scss']
 })
 export class MontecarloComponent {
-  private readonly dataService = inject(PortfolioDataService);
+  private readonly monteCarloService = inject(MonteCarloService);
 
   readonly startingCapital = signal<number>(5000);
   readonly tradesPerRun = signal<number>(500);
@@ -54,7 +54,7 @@ export class MontecarloComponent {
   runSimulation(): void {
     this.isLoading.set(true);
     this.loadError.set(null);
-    this.dataService.runMonteCarlo(this.requestPayload()).subscribe({
+    this.monteCarloService.runMonteCarlo(this.requestPayload()).subscribe({
       next: (response) => {
         this.results.set(response);
         this.updateCharts(response);
