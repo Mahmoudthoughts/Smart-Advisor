@@ -60,6 +60,70 @@ export class AppComponent {
     { path: '/app/admin', label: 'Admin' }
   ];
 
+  readonly topNavLinks: NavLink[] = [
+    { path: '/app/overview', label: 'Overview' },
+    {
+      path: '/app/analysis',
+      label: 'Analysis',
+      groups: [
+        {
+          title: 'Performance',
+          items: [
+            { path: '/app/analysis', label: 'Analysis' },
+            { path: '/app/timeline', label: 'Timeline' },
+            { path: '/app/unrealized', label: 'Unrealized' }
+          ]
+        },
+        {
+          title: 'Signals',
+          items: [
+            { path: '/app/signals', label: 'Signals' },
+            { path: '/app/sentiment', label: 'Sentiment' },
+            { path: '/app/forecast', label: 'Forecast' }
+          ]
+        }
+      ]
+    },
+    {
+      path: '/app/stocks',
+      label: 'Portfolio',
+      groups: [
+        {
+          title: 'Holdings',
+          items: [
+            { path: '/app/stocks', label: 'My Stocks' },
+            { path: '/app/transactions', label: 'Transactions' }
+          ]
+        },
+        {
+          title: 'Decisions',
+          items: [
+            { path: '/app/decisions', label: 'Decisions' },
+            { path: '/app/opportunities', label: 'Opportunities' }
+          ]
+        }
+      ]
+    },
+    {
+      path: '/app/macro',
+      label: 'Markets',
+      groups: [
+        {
+          title: 'Strategy',
+          items: [
+            { path: '/app/simulator', label: 'Simulator' },
+            { path: '/app/macro', label: 'Macro' }
+          ]
+        },
+        {
+          title: 'Alerts',
+          items: [{ path: '/app/alerts', label: 'Alerts' }]
+        }
+      ]
+    },
+    { path: '/app/admin', label: 'Admin' }
+  ];
+
   readonly openMegaMenu = signal<string | null>(null);
   readonly menuOpen = signal(false);
   readonly sidebarOpen = signal(false);
@@ -72,7 +136,7 @@ export class AppComponent {
     if (!openPath) {
       return null;
     }
-    return this.navLinks().find((link) => link.path === openPath) ?? null;
+    return this.topNavLinks.find((link) => link.path === openPath) ?? null;
   });
   readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
   readonly currentYear = new Date().getFullYear();
@@ -176,6 +240,8 @@ export class AppComponent {
   openMegaOnHover(link: NavLink): void {
     if (this.hasChildren(link)) {
       this.openMegaMenu.set(link.path);
+    } else {
+      this.openMegaMenu.set(null);
     }
   }
 
