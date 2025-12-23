@@ -54,6 +54,7 @@ export class AppComponent {
     { path: '/app/signals', label: 'Signals' },
     { path: '/app/sentiment', label: 'Sentiment' },
     { path: '/app/forecast', label: 'Forecast' },
+    { path: '/app/montecarlo', label: 'Monte Carlo' },
     { path: '/app/simulator', label: 'Simulator' },
     { path: '/app/macro', label: 'Macro' },
     { path: '/app/alerts', label: 'Alerts' },
@@ -111,6 +112,7 @@ export class AppComponent {
         {
           title: 'Strategy',
           items: [
+            { path: '/app/montecarlo', label: 'Monte Carlo' },
             { path: '/app/simulator', label: 'Simulator' },
             { path: '/app/macro', label: 'Macro' }
           ]

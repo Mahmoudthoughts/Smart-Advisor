@@ -5,6 +5,7 @@ import { AlertsComponent } from './alerts/alerts.component';
 import { ForecastComponent } from './forecast/forecast.component';
 import { LoginComponent } from './login/login.component';
 import { MacroComponent } from './macro/macro.component';
+import { MontecarloComponent } from './montecarlo/montecarlo.component';
 import { MyStocksComponent } from './my-stocks/my-stocks.component';
 import { PortfolioAnalysisComponent } from './portfolio-analysis/portfolio-analysis.component';
 import { OnboardingComponent } from './onboarding/onboarding.component';
@@ -92,6 +93,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/forecast',
     component: ForecastComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/montecarlo',
+    component: MontecarloComponent,
     canActivate: [authGuard]
   },
   {
