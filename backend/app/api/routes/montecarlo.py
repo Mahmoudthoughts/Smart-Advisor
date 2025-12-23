@@ -51,19 +51,26 @@ def _percentiles(values: list[float]) -> MonteCarloPercentiles:
     )
 
 
-@router.post("/run", response_model=MonteCarloResponse)
-async def run_monte_carlo(request: MonteCarloRequest) -> MonteCarloResponse:
-    """Run Monte Carlo risk simulations based on the provided assumptions."""
-
+def _run_simulation(
+    request: MonteCarloRequest,
+    *,
+    runs: int,
+    win_rate: float,
+    avg_win: float,
+    avg_loss: float,
+    risk_multiplier: float,
+) -> tuple[list[float], list[float], float, float]:
     if np is not None:
         rng = np.random.default_rng()
-        wins = rng.random((request.runs, request.trades_per_run)) < request.win_rate
-        trade_pl = np.where(wins, request.avg_win, -request.avg_loss)
+        wins = rng.random((runs, request.trades_per_run)) < win_rate
+        trade_pl = np.where(wins, avg_win, -avg_loss)
+        if risk_multiplier != 1.0:
+            trade_pl = trade_pl * risk_multiplier
         trade_pl -= request.fee_per_trade
         if request.slippage_pct:
             trade_pl -= np.abs(trade_pl) * (request.slippage_pct / 100.0)
         equity = request.starting_capital + np.cumsum(trade_pl, axis=1)
-        starting = np.full((request.runs, 1), request.starting_capital)
+        starting = np.full((runs, 1), request.starting_capital)
         equity_path = np.concatenate([starting, equity], axis=1)
         peaks = np.maximum.accumulate(equity_path, axis=1)
         drawdowns = (peaks - equity_path) / peaks
@@ -75,47 +82,151 @@ async def run_monte_carlo(request: MonteCarloRequest) -> MonteCarloResponse:
         max_dd_events = max_drawdowns > 30.0
         ruin_probability = float(np.mean(ruin_events))
         max_dd_probability = float(np.mean(max_dd_events))
-        final_returns_list = final_returns.tolist()
-        max_drawdowns_list = max_drawdowns.tolist()
-    else:
-        final_returns_list = []
-        max_drawdowns_list = []
-        ruin_events = 0
-        max_dd_events = 0
-        ruin_threshold = request.starting_capital * 0.5
-        for _ in range(request.runs):
-            equity = request.starting_capital
-            peak = equity
-            max_drawdown = 0.0
-            ruined = False
-            for _ in range(request.trades_per_run):
-                win = random.random() < request.win_rate
-                trade_pl = request.avg_win if win else -request.avg_loss
-                trade_pl -= request.fee_per_trade
-                if request.slippage_pct:
-                    trade_pl -= abs(trade_pl) * (request.slippage_pct / 100.0)
-                equity += trade_pl
-                if equity > peak:
-                    peak = equity
-                drawdown = (peak - equity) / peak
-                if drawdown > max_drawdown:
-                    max_drawdown = drawdown
-                if equity < ruin_threshold:
-                    ruined = True
-            final_returns_list.append((equity / request.starting_capital - 1.0) * 100.0)
-            max_drawdowns_list.append(max_drawdown * 100.0)
-            if ruined:
-                ruin_events += 1
-            if max_drawdown * 100.0 > 30.0:
-                max_dd_events += 1
-        ruin_probability = ruin_events / request.runs
-        max_dd_probability = max_dd_events / request.runs
+        return (
+            final_returns.tolist(),
+            max_drawdowns.tolist(),
+            ruin_probability,
+            max_dd_probability,
+        )
+
+    final_returns_list: list[float] = []
+    max_drawdowns_list: list[float] = []
+    ruin_events = 0
+    max_dd_events = 0
+    ruin_threshold = request.starting_capital * 0.5
+    for _ in range(runs):
+        equity = request.starting_capital
+        peak = equity
+        max_drawdown = 0.0
+        ruined = False
+        for _ in range(request.trades_per_run):
+            win = random.random() < win_rate
+            trade_pl = avg_win if win else -avg_loss
+            trade_pl *= risk_multiplier
+            trade_pl -= request.fee_per_trade
+            if request.slippage_pct:
+                trade_pl -= abs(trade_pl) * (request.slippage_pct / 100.0)
+            equity += trade_pl
+            if equity > peak:
+                peak = equity
+            drawdown = (peak - equity) / peak
+            if drawdown > max_drawdown:
+                max_drawdown = drawdown
+            if equity < ruin_threshold:
+                ruined = True
+        final_returns_list.append((equity / request.starting_capital - 1.0) * 100.0)
+        max_drawdowns_list.append(max_drawdown * 100.0)
+        if ruined:
+            ruin_events += 1
+        if max_drawdown * 100.0 > 30.0:
+            max_dd_events += 1
+    ruin_probability = ruin_events / runs
+    max_dd_probability = max_dd_events / runs
+    return final_returns_list, max_drawdowns_list, ruin_probability, max_dd_probability
+
+
+def _score_candidate(
+    final_returns: list[float],
+    max_drawdowns: list[float],
+    ruin_probability: float,
+) -> dict[str, float]:
+    final_return_pct = _percentiles(final_returns)
+    max_drawdown_pct = _percentiles(max_drawdowns)
+    p50_return = final_return_pct.p50
+    p75_drawdown = max_drawdown_pct.p75
+    drawdown_penalty = p75_drawdown * 0.7
+    ruin_penalty = ruin_probability * 100.0
+    score = p50_return - drawdown_penalty - ruin_penalty
+    return {
+        "p50_final_return": p50_return,
+        "p75_max_drawdown": p75_drawdown,
+        "ruin_probability": ruin_probability,
+        "drawdown_penalty": drawdown_penalty,
+        "ruin_penalty": ruin_penalty,
+        "score": score,
+    }
+
+
+def _generate_candidates(request: MonteCarloRequest) -> list[dict[str, float]]:
+    candidate_count = random.randint(20, 50)
+    candidates = [
+        {
+            "win_rate": request.win_rate,
+            "avg_win": request.avg_win,
+            "avg_loss": request.avg_loss,
+            "risk_multiplier": request.risk_multiplier,
+        }
+    ]
+    for _ in range(candidate_count - 1):
+        candidates.append(
+            {
+                "win_rate": min(max(request.win_rate + random.uniform(-0.03, 0.03), 0.0), 1.0),
+                "avg_win": max(request.avg_win * (1 + random.uniform(-0.1, 0.1)), 0.0),
+                "avg_loss": max(request.avg_loss * (1 + random.uniform(-0.1, 0.1)), 0.0),
+                "risk_multiplier": max(
+                    request.risk_multiplier * (1 + random.uniform(-0.05, 0.05)),
+                    0.01,
+                ),
+            }
+        )
+    return candidates
+
+
+@router.post("/run", response_model=MonteCarloResponse)
+async def run_monte_carlo(request: MonteCarloRequest) -> MonteCarloResponse:
+    """Run Monte Carlo risk simulations based on the provided assumptions."""
+
+    selected_params: dict[str, float] | None = None
+    score_breakdown: dict[str, float] | None = None
+    win_rate = request.win_rate
+    avg_win = request.avg_win
+    avg_loss = request.avg_loss
+    risk_multiplier = request.risk_multiplier
+
+    if request.use_ai:
+        candidate_runs = min(800, request.runs)
+        best_score = float("-inf")
+        for candidate in _generate_candidates(request):
+            final_returns_list, max_drawdowns_list, ruin_probability, _ = _run_simulation(
+                request,
+                runs=candidate_runs,
+                win_rate=candidate["win_rate"],
+                avg_win=candidate["avg_win"],
+                avg_loss=candidate["avg_loss"],
+                risk_multiplier=candidate["risk_multiplier"],
+            )
+            breakdown = _score_candidate(final_returns_list, max_drawdowns_list, ruin_probability)
+            if breakdown["score"] > best_score:
+                best_score = breakdown["score"]
+                selected_params = candidate
+                score_breakdown = breakdown
+        if selected_params is not None:
+            win_rate = selected_params["win_rate"]
+            avg_win = selected_params["avg_win"]
+            avg_loss = selected_params["avg_loss"]
+            risk_multiplier = selected_params["risk_multiplier"]
+
+    (
+        final_returns_list,
+        max_drawdowns_list,
+        ruin_probability,
+        max_dd_probability,
+    ) = _run_simulation(
+        request,
+        runs=request.runs,
+        win_rate=win_rate,
+        avg_win=avg_win,
+        avg_loss=avg_loss,
+        risk_multiplier=risk_multiplier,
+    )
 
     response = MonteCarloResponse(
         final_return_pct=_percentiles(final_returns_list),
         max_drawdown_pct=_percentiles(max_drawdowns_list),
         probability_ruin=ruin_probability,
         probability_max_drawdown_over_30=max_dd_probability,
+        ai_selected_params=selected_params,
+        ai_score_breakdown=score_breakdown,
     )
 
     if request.include_series:
