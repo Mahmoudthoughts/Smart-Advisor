@@ -64,11 +64,12 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
             ib.reqMarketDataType(settings.ibkr_market_data_type)
             contract = Stock(symbol, "SMART", settings.base_currency)
             ib.qualifyContracts(contract)
+            bar_size = settings.ibkr_bar_size.strip().strip('"').strip("'")
             bars_iter: Iterable[BarData] = ib.reqHistoricalData(
                 contract,
                 "",
                 f"{settings.ibkr_duration_days} D",
-                settings.ibkr_bar_size,
+                bar_size,
                 settings.ibkr_what_to_show,
                 settings.ibkr_use_rth,
                 1,
