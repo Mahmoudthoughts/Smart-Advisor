@@ -56,7 +56,7 @@
   align-items: center;
   gap: 0.35rem;
   padding: 0.65rem 0.1rem;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
   text-decoration: none;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -141,7 +141,7 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .mega-group a {
@@ -179,7 +179,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  color: #e2e8f0;
+  color: var(--color-text);
 }
 
 .user-chip {
@@ -189,7 +189,7 @@
   padding: 0.35rem 0.85rem;
   border-radius: 999px;
   background: rgba(148, 163, 184, 0.18);
-  color: #f8fafc;
+  color: var(--color-text);
 }
 
 .avatar {
@@ -226,7 +226,7 @@ button[type='button']:hover {
 
 .login,
 .register {
-  color: #38bdf8;
+  color: var(--color-accent);
   font-weight: 600;
   text-decoration: none;
 }
@@ -241,8 +241,8 @@ button[type='button']:hover {
   gap: 0.25rem;
   padding: 0.45rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
   color: var(--color-text);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -253,8 +253,8 @@ button[type='button']:hover {
 
 .menu-toggle:hover,
 .menu-toggle:focus-visible {
-  border-color: rgba(56, 189, 248, 0.6);
-  background: rgba(30, 41, 59, 0.9);
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
   transform: translateY(-1px);
 }
 
@@ -272,10 +272,10 @@ button[type='button']:hover {
   top: calc(100% + 0.75rem);
   left: 0;
   width: clamp(240px, 32vw, 360px);
-  background: rgba(15, 23, 42, 0.96);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
   border-radius: 16px;
-  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 28px 60px rgba(15, 23, 42, 0.25);
   padding: 1.25rem;
   backdrop-filter: blur(18px);
   z-index: 20;
@@ -289,13 +289,13 @@ button[type='button']:hover {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
-  color: #f8fafc;
+  color: var(--color-text);
 }
 
 .nav-menu header p {
   margin: 0.25rem 0 0;
   font-size: 0.85rem;
-  color: #cbd5f5;
+  color: var(--color-text-muted);
 }
 
 .nav-menu ul {
@@ -312,23 +312,23 @@ button[type='button']:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(30, 41, 59, 0.7);
+  background: var(--color-surface-alt);
   border-radius: 12px;
   padding: 0.55rem 0.75rem;
-  color: #e2e8f0;
+  color: var(--color-text);
   border: 1px solid transparent;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .nav-menu li label:hover {
-  border-color: rgba(56, 189, 248, 0.5);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
 .nav-menu input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
-  accent-color: #38bdf8;
+  accent-color: var(--color-accent);
 }
 
 .menu-actions {
@@ -341,7 +341,7 @@ button[type='button']:hover {
 .menu-actions .link {
   background: none;
   border: none;
-  color: #38bdf8;
+  color: var(--color-accent);
   font-weight: 600;
   cursor: pointer;
   padding: 0;
@@ -349,7 +349,7 @@ button[type='button']:hover {
 }
 
 .menu-actions .link:hover {
-  color: #0ea5e9;
+  color: var(--color-accent);
 }
 
 .app-shell {
@@ -362,7 +362,7 @@ button[type='button']:hover {
 .footer {
   text-align: center;
   padding: 2rem var(--app-gutter) 3rem;
-  color: #94a3b8;
+  color: var(--color-text-muted);
   font-size: clamp(0.86rem, 1.4vw, 0.95rem);
 }
 
@@ -405,9 +405,9 @@ button[type='button']:hover {
   gap: 0.25rem;
   padding: 0.45rem 1rem;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.4);
-  background: rgba(15, 23, 42, 0.6);
-  color: #e2e8f0;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-weight: 600;
   letter-spacing: 0.04em;
   cursor: pointer;
@@ -417,8 +417,8 @@ button[type='button']:hover {
 
 .sidebar-toggle:hover,
 .sidebar-toggle:focus-visible {
-  border-color: rgba(56, 189, 248, 0.6);
-  background: rgba(30, 41, 59, 0.9);
+  border-color: var(--color-accent);
+  background: var(--color-surface-alt);
   transform: translateY(-1px);
 }
 
@@ -436,9 +436,9 @@ button[type='button']:hover {
   left: 0;
   height: 100vh;
   width: clamp(280px, 30vw, 380px);
-  background: rgba(15, 23, 42, 0.98);
-  border-right: 1px solid rgba(148, 163, 184, 0.25);
-  box-shadow: 18px 0 40px rgba(2, 6, 23, 0.55);
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border);
+  box-shadow: 18px 0 40px rgba(2, 6, 23, 0.35);
   transform: translateX(-100%);
   transition: transform 0.28s ease;
   z-index: 50;
@@ -460,7 +460,7 @@ button[type='button']:hover {
 
 .sidebar .icon.close {
   background: transparent;
-  color: #e2e8f0;
+  color: var(--color-text);
   border: none;
   padding: 0.25rem 0.5rem;
   font-size: 1.5rem;
@@ -473,22 +473,22 @@ button[type='button']:hover {
 }
 
 .sidebar-nav a {
-  color: rgba(226, 232, 240, 0.95);
+  color: var(--color-text);
   text-decoration: none;
   font-weight: 600;
   letter-spacing: 0.05em;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
-  background: rgba(30, 41, 59, 0.55);
+  background: var(--color-surface-alt);
   border: 1px solid transparent;
   transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
 .sidebar-nav a:hover,
 .sidebar-nav a.active {
-  color: #38bdf8;
-  background: rgba(30, 41, 59, 0.9);
-  border-color: rgba(56, 189, 248, 0.5);
+  color: var(--color-accent);
+  background: var(--color-surface);
+  border-color: var(--color-accent);
 }
 
 .sidebar-customize {
@@ -498,7 +498,7 @@ button[type='button']:hover {
 .sidebar-customize h4 {
   margin: 0 0 0.5rem 0;
   font-size: 0.95rem;
-  color: #cbd5f5;
+  color: var(--color-text-muted);
 }
 
 .sidebar-customize ul {
@@ -515,23 +515,23 @@ button[type='button']:hover {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  background: rgba(30, 41, 59, 0.6);
+  background: var(--color-surface-alt);
   border-radius: 12px;
   padding: 0.5rem 0.7rem;
-  color: #e2e8f0;
+  color: var(--color-text);
   border: 1px solid transparent;
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
 .sidebar-customize li label:hover {
-  border-color: rgba(56, 189, 248, 0.5);
+  border-color: var(--color-accent);
   transform: translateY(-1px);
 }
 
 .sidebar-customize input[type='checkbox'] {
   width: 1rem;
   height: 1rem;
-  accent-color: #38bdf8;
+  accent-color: var(--color-accent);
 }
 
 .sidebar-footer {

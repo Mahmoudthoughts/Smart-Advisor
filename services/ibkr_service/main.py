@@ -102,7 +102,7 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
                 raise
             time.sleep(1.5)
         finally:
-            try:
+                    try:
                 ib.disconnect()
             finally:
                 try:

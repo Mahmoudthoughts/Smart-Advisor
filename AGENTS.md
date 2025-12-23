@@ -100,6 +100,7 @@ File Map (UI features)
  - Header, sidebar, theme toggle, top tabs + mega dropdown: `frontend/src/app/app.component.{html,ts,scss}`
 - Timeline presets: `frontend/src/app/timeline/timeline.component.{html,ts,scss}`
 - Symbol ranges + header: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`
+- Monte Carlo + AI Simulator: `frontend/src/app/montecarlo/montecarlo.component.{html,ts,scss}` (route `/app/montecarlo`, API `POST /risk/montecarlo/run`)
 - Global styles + theme variables: `frontend/src/styles.scss`
 - NGINX SPA + API proxy: `frontend/nginx.conf`
 - Backend CORS: `backend/app/main.py`

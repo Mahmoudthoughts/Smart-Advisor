@@ -4,8 +4,12 @@
   --topbar-height: 72px;
   --color-background: #ffffff;
   --color-surface: #ffffff;
+  --color-surface-alt: #f8fafc;
   --color-text: #0f172a;
+  --color-text-muted: #64748b;
   --color-primary: var(--primary-600);
+  --color-border: #e2e8f0;
+  --color-accent: #38bdf8;
   --topbar-bg: rgba(255, 255, 255, 0.9);
   --topbar-border: rgba(148, 163, 184, 0.2);
   --gray-50: #f8fafc;
@@ -40,9 +44,13 @@
 .theme-dark {
   --color-background: #0f172a;
   --color-surface: #0b1220;
+  --color-surface-alt: #111827;
   --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
   --topbar-bg: rgba(15, 23, 42, 0.9);
   --topbar-border: rgba(148, 163, 184, 0.2);
+  --color-border: rgba(148, 163, 184, 0.25);
+  --color-accent: #38bdf8;
   color-scheme: dark;
 }
 
