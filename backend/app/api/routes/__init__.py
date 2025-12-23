@@ -14,6 +14,7 @@ from .signals import router as signals_router
 from .simulate import router as simulate_router
 from .symbols import router as symbols_router
 from .decisions import router as decisions_router
+from .montecarlo import router as montecarlo_router
 
 api_router = APIRouter()
 api_router.include_router(portfolio_router, prefix="/portfolio", tags=["portfolio"])
@@ -26,5 +27,6 @@ api_router.include_router(signals_router, prefix="/signals", tags=["signals"])
 api_router.include_router(sentiment_router, prefix="/sentiment", tags=["sentiment"])
 api_router.include_router(forecast_router, prefix="/forecast", tags=["forecast"])
 api_router.include_router(simulate_router, prefix="/simulate", tags=["simulate"])
+api_router.include_router(montecarlo_router, prefix="/risk/montecarlo", tags=["risk"])
 
 __all__ = ["api_router"]

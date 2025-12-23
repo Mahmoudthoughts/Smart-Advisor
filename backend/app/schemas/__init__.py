@@ -21,6 +21,12 @@ from .snapshots import (
 )
 from .simulate import SimulationRequest, SimulationResponse
 from .symbols import SymbolRefreshResponse, SymbolSearchResultSchema
+from .montecarlo import (
+    MonteCarloPercentiles,
+    MonteCarloRequest,
+    MonteCarloResponse,
+    MonteCarloSeries,
+)
 from .decisions import (
     InvestmentDecisionCreateRequest,
     InvestmentDecisionOutcomeSchema,
@@ -55,4 +61,8 @@ __all__ = [
     "InvestmentDecisionResolveRequest",
     "SymbolSearchResultSchema",
     "SymbolRefreshResponse",
+    "MonteCarloPercentiles",
+    "MonteCarloRequest",
+    "MonteCarloResponse",
+    "MonteCarloSeries",
 ]
