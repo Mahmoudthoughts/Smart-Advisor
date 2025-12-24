@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 import time
 from datetime import date, datetime
 from typing import Iterable, Any
@@ -16,6 +17,7 @@ from .telemetry import setup_telemetry
 app = FastAPI()
 log = logging.getLogger("ibkr_service")
 setup_telemetry(app)
+_ibkr_lock = threading.Lock()
 
 
 class PriceRequest(BaseModel):
@@ -46,6 +48,7 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
         asyncio.set_event_loop(loop)
         ib = IB()
         try:
+            _ibkr_lock.acquire()
             log.info(
                 "Connecting to IBKR host=%s port=%s clientId=%s (attempt %s/%s)",
                 settings.ibkr_host,
@@ -105,6 +108,7 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
             try:
                 ib.disconnect()
             finally:
+                _ibkr_lock.release()
                 try:
                     loop.stop()
                 finally:
@@ -117,84 +121,100 @@ async def _fetch_bars_async(symbol: str) -> tuple[list[dict], str]:
 
 def _search_symbols_sync(query: str) -> list[dict[str, Any]]:
     settings = get_settings()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    ib = IB()
     start = time.perf_counter()
     normalized = query.strip() or query
-    try:
-        log.info(
-            "Connecting to IBKR host=%s port=%s clientId=%s for search",
-            settings.ibkr_host,
-            settings.ibkr_port,
-            settings.ibkr_client_id,
-        )
-        ib.connect(settings.ibkr_host, settings.ibkr_port, clientId=settings.ibkr_client_id, timeout=10)
-        log.info("Connected to IBKR in %.2fs for search", time.perf_counter() - start)
-        matches = ib.reqMatchingSymbols(normalized)
-        results: list[dict[str, Any]] = []
-        seen: set[str] = set()
-        for match in matches:
-            contract = getattr(match, "contract", None)
-            if contract is None:
-                continue
-            sec_type = str(getattr(contract, "secType", "") or "").upper()
-            if sec_type and sec_type != "STK":
-                continue
-            symbol = (
-                str(getattr(contract, "symbol", "") or getattr(contract, "localSymbol", "") or "").upper()
-            )
-            if not symbol or symbol in seen:
-                continue
-            seen.add(symbol)
-            name = (
-                getattr(match, "description", None)
-                or getattr(contract, "description", None)
-                or getattr(contract, "localSymbol", None)
-                or symbol
-            )
-            region = getattr(contract, "primaryExchange", None) or getattr(contract, "exchange", None)
-            currency = getattr(contract, "currency", None) or settings.base_currency
-            query_lower = normalized.lower()
-            symbol_lower = symbol.lower()
-            score: float | None = None
-            if symbol_lower == query_lower:
-                score = 1.0
-            elif symbol_lower.startswith(query_lower):
-                score = 0.9
-            elif query_lower in symbol_lower:
-                score = 0.75
-            elif isinstance(name, str) and query_lower in name.lower():
-                score = 0.5
-
-            results.append(
-                {
-                    "symbol": symbol,
-                    "name": name,
-                    "region": region,
-                    "currency": currency,
-                    "match_score": score,
-                }
-            )
-            if len(results) >= 25:
-                break
-        return results
-    except Exception as exc:  # noqa: BLE001
-        log.error(
-            "IBKR search failed after %.2fs for query %s: %s",
-            time.perf_counter() - start,
-            normalized,
-            exc,
-        )
-        raise
-    finally:
+    attempt = 0
+    while attempt < max(1, settings.ibkr_max_retries):
+        attempt += 1
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        ib = IB()
         try:
-            ib.disconnect()
+            _ibkr_lock.acquire()
+            log.info(
+                "Connecting to IBKR host=%s port=%s clientId=%s for search (attempt %s/%s)",
+                settings.ibkr_host,
+                settings.ibkr_port,
+                settings.ibkr_client_id,
+                attempt,
+                settings.ibkr_max_retries,
+            )
+            ib.connect(
+                settings.ibkr_host,
+                settings.ibkr_port,
+                clientId=settings.ibkr_client_id,
+                timeout=settings.ibkr_timeout_seconds,
+            )
+            log.info("Connected to IBKR in %.2fs for search", time.perf_counter() - start)
+            matches = ib.reqMatchingSymbols(normalized)
+            results: list[dict[str, Any]] = []
+            seen: set[str] = set()
+            for match in matches:
+                contract = getattr(match, "contract", None)
+                if contract is None:
+                    continue
+                sec_type = str(getattr(contract, "secType", "") or "").upper()
+                if sec_type and sec_type != "STK":
+                    continue
+                symbol = (
+                    str(getattr(contract, "symbol", "") or getattr(contract, "localSymbol", "") or "").upper()
+                )
+                if not symbol or symbol in seen:
+                    continue
+                seen.add(symbol)
+                name = (
+                    getattr(match, "description", None)
+                    or getattr(contract, "description", None)
+                    or getattr(contract, "localSymbol", None)
+                    or symbol
+                )
+                region = getattr(contract, "primaryExchange", None) or getattr(contract, "exchange", None)
+                currency = getattr(contract, "currency", None) or settings.base_currency
+                query_lower = normalized.lower()
+                symbol_lower = symbol.lower()
+                score: float | None = None
+                if symbol_lower == query_lower:
+                    score = 1.0
+                elif symbol_lower.startswith(query_lower):
+                    score = 0.9
+                elif query_lower in symbol_lower:
+                    score = 0.75
+                elif isinstance(name, str) and query_lower in name.lower():
+                    score = 0.5
+
+                results.append(
+                    {
+                        "symbol": symbol,
+                        "name": name,
+                        "region": region,
+                        "currency": currency,
+                        "match_score": score,
+                    }
+                )
+                if len(results) >= 25:
+                    break
+            return results
+        except Exception as exc:  # noqa: BLE001
+            log.error(
+                "IBKR search failed after %.2fs for query %s (attempt %s/%s): %s",
+                time.perf_counter() - start,
+                normalized,
+                attempt,
+                settings.ibkr_max_retries,
+                exc,
+            )
+            if attempt >= settings.ibkr_max_retries:
+                raise
+            time.sleep(1.5)
         finally:
             try:
-                loop.stop()
+                ib.disconnect()
             finally:
-                loop.close()
+                _ibkr_lock.release()
+                try:
+                    loop.stop()
+                finally:
+                    loop.close()
 
 
 async def _search_symbols_async(query: str) -> list[dict[str, Any]]:
