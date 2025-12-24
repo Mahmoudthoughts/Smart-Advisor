@@ -16,13 +16,13 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.75rem;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
   margin-bottom: 0.25rem;
 }
 
 .lede {
   max-width: 40rem;
-  color: var(--gray-600);
+  color: var(--color-text-muted);
 }
 
 .skip-link {
@@ -39,7 +39,7 @@
 }
 
 .card {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 16px;
   padding: 1.75rem;
   box-shadow: 0 14px 48px rgba(15, 23, 42, 0.08);
@@ -85,9 +85,10 @@ textarea {
   width: 100%;
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
-  border: 1px solid var(--gray-200);
-  background: #f9fafb;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
   font-size: 0.95rem;
+  color: var(--color-text);
 }
 
 textarea {
@@ -107,12 +108,12 @@ button {
 
 button:disabled {
   cursor: not-allowed;
-  background: var(--gray-300);
+  background: var(--color-border);
 }
 
 .results button.tracked {
-  background: var(--gray-200);
-  color: var(--gray-600);
+  background: var(--color-surface-alt);
+  color: var(--color-text-muted);
 }
 
 .results {
@@ -126,7 +127,7 @@ button:disabled {
 
 .hint {
   font-size: 0.85rem;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
   margin: 0;
 }
 
@@ -137,8 +138,8 @@ button:disabled {
   gap: 1rem;
   padding: 0.75rem 1rem;
   border-radius: 12px;
-  border: 1px solid var(--gray-200);
-  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
 }
 
 .meta {
@@ -158,7 +159,7 @@ button:disabled {
 }
 
 .meta .muted {
-  color: var(--gray-500);
+  color: var(--color-text-muted);
   font-size: 0.85rem;
 }
 
@@ -214,8 +215,8 @@ button:disabled {
   gap: 0.75rem;
   padding: 1rem;
   border-radius: 12px;
-  border: 1px dashed var(--gray-200);
-  background: #f9fafb;
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface-alt);
 }
 
 .quick-add .field-group {
@@ -241,7 +242,7 @@ button:disabled {
 }
 
 .hint {
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .results {
@@ -254,8 +255,8 @@ button:disabled {
 
         .score {
           font-size: 0.8em;
-          color: #666;
-          background: #f0f0f0;
+          color: var(--color-text-muted);
+          background: var(--color-surface-alt);
           padding: 0.2em 0.5em;
           border-radius: 3px;
         }
@@ -268,7 +269,7 @@ button:disabled {
 
       .details {
         font-size: 0.9em;
-        color: #666;
+        color: var(--color-text-muted);
       }
     }
   }

@@ -12,7 +12,7 @@
 }
 
 .page-header h1 {
-  color: #0f172a; /* ensure strong contrast */
+  color: var(--color-text);
   font-weight: 800;
 }
 
@@ -28,19 +28,19 @@
   letter-spacing: 0.08em;
   padding: 0.15rem 0.55rem;
   border-radius: 999px;
-  background: #e5e7eb;
-  color: #111827;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
 }
 
 .eyebrow {
   text-transform: uppercase;
   letter-spacing: 0.12em;
   font-size: 0.75rem;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .page-header p {
-  color: var(--gray-600);
+  color: var(--color-text-muted);
   max-width: 40rem;
 }
 
@@ -48,7 +48,7 @@
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.12em;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .actions {
@@ -69,8 +69,8 @@
 }
 
 .actions .secondary {
-  background: var(--gray-200);
-  color: var(--gray-700);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
 }
 
 .status {
@@ -90,7 +90,7 @@
 }
 
 .metric {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 16px;
   padding: 1.5rem;
   box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
@@ -103,7 +103,7 @@
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.12em;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .metric strong {
@@ -111,7 +111,7 @@
 }
 
 .metric .delta {
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .metric .positive {
@@ -123,7 +123,7 @@
 }
 
 .chart-card {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 20px;
   box-shadow: 0 22px 48px rgba(15, 23, 42, 0.12);
   padding: 1.75rem;
@@ -140,7 +140,7 @@
 }
 
 .chart-card p {
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .chart-card header .range-presets {
@@ -152,15 +152,15 @@
 .chart-card header .range-presets button {
   padding: 0.35rem 0.7rem;
   border-radius: 999px;
-  border: 1px solid #d1d5db;
-  background: #fff;
-  color: #374151;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
 }
 
 .chart-card header .range-presets button:hover {
-  background: #f3f4f6;
+  background: var(--color-surface-alt);
   transform: translateY(-1px);
 }
 
@@ -179,13 +179,13 @@
   display: grid;
   place-items: center;
   height: 420px;
-  background: #f8fafc;
+  background: var(--color-surface-alt);
   border-radius: 12px;
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .ledger {
-  background: #fff;
+  background: var(--color-surface);
   border-radius: 18px;
   box-shadow: 0 18px 36px rgba(15, 23, 42, 0.1);
   padding: 1.5rem;
@@ -196,7 +196,7 @@
 }
 
 .ledger p {
-  color: var(--gray-500);
+  color: var(--color-text-muted);
 }
 
 .ledger table {
@@ -208,7 +208,7 @@
 .ledger td {
   padding: 0.9rem 1rem;
   text-align: left;
-  border-bottom: 1px solid var(--gray-100);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .badge {
@@ -278,9 +278,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
     padding: 1rem 0.85rem;
-    border: 1px solid var(--gray-100);
+    border: 1px solid var(--color-border);
     border-radius: 0.85rem;
-    background: var(--gray-50);
+    background: var(--color-surface-alt);
   }
 
   .ledger tbody td {
@@ -295,7 +295,7 @@
   .ledger tbody td::before {
     content: attr(data-label);
     font-weight: 600;
-    color: var(--gray-500);
+    color: var(--color-text-muted);
     text-transform: uppercase;
     font-size: 0.7rem;
     letter-spacing: 0.08em;
