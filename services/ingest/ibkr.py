@@ -59,6 +59,10 @@ async def ingest_prices_ibkr(symbol: str, session: AsyncSession) -> int:
             record = {
                 "symbol": symbol,
                 "date": day,
+                "open": float(bar.open),
+                "high": float(bar.high),
+                "low": float(bar.low),
+                "close": float(bar.close),
                 "adj_close": float(bar.close),
                 "volume": float(bar.volume),
                 "currency": currency,
@@ -71,6 +75,10 @@ async def ingest_prices_ibkr(symbol: str, session: AsyncSession) -> int:
                 .on_conflict_do_update(
                     index_elements=[DailyBar.symbol, DailyBar.date],
                     set_={
+                        "open": record["open"],
+                        "high": record["high"],
+                        "low": record["low"],
+                        "close": record["close"],
                         "adj_close": record["adj_close"],
                         "volume": record["volume"],
                         "currency": record["currency"],

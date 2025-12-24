@@ -52,6 +52,8 @@ def _ensure_dataframe(symbol: str, df: pd.DataFrame) -> pd.DataFrame:
             raise ValueError("DataFrame must contain a close or adj_close column")
     if "volume" not in df:
         df["volume"] = np.nan
+    if "low" in df and "prev_low" not in df:
+        df["prev_low"] = df["low"].shift()
     return df
 
 

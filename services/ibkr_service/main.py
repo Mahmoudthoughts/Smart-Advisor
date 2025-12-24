@@ -83,6 +83,10 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
                 {
                     "symbol": symbol,
                     "date": _to_iso_date(bar.date),
+                    "open": float(bar.open),
+                    "high": float(bar.high),
+                    "low": float(bar.low),
+                    "close": float(bar.close),
                     "adj_close": float(bar.close),
                     "volume": float(bar.volume),
                     "currency": currency,

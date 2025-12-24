@@ -37,6 +37,10 @@ async def ingest_prices(
 
     for day_str, values in series.items():
         day = datetime.strptime(day_str, "%Y-%m-%d").date()
+        open_value = values.get("1. open")
+        high_value = values.get("2. high")
+        low_value = values.get("3. low")
+        close_value = values.get("4. close")
         adj_close_value = values.get("5. adjusted close") or values.get("4. close")
         volume_value = values.get("6. volume") or values.get("5. volume")
         if adj_close_value is None or volume_value is None:
@@ -45,6 +49,10 @@ async def ingest_prices(
         record = {
             "symbol": symbol,
             "date": day,
+            "open": float(open_value) if open_value is not None else float(adj_close_value),
+            "high": float(high_value) if high_value is not None else float(adj_close_value),
+            "low": float(low_value) if low_value is not None else float(adj_close_value),
+            "close": float(close_value) if close_value is not None else float(adj_close_value),
             "adj_close": float(adj_close_value),
             "volume": float(volume_value),
             "currency": currency,
@@ -58,6 +66,10 @@ async def ingest_prices(
             .on_conflict_do_update(
                 index_elements=[DailyBar.symbol, DailyBar.date],
                 set_={
+                    "open": record["open"],
+                    "high": record["high"],
+                    "low": record["low"],
+                    "close": record["close"],
                     "adj_close": record["adj_close"],
                     "volume": record["volume"],
                     "currency": record["currency"],

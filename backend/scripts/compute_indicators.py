@@ -24,11 +24,16 @@ async def _run(symbol: str) -> None:
             return
         df = pd.DataFrame(
             {
+                "open": [float(r.open) if r.open is not None else float(r.adj_close) for r in rows],
+                "high": [float(r.high) if r.high is not None else float(r.adj_close) for r in rows],
+                "low": [float(r.low) if r.low is not None else float(r.adj_close) for r in rows],
+                "close": [float(r.close) if r.close is not None else float(r.adj_close) for r in rows],
                 "adj_close": [float(r.adj_close) for r in rows],
                 "volume": [float(r.volume) for r in rows],
             },
             index=[r.date for r in rows],
         )
+        df["prev_low"] = df["low"].shift()
         compute_indicators(symbol, df)
         print(f"Cached indicators for {symbol} ({len(df)} rows)")
 
