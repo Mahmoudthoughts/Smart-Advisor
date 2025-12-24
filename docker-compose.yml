@@ -79,7 +79,7 @@ services:
       context: .
       dockerfile: services/ibkr_service/Dockerfile
     environment:
-      IBKR_HOST: ${IBKR_HOST:-192.168.100.125}
+      IBKR_HOST: ${IBKR_HOST:-192.168.100.139}
       IBKR_PORT: ${IBKR_PORT:-4001}
       IBKR_CLIENT_ID: ${IBKR_CLIENT_ID:-1}
       IBKR_MARKET_DATA_TYPE: ${IBKR_MARKET_DATA_TYPE:-3}
