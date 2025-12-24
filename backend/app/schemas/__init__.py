@@ -11,7 +11,13 @@ from .portfolio import (
     PortfolioAccountSchema,
     PortfolioAccountCreateRequest,
 )
-from .signals import SignalEventSchema, SignalRuleDefinition, SignalRuleUpsertRequest
+from .signals import (
+    SignalEventSchema,
+    SignalRuleDefinition,
+    SignalRuleUpsertRequest,
+    GapDownSignalSchema,
+    GapDownBacktestStatsSchema,
+)
 from .snapshots import (
     DailyPortfolioSnapshotSchema,
     TimelinePricePointSchema,
@@ -41,6 +47,8 @@ __all__ = [
     "SignalEventSchema",
     "SignalRuleDefinition",
     "SignalRuleUpsertRequest",
+    "GapDownSignalSchema",
+    "GapDownBacktestStatsSchema",
     "DailyPortfolioSnapshotSchema",
     "TimelinePricePointSchema",
     "TimelineResponse",

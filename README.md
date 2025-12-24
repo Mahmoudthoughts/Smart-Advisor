@@ -23,9 +23,16 @@ Services exposed locally:
 - **Backend API:** http://localhost:8000 (FastAPI with `/auth/register`, `/auth/login`, `/health`)
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
 - **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
-- **IBKR Bridge:** http://localhost:8110 (FastAPI `/prices`, `/symbols/search` — talks to your IB Gateway/TWS session)
+- **IBKR Bridge:** http://localhost:8110 (FastAPI `/prices`, `/symbols/search` - talks to your IB Gateway/TWS session)
 - **Portfolio Service:** http://localhost:8200 (FastAPI `/health`, `/portfolio/*` proxied internally by the backend)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
+
+## API
+
+- `GET /signals/gap-down?symbol=SPY` - returns the latest gap-down signal (Open < previous Low) using Alpha Vantage daily OHLC.
+- `GET /signals/gap-down/backtest?symbol=SPY&start=2000-01-01` - returns historical win-rate and return stats; default start is `2000-01-01`.
+
+Both endpoints require OHLC data; requests fail if fewer than 2 rows (signal) or 3 rows (backtest) are available from Alpha Vantage.
 
 The backend and ingest containers expose the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
 against Alpha Vantage out of the box.

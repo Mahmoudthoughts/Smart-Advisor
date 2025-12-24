@@ -63,4 +63,34 @@ class SignalRuleUpsertRequest(BaseModel):
         }
 
 
-__all__ = ["SignalEventSchema", "SignalRuleDefinition", "SignalRuleUpsertRequest"]
+class GapDownSignalSchema(BaseModel):
+    symbol: str
+    date: str
+    open: float
+    prev_low: float
+    close: Optional[float] = None
+    is_gap_down: bool
+    is_up_close: Optional[bool] = None
+    gap_pct_vs_prev_low: float
+    oc_return: Optional[float] = None
+
+
+class GapDownBacktestStatsSchema(BaseModel):
+    symbol: str
+    start: date
+    total_signals: int
+    win_signals: int
+    win_rate: Optional[float] = None
+    avg_oc_return: Optional[float] = None
+    median_oc_return: Optional[float] = None
+    worst_oc_return: Optional[float] = None
+    best_oc_return: Optional[float] = None
+
+
+__all__ = [
+    "SignalEventSchema",
+    "SignalRuleDefinition",
+    "SignalRuleUpsertRequest",
+    "GapDownSignalSchema",
+    "GapDownBacktestStatsSchema",
+]
