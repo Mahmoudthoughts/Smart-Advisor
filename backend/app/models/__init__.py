@@ -4,6 +4,7 @@ from .analyst import AnalystSnapshot
 from .dashboard import DashboardKPI
 from .daily import DailyBar, DailyPortfolioSnapshot, FXRate
 from .forecast import ForecastDaily
+from .intraday import IntradayBar
 from .macro import MacroEvent
 from .portfolio import (
     DecisionAction,
@@ -33,6 +34,7 @@ __all__ = [
     "TickerSentimentDaily",
     "AnalystSnapshot",
     "ForecastDaily",
+    "IntradayBar",
     "MacroEvent",
     "DashboardKPI",
 ]

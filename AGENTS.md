@@ -36,6 +36,7 @@ Frontend Conventions
 - Timeline page: quick presets WTD/MTD/Last week/Last month/Last 3M; manual date changes clear preset and allow refresh.
 - Symbol detail page: range presets 1D/1W/1M/3M/6M/1Y/5Y; header shows actual data (symbol · company · region [· currency]).
 - Symbol detail trade plan: quick trade plan card uses intraday bars from `/symbols/{symbol}/intraday` to summarize midday dips and late-day recoveries.
+- Intraday bar caching: backend stores IBKR intraday bars in `intraday_bar` to reduce repeated gateway calls.
 
 Backend Conventions
 - FastAPI app at `backend/app/main.py`. Routers in `backend/app/api/routes/`.

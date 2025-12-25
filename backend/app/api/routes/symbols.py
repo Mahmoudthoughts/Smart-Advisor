@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from decimal import Decimal
 from typing import Any, Optional
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Select, select
+from sqlalchemy import Select, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.db.session import get_db
 from app.ingest.client import IngestServiceError, trigger_price_ingest
-from app.models import DailyBar, DailyPortfolioSnapshot, Portfolio, Transaction
+from app.models import DailyBar, DailyPortfolioSnapshot, IntradayBar, Portfolio, Transaction
 from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
 from app.providers.ibkr_service import (
     IBKRServiceError,
@@ -202,6 +203,7 @@ async def get_intraday_bars(
     bar_size: str = Query(default="15 mins", description="IBKR bar size (e.g. 5 mins, 15 mins)"),
     duration_days: int = Query(default=5, ge=1, le=30, description="Number of days to look back"),
     use_rth: bool = Query(default=True, description="Use regular trading hours"),
+    session: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[IntradayBarSchema]:
     normalized = symbol.strip().upper()
@@ -211,18 +213,141 @@ async def get_intraday_bars(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="IBKR service not configured (IBKR_SERVICE_URL missing)",
         )
+    now = datetime.now(timezone.utc)
+    start_dt = now - timedelta(days=duration_days)
+
+    latest_stmt = select(func.max(IntradayBar.timestamp)).where(
+        IntradayBar.symbol == normalized,
+        IntradayBar.bar_size == bar_size,
+        IntradayBar.use_rth == use_rth,
+    )
+    latest_ts = (await session.execute(latest_stmt)).scalar_one_or_none()
+    if latest_ts is not None:
+        latest_tz = latest_ts.tzinfo or timezone.utc
+        latest_date = latest_ts.astimezone(latest_tz).date()
+        now_date = datetime.now(latest_tz).date()
+        if latest_date >= now_date - timedelta(days=1):
+            return await _load_cached_intraday(session, normalized, bar_size, use_rth, start_dt)
+
+    fetch_days = duration_days
+    if latest_ts is not None:
+        latest_date = latest_ts.date()
+        gap_days = (now.date() - latest_date).days
+        fetch_days = max(1, min(30, gap_days + 1))
+
     try:
         bars = await fetch_price_bars(
             normalized,
             base_url=settings.ibkr_service_url,
             bar_size=bar_size,
-            duration_days=duration_days,
+            duration_days=fetch_days,
             use_rth=use_rth,
         )
     except IBKRServiceError as exc:
         logger.error("IBKR intraday fetch failed for %s: %s", normalized, exc)
+        if latest_ts is not None:
+            return await _load_cached_intraday(session, normalized, bar_size, use_rth, start_dt)
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
-    return bars
+
+    await _upsert_intraday_bars(session, normalized, bar_size, use_rth, bars)
+    return await _load_cached_intraday(session, normalized, bar_size, use_rth, start_dt)
+
+
+def _parse_bar_timestamp(value: str) -> datetime | None:
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+async def _upsert_intraday_bars(
+    session: AsyncSession,
+    symbol: str,
+    bar_size: str,
+    use_rth: bool,
+    bars: list[dict[str, Any]],
+) -> None:
+    settings = get_settings()
+    for bar in bars:
+        if not isinstance(bar, dict):
+            continue
+        raw_date = bar.get("date")
+        if not raw_date:
+            continue
+        timestamp = _parse_bar_timestamp(str(raw_date))
+        if timestamp is None:
+            continue
+        open_value = bar.get("open")
+        high_value = bar.get("high")
+        low_value = bar.get("low")
+        close_value = bar.get("close")
+        volume_value = bar.get("volume")
+        if None in (open_value, high_value, low_value, close_value, volume_value):
+            continue
+        record = {
+            "symbol": symbol,
+            "bar_size": bar_size,
+            "use_rth": use_rth,
+            "timestamp": timestamp,
+            "open": float(open_value),
+            "high": float(high_value),
+            "low": float(low_value),
+            "close": float(close_value),
+            "volume": float(volume_value),
+            "currency": str(bar.get("currency") or settings.base_currency),
+        }
+        stmt = (
+            insert(IntradayBar)
+            .values(**record)
+            .on_conflict_do_update(
+                index_elements=["symbol", "bar_size", "use_rth", "timestamp"],
+                set_={
+                    "open": record["open"],
+                    "high": record["high"],
+                    "low": record["low"],
+                    "close": record["close"],
+                    "volume": record["volume"],
+                    "currency": record["currency"],
+                },
+            )
+        )
+        await session.execute(stmt)
+    await session.commit()
+
+
+async def _load_cached_intraday(
+    session: AsyncSession,
+    symbol: str,
+    bar_size: str,
+    use_rth: bool,
+    start_dt: datetime,
+) -> list[IntradayBarSchema]:
+    stmt = (
+        select(IntradayBar)
+        .where(
+            IntradayBar.symbol == symbol,
+            IntradayBar.bar_size == bar_size,
+            IntradayBar.use_rth == use_rth,
+            IntradayBar.timestamp >= start_dt,
+        )
+        .order_by(IntradayBar.timestamp)
+    )
+    rows = (await session.execute(stmt)).scalars().all()
+    return [
+        IntradayBarSchema(
+            symbol=row.symbol,
+            date=row.timestamp.isoformat(),
+            open=float(row.open),
+            high=float(row.high),
+            low=float(row.low),
+            close=float(row.close),
+            volume=float(row.volume),
+        )
+        for row in rows
+    ]
 
 
 @router.post("/{symbol}/refresh", response_model=SymbolRefreshResponse)

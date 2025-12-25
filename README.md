@@ -137,6 +137,7 @@ Downstream processors can either read directly from these tables or plug into th
 - Intraday insights page
   - Dedicated page at `/app/intraday-insights` shows bar settings, session summaries, and raw intraday bars.
   - Linked from My Stocks actions for each symbol.
+  - Intraday bars are cached in the backend database per symbol/bar size to reduce IBKR calls.
   - Files: `frontend/src/app/intraday-insights/intraday-insights.component.{html,ts,scss}`, `frontend/src/app/my-stocks/my-stocks.component.html`.
 
 - Theme toggle (light/dark)
