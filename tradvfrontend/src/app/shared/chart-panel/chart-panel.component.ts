@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import {
   CandlestickData,
+  CandlestickSeries,
   ColorType,
   createChart,
   IChartApi,
@@ -79,7 +80,7 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
       }
     });
 
-    this.series = this.chart.addCandlestickSeries({
+    const series = this.chart.addSeries(CandlestickSeries, {
       upColor,
       downColor,
       borderUpColor: upColor,
@@ -88,7 +89,8 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
       wickDownColor: downColor
     });
 
-    this.series.setData(this.data);
+    this.series = series;
+    series.setData(this.data);
     this.chart.timeScale().fitContent();
 
     this.resizeObserver = new ResizeObserver((entries) => {
