@@ -2,6 +2,7 @@ fastapi
 uvicorn[standard]
 ib_insync
 pydantic-settings
+tzdata
 opentelemetry-sdk>=1.24
 opentelemetry-exporter-otlp>=1.24
 opentelemetry-exporter-otlp-proto-grpc>=1.24
