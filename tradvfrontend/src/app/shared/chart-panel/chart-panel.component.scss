@@ -1,0 +1,52 @@
+.chart-shell {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.chart-symbol {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.chart-subtitle {
+  color: var(--tradv-muted);
+  font-size: 0.9rem;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--tradv-muted);
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.up {
+  background: var(--tradv-up);
+}
+
+.dot.down {
+  background: var(--tradv-down);
+}
+
+.chart-surface {
+  width: 100%;
+  height: clamp(320px, 50vh, 480px);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--tradv-surface);
+}

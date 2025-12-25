@@ -1,0 +1,40 @@
+<section class="hero">
+  <div class="hero-copy">
+    <p class="eyebrow">TradingView Lightweight Charts</p>
+    <h1>Build fast, focused market views.</h1>
+    <p class="subtitle">
+      TradV Frontend is a clean Angular shell for real-time and historical price
+      visualization. Plug in backend data when ready.
+    </p>
+    <div class="timeframe">
+      @for (range of timeframes; track range) {
+        <button
+          type="button"
+          class="timeframe-button"
+          [class.active]="selectedTimeframe() === range"
+          (click)="setTimeframe(range)"
+        >
+          {{ range }}
+        </button>
+      }
+    </div>
+  </div>
+  <div class="hero-card">
+    <div class="stat">
+      <span class="label">Last close</span>
+      <span class="value">{{ lastClose() | number: '1.2-2' }}</span>
+      <span class="delta" [class.positive]="delta() >= 0">
+        {{ delta() >= 0 ? '+' : '' }}{{ delta() | number: '1.2-2' }}
+      </span>
+    </div>
+    <div class="stat">
+      <span class="label">Symbol</span>
+      <span class="value">{{ symbol() }}</span>
+      <span class="delta muted">Sample feed</span>
+    </div>
+  </div>
+</section>
+
+<section class="chart-card">
+  <app-chart-panel [data]="candles()" [symbol]="symbol()" />
+</section>

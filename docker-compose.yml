@@ -51,6 +51,15 @@ services:
     ports:
       - '4200:80'
 
+  tradvfrontend:
+    build:
+      context: ./tradvfrontend
+    image: mahibrahim/tradvfrontend:1.0.0
+    depends_on:
+      - backend
+    ports:
+      - '4300:80'
+
   ingest:
     build:
       context: .

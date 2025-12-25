@@ -15,6 +15,7 @@ Run & Build
 - Compose: `docker compose up --build`
 - Backend: http://localhost:8000 (health: `/health`, auth: `/auth/*`)
 - Frontend: http://localhost:4200 (served by NGINX from production build)
+- TradV Frontend: http://localhost:4300 (served by NGINX from production build)
 - DB: `postgres://smart_advisor:smart_advisor@localhost:5432/smart_advisor`
 
 API Base URL
@@ -106,6 +107,7 @@ File Map (UI features)
 - Monte Carlo + AI Simulator: `frontend/src/app/montecarlo/montecarlo.component.{html,ts,scss}` (route `/app/montecarlo`, API `POST /risk/montecarlo/run`)
 - Global styles + theme variables: `frontend/src/styles.scss`
 - NGINX SPA + API proxy: `frontend/nginx.conf`
+- TradV Frontend shell + lightweight charts: `tradvfrontend/src/app/home/home.component.{html,ts,scss}`, `tradvfrontend/src/app/shared/chart-panel/chart-panel.component.{html,ts,scss}`
 - Backend CORS: `backend/app/main.py`
 
 Notes for Agents
