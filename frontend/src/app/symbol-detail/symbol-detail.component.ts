@@ -52,6 +52,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   private readonly intradayMinSessions = 3;
   private readonly middayStartHour = 11;
   private readonly middayEndHour = 13.5;
+  private readonly intradayTimeZone = 'America/New_York';
 
   private paramSub: Subscription | null = null;
 
@@ -118,7 +119,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         sessions: 0,
         middayDrawdownPct: null,
         closeLiftPct: null,
-        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries.`,
+        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries (ET).`,
         fallback: `Need at least ${this.intradayMinSessions} recent intraday sessions to estimate the noon drawdown and close lift.`
       };
     }
@@ -130,7 +131,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       if (Number.isNaN(timestamp.getTime())) {
         return;
       }
-      const key = this.formatDayKey(timestamp);
+      const key = this.formatDayKey(timestamp, this.intradayTimeZone);
       const list = sessions.get(key) ?? [];
       list.push({ bar, timestamp });
       sessions.set(key, list);
@@ -143,7 +144,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       const open = sorted[0]?.bar.open ?? 0;
       const close = sorted[sorted.length - 1]?.bar.close ?? 0;
       const midday = sorted.filter((item) => {
-        const hour = this.getHourFraction(item.timestamp);
+        const hour = this.getHourFraction(item.timestamp, this.intradayTimeZone);
         return hour >= this.middayStartHour && hour <= this.middayEndHour;
       });
       if (!midday.length || open <= 0 || close <= 0) {
@@ -164,7 +165,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         sessions: sessionsUsed,
         middayDrawdownPct: null,
         closeLiftPct: null,
-        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries.`,
+        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries (ET).`,
         fallback: `Only ${sessionsUsed} intraday session${sessionsUsed === 1 ? '' : 's'} found. Need ${this.intradayMinSessions} to estimate the noon drawdown and close lift.`
       };
     }
@@ -174,7 +175,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       sessions: sessionsUsed,
       middayDrawdownPct: this.median(drawdowns),
       closeLiftPct: this.average(lifts),
-      helper: `Based on ${sessionsUsed} sessions in the last ${windowLabel} (${intervalLabel} bars).`,
+      helper: `Based on ${sessionsUsed} sessions in the last ${windowLabel} (${intervalLabel} bars, ET).`,
       fallback: ''
     };
   });
@@ -331,15 +332,33 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
-  private formatDayKey(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+  private formatDayKey(d: Date, timeZone: string): string {
+    const parts = this.getPartsInZone(d, timeZone);
+    return `${parts.year}-${parts.month}-${parts.day}`;
   }
 
-  private getHourFraction(d: Date): number {
-    return d.getHours() + d.getMinutes() / 60;
+  private getHourFraction(d: Date, timeZone: string): number {
+    const parts = this.getPartsInZone(d, timeZone);
+    return Number(parts.hour) + Number(parts.minute) / 60;
+  }
+
+  private getPartsInZone(d: Date, timeZone: string): Record<string, string> {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(d);
+    return parts.reduce<Record<string, string>>((acc, part) => {
+      if (part.type !== 'literal') {
+        acc[part.type] = part.value;
+      }
+      return acc;
+    }, {});
   }
 
   private average(values: number[]): number {
