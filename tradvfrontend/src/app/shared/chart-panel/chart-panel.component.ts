@@ -52,11 +52,11 @@ export class ChartPanelComponent implements AfterViewInit, OnChanges, OnDestroy 
 
   private initializeChart(): void {
     const container = this.chartContainer.nativeElement;
-    const background = this.readCssVar(container, '--tradv-surface', '#111827');
-    const textColor = this.readCssVar(container, '--tradv-text', '#e5e7eb');
-    const gridColor = this.readCssVar(container, '--tradv-grid', 'rgba(148,163,184,0.2)');
-    const upColor = this.readCssVar(container, '--tradv-up', '#22c55e');
-    const downColor = this.readCssVar(container, '--tradv-down', '#ef4444');
+    const background = this.readCssVar(container, '--color-surface', '#111827');
+    const textColor = this.readCssVar(container, '--color-text', '#e5e7eb');
+    const gridColor = this.readCssVar(container, '--color-border', 'rgba(148,163,184,0.2)');
+    const upColor = this.readCssVar(container, '--success-600', '#22c55e');
+    const downColor = this.readCssVar(container, '--danger-600', '#ef4444');
 
     this.chart = createChart(container, {
       height: container.clientHeight || 420,

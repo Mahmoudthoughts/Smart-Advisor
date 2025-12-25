@@ -20,3 +20,4 @@ export function setUserTelemetry(user: TelemetryUser | null): void {
     // ignore persistence errors
   }
 }
+

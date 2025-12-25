@@ -1,0 +1,288 @@
+:host {
+  display: block;
+  padding: 1.5rem var(--app-gutter);
+  max-width: var(--app-max-width);
+  margin: 0 auto 3rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.8rem;
+  color: var(--gray-500);
+  margin: 0 0 0.2rem;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+.subhead {
+  margin: 0.25rem 0 0;
+  color: var(--gray-600);
+}
+
+.filters {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  width: min(520px, 100%);
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--gray-600);
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid var(--gray-200);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--gray-200);
+  border-radius: 16px;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.hint {
+  color: var(--gray-500);
+  font-size: 0.9rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+label span {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--gray-700);
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+textarea {
+  resize: vertical;
+}
+
+small {
+  color: var(--danger-600);
+}
+
+.full {
+  display: block;
+}
+
+.form-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.form-footer .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+button {
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--primary-600);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.ghost {
+  background: transparent;
+  color: var(--primary-700);
+  border: 1px solid var(--primary-100);
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error {
+  color: var(--danger-700);
+}
+
+.empty {
+  color: var(--gray-500);
+  padding: 0.5rem 0;
+}
+
+.resolution-body {
+  margin-top: 0.5rem;
+}
+
+.list {
+  margin-top: 1rem;
+}
+
+.decision {
+  border-top: 1px solid var(--gray-200);
+  padding: 1rem 0;
+}
+
+.decision:first-of-type {
+  border-top: none;
+}
+
+.decision-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+}
+
+.symbol {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.meta {
+  color: var(--gray-600);
+  font-size: 0.95rem;
+}
+
+.status {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chip {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  border: 1px solid transparent;
+}
+
+.chip.success {
+  background: var(--success-100);
+  color: var(--success-700);
+  border-color: rgba(22, 163, 74, 0.2);
+}
+
+.chip.warning {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.chip.muted {
+  background: var(--gray-100);
+  color: var(--gray-700);
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.decision-body {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.field .label {
+  color: var(--gray-600);
+  margin: 0 0 0.2rem;
+}
+
+.field .value {
+  margin: 0;
+  font-weight: 700;
+}
+
+.field .value.gain {
+  color: var(--success-700);
+}
+
+.field .value.loss {
+  color: var(--danger-700);
+}
+
+.notes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: var(--gray-50);
+}
+
+.notes .label {
+  margin: 0 0 0.3rem;
+  color: var(--gray-700);
+}
+
+.notes .muted,
+.muted {
+  color: var(--gray-600);
+}
+
+@media (max-width: 1024px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

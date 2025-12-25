@@ -16,7 +16,7 @@
 }
 
 .chart-subtitle {
-  color: var(--tradv-muted);
+  color: var(--color-text-muted);
   font-size: 0.9rem;
 }
 
@@ -25,7 +25,7 @@
   align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
-  color: var(--tradv-muted);
+  color: var(--color-text-muted);
 }
 
 .dot {
@@ -36,11 +36,11 @@
 }
 
 .dot.up {
-  background: var(--tradv-up);
+  background: var(--success-600);
 }
 
 .dot.down {
-  background: var(--tradv-down);
+  background: var(--danger-600);
 }
 
 .chart-surface {
@@ -48,5 +48,5 @@
   height: clamp(320px, 50vh, 480px);
   border-radius: 20px;
   overflow: hidden;
-  background: var(--tradv-surface);
+  background: var(--color-surface);
 }

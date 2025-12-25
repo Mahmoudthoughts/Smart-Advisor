@@ -1,0 +1,86 @@
+<section class="stocks">
+  <header class="page-header">
+    <div>
+      <h1>My Stocks</h1>
+      <p>Monitor the symbols you are tracking, including real positions, pricing, and unrealized performance.</p>
+    </div>
+    <div class="actions">
+      <button type="button" (click)="trackAnother()">Add symbols</button>
+      <a routerLink="/app/transactions" class="secondary">Record transactions</a>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="tile">
+      <span class="label">Tracked symbols</span>
+      <strong>{{ watchlist().length }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">Active positions</span>
+      <strong>{{ investedSymbols().length }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">Unrealized P&amp;L</span>
+      <strong [class.positive]="totalUnrealized() >= 0" [class.negative]="totalUnrealized() < 0">
+        {{ totalUnrealized() | currency: 'USD' }}
+      </strong>
+    </div>
+  </section>
+
+  <p class="status" *ngIf="refreshStatus()">{{ refreshStatus() }}</p>
+  <p class="error" *ngIf="refreshError()">{{ refreshError() }}</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <div class="table-wrapper" *ngIf="watchlist().length; else emptyState">
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Name</th>
+          <th>Last</th>
+          <th>Change</th>
+          <th>Position</th>
+          <th>Avg cost</th>
+          <th>Unrealized P&amp;L</th>
+          <th class="actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of watchlist()">
+          <td>
+            <strong>{{ row.symbol }}</strong>
+            <span class="muted">{{ row.latest_close_date }}</span>
+          </td>
+          <td>{{ row.name || '—' }}</td>
+          <td>{{ row.latest_close === null ? '—' : (row.latest_close | currency: 'USD':'symbol':'1.2-2') }}</td>
+          <td>
+            <span [class.positive]="(row.day_change ?? 0) >= 0" [class.negative]="(row.day_change ?? 0) < 0">
+              {{ row.day_change === null ? '—' : (row.day_change | currency: 'USD':'symbol':'1.2-2') }}
+              <small *ngIf="row.day_change_percent !== null">({{ row.day_change_percent | percent: '1.2-2' }})</small>
+            </span>
+          </td>
+          <td>{{ row.position_qty === null ? '—' : (row.position_qty | number: '1.0-2') }}</td>
+          <td>{{ row.average_cost === null ? '—' : (row.average_cost | currency: 'USD') }}</td>
+          <td>
+            <span [class.positive]="(row.unrealized_pl ?? 0) >= 0" [class.negative]="(row.unrealized_pl ?? 0) < 0">
+              {{ row.unrealized_pl === null ? '—' : (row.unrealized_pl | currency: 'USD') }}
+            </span>
+          </td>
+          <td class="actions">
+            <button type="button" class="link" (click)="viewSymbol(row.symbol)">View</button>
+            <button type="button" class="link" (click)="viewIntraday(row.symbol)">Intraday</button>
+            <button type="button" class="link" (click)="recordTransaction(row.symbol)">Add txn</button>
+            <button type="button" class="link" (click)="refreshSymbol(row.symbol)">Refresh</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty">
+      <p>No symbols tracked yet. Start by adding tickers you care about.</p>
+      <button type="button" (click)="trackAnother()">Launch onboarding</button>
+    </div>
+  </ng-template>
+</section>

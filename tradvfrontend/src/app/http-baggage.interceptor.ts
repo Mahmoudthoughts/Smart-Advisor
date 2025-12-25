@@ -1,4 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { AuthService } from './auth.service';
 
 type TelemetryUser = {
   id: string | number;
@@ -50,7 +52,17 @@ export const userBaggageInterceptor: HttpInterceptorFn = (req, next) => {
   if (authState?.token) {
     headers['Authorization'] = `Bearer ${authState.token}`;
   }
-  const user = readUser();
+  // Prefer live auth state; fallback to stored telemetry
+  let user = readUser();
+  try {
+    const auth = inject(AuthService);
+    const live = auth?.user?.();
+    if (live) {
+      user = { id: live.id, email: live.email, role: 'user' };
+    }
+  } catch {
+    // ignore injection issues during bootstrap
+  }
   if (user) {
     const baggage = buildBaggage(user);
     if (baggage) {

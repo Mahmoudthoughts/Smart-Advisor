@@ -1,0 +1,37 @@
+<section class="alerts-page">
+  <header class="page-header">
+    <h1>Alerts & Narratives</h1>
+    <p>Explain drawdowns, signal triggers, macro proximity, and new peaks with contextual analogues.</p>
+  </header>
+
+  <section class="alerts">
+    <header>
+      <h2>Latest alerts</h2>
+      <p>Generated from nightly advisor pipeline with rationale templates per §11.</p>
+    </header>
+    <ul>
+      <li *ngFor="let alert of alerts">
+        <div class="meta">
+          <span class="timestamp">{{ alert.timestamp }}</span>
+          <span class="type">{{ alert.type }}</span>
+        </div>
+        <h3>{{ alert.symbol }}</h3>
+        <p>{{ alert.explanation }}</p>
+        <span class="analogue">{{ alert.analogue }}</span>
+      </li>
+    </ul>
+  </section>
+
+  <section class="narratives">
+    <header>
+      <h2>Narratives</h2>
+      <p>Daily and weekly storylines summarizing regret, signals, and macro overlays.</p>
+    </header>
+    <article *ngFor="let narrative of narratives">
+      <h3>{{ narrative.title }} <small>{{ narrative.timeframe }}</small></h3>
+      <ul>
+        <li *ngFor="let highlight of narrative.highlights">{{ highlight }}</li>
+      </ul>
+    </article>
+  </section>
+</section>

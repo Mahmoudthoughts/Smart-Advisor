@@ -1,0 +1,93 @@
+<section class="timeline-page">
+  <header class="page-header">
+    <div>
+      <h1>Portfolio Timeline</h1>
+      <p>Track hypothetical liquidation, unrealized P&amp;L, and daily opportunities across your portfolio.</p>
+    </div>
+    <form class="filters" aria-label="Timeline filters" (ngSubmit)="loadTimeline()" novalidate>
+      <label>
+        Symbol
+        <select [ngModel]="selectedSymbol()" (ngModelChange)="onSymbolChange($event)" name="symbol">
+          <option *ngFor="let ticker of watchlist()" [value]="ticker.symbol">{{ ticker.symbol }}</option>
+        </select>
+      </label>
+      <div class="presets" role="group" aria-label="Quick ranges">
+        <button type="button" [class.active]="selectedPreset() === 'WTD'" (click)="applyPreset('WTD')">Week to date</button>
+        <button type="button" [class.active]="selectedPreset() === 'MTD'" (click)="applyPreset('MTD')">Month to date</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_WEEK'" (click)="applyPreset('LAST_WEEK')">Last week</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_MONTH'" (click)="applyPreset('LAST_MONTH')">Last month</button>
+        <button type="button" [class.active]="selectedPreset() === 'LAST_3M'" (click)="applyPreset('LAST_3M')">Last 3 months</button>
+      </div>
+      <label>
+        From
+        <input type="date" [ngModel]="fromDate()" (ngModelChange)="onFromChange($event)" name="from" />
+      </label>
+      <label>
+        To
+        <input type="date" [ngModel]="toDate()" (ngModelChange)="onToChange($event)" name="to" />
+      </label>
+      <button type="button" (click)="loadTimeline()" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
+    </form>
+  </header>
+
+  <p class="empty" *ngIf="!watchlist().length">Add a symbol from My Stocks to start building a personalized timeline.</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <section class="chart-card">
+    <header>
+      <h2>Timeline View</h2>
+      <p>Overlay price with hypothetical liquidation and unrealized P&amp;L to highlight regret windows.</p>
+    </header>
+    <div echarts [options]="timelineOption()" [autoResize]="true" class="chart" *ngIf="hasData(); else emptyState"></div>
+    <ng-template #emptyState>
+      <div class="chart-placeholder">
+        <p>Select a symbol with price history and recorded trades to render the chart.</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <section class="data-grid" aria-live="polite">
+    <h2>Daily opportunity breakdown</h2>
+    <table *ngIf="tableRows().length; else noRows">
+      <thead>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Close</th>
+          <th scope="col">Hypo P&amp;L</th>
+          <th scope="col">Unrealized P&amp;L</th>
+          <th scope="col">Day Opportunity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of tableRows()">
+          <td data-label="Date">{{ row.date }}</td>
+          <td data-label="Close">{{ row.price === null ? '—' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
+          <td data-label="Hypo P&L">{{ row.hypoPnl | currency: 'USD' }}</td>
+          <td data-label="Unrealized P&L">{{ row.unrealizedPnl | currency: 'USD' }}</td>
+          <td data-label="Day opportunity">
+            <span [class.positive]="row.dayOpportunity > 0">
+              {{ row.dayOpportunity | currency: 'USD' }}
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #noRows>
+      <p class="empty">No timeline data yet. Add trades to visualize missed opportunities for this symbol.</p>
+    </ng-template>
+  </section>
+
+  <section class="transactions" *ngIf="transactions().length">
+    <h2>Recorded trades</h2>
+    <ul>
+      <li *ngFor="let tx of transactions()">
+        <span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span>
+        <strong>{{ tx.symbol }}</strong>
+        <span>{{ tx.trade_datetime | date: 'mediumDate' }}</span>
+        <span>{{ tx.quantity }} &#64;{{ tx.price | currency: 'USD' }}</span>
+        <span *ngIf="tx.account">Account: {{ tx.account }}</span>
+        <span class="value">Value ≈ {{ (tx.quantity * tx.price) | currency: 'USD' }}</span>
+      </li>
+    </ul>
+  </section>
+</section>

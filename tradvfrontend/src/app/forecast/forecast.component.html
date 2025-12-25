@@ -1,0 +1,45 @@
+<section class="forecast-page">
+  <header class="page-header">
+    <div>
+      <h1>30-day Predictor</h1>
+      <p>Blend rule signals, sentiment, and macro overlays to project regret-adjusted outcomes.</p>
+    </div>
+    <form class="filters">
+      <label>
+        Symbol
+        <select [(ngModel)]="selectedSymbol" name="symbol">
+          <option *ngFor="let ticker of symbols" [value]="ticker">{{ ticker }}</option>
+        </select>
+      </label>
+      <label>
+        As of
+        <input type="date" [(ngModel)]="asOfDate" name="asOf" />
+      </label>
+      <button type="button">Request forecast</button>
+    </form>
+  </header>
+
+  <section class="scenario-grid">
+    <article *ngFor="let scenario of scenarios">
+      <header>
+        <h2>{{ scenario.horizon }}</h2>
+        <span class="probability">{{ scenario.probability | percent: '1.0-0' }}</span>
+      </header>
+      <p class="regret">Expected regret delta: {{ scenario.regretDelta }}</p>
+      <ul>
+        <li *ngFor="let driver of scenario.drivers">{{ driver }}</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="insights">
+    <h2>Advisor insights</h2>
+    <div class="cards">
+      <article *ngFor="let insight of insights">
+        <h3>{{ insight.title }}</h3>
+        <p>{{ insight.summary }}</p>
+        <span class="action">Next best move: {{ insight.action }}</span>
+      </article>
+    </div>
+  </section>
+</section>
