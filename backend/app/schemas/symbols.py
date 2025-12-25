@@ -27,7 +27,18 @@ class SymbolRefreshResponse(BaseModel):
     snapshots_rebuilt: int
 
 
+class IntradayBarSchema(BaseModel):
+    symbol: str
+    date: str
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float
+
+
 __all__ = [
     "SymbolSearchResultSchema",
     "SymbolRefreshResponse",
+    "IntradayBarSchema",
 ]

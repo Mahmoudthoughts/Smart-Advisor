@@ -117,6 +117,22 @@ export interface TimelineTransaction {
   readonly notional_value: number;
 }
 
+export interface IntradayBar {
+  readonly symbol: string;
+  readonly date: string;
+  readonly open: number;
+  readonly high: number;
+  readonly low: number;
+  readonly close: number;
+  readonly volume: number;
+}
+
+export interface IntradayBarsParams {
+  readonly barSize?: string | null;
+  readonly durationDays?: number | null;
+  readonly useRth?: boolean | null;
+}
+
 export interface TimelineResponse {
   readonly symbol: string;
   readonly snapshots: TimelineSnapshot[];
@@ -220,6 +236,20 @@ export class PortfolioDataService {
       params = params.set('to', to);
     }
     return this.http.get<TimelineResponse>(`${this.baseUrl}/symbols/${symbol}/timeline`, { params });
+  }
+
+  getIntradayBars(symbol: string, options?: IntradayBarsParams): Observable<IntradayBar[]> {
+    let params = new HttpParams();
+    if (options?.barSize) {
+      params = params.set('bar_size', options.barSize);
+    }
+    if (options?.durationDays) {
+      params = params.set('duration_days', String(options.durationDays));
+    }
+    if (options?.useRth !== null && options?.useRth !== undefined) {
+      params = params.set('use_rth', String(options.useRth));
+    }
+    return this.http.get<IntradayBar[]>(`${this.baseUrl}/symbols/${symbol}/intraday`, { params });
   }
 
   searchSymbols(query: string): Observable<SymbolSearchResult[]> {

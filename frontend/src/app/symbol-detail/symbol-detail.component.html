@@ -57,6 +57,30 @@
     </article>
   </section>
 
+  <section class="insights">
+    <article class="insight-card">
+      <header>
+        <h2>Quick trade plan</h2>
+        <p>{{ quickTradePlan().helper }}</p>
+      </header>
+      <div class="plan-grid" *ngIf="quickTradePlan().status === 'ready'; else planFallback">
+        <div class="plan-metric">
+          <span class="label">Median noon drawdown</span>
+          <strong>{{ quickTradePlan().middayDrawdownPct | percent: '1.2-2' }}</strong>
+          <span class="note">From open to midday low</span>
+        </div>
+        <div class="plan-metric">
+          <span class="label">Avg close recovery</span>
+          <strong>{{ quickTradePlan().closeLiftPct | percent: '1.2-2' }}</strong>
+          <span class="note">From midday low into close</span>
+        </div>
+      </div>
+      <ng-template #planFallback>
+        <p class="fallback">{{ quickTradePlan().fallback }}</p>
+      </ng-template>
+    </article>
+  </section>
+
   <section class="chart-card">
     <header>
       <h2>Timeline &amp; trades</h2>

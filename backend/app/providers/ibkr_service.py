@@ -76,4 +76,58 @@ async def search_symbols(
     return results
 
 
-__all__ = ["IBKRServiceError", "search_symbols"]
+async def fetch_price_bars(
+    symbol: str,
+    *,
+    base_url: str | None = None,
+    bar_size: str | None = None,
+    duration_days: int | None = None,
+    use_rth: bool | None = None,
+    timeout_seconds: float = 15.0,
+) -> list[dict[str, Any]]:
+    """Fetch raw bar payloads from the IBKR bridge."""
+
+    settings = get_settings()
+    url_base = (base_url or settings.ibkr_service_url or "").rstrip("/")
+    if not url_base:
+        raise IBKRServiceError("IBKR service URL is not configured")
+    url = f"{url_base}/prices"
+    params: dict[str, Any] = {}
+    if bar_size:
+        params["bar_size"] = bar_size
+    if duration_days:
+        params["duration_days"] = duration_days
+    if use_rth is not None:
+        params["use_rth"] = use_rth
+    try:
+        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+            response = await client.post(url, params=params, json={"symbol": symbol})
+    except httpx.HTTPError as exc:  # pragma: no cover - network failure handling
+        raise IBKRServiceError(f"Failed to reach IBKR service: {exc}") from exc
+
+    if response.status_code >= 400:
+        detail: Any
+        try:
+            payload = response.json()
+            detail = payload.get("detail", payload)
+        except Exception:  # pragma: no cover - defensive parsing
+            detail = response.text
+        raise IBKRServiceError(f"IBKR service error {response.status_code}: {detail}")
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise IBKRServiceError("IBKR service returned invalid JSON payload") from exc
+
+    bars: Any
+    if isinstance(payload, dict):
+        bars = payload.get("bars", [])
+    else:
+        bars = payload
+
+    if not isinstance(bars, list):
+        raise IBKRServiceError("IBKR service response is not a list of bars")
+    return bars
+
+
+__all__ = ["IBKRServiceError", "search_symbols", "fetch_price_bars"]

@@ -24,24 +24,38 @@ class PriceRequest(BaseModel):
     symbol: str
 
 
-def _to_iso_date(raw: object) -> str:
+def _to_iso_date(raw: object, *, include_time: bool) -> str:
     if isinstance(raw, datetime):
-        return raw.date().isoformat()
+        return raw.isoformat() if include_time else raw.date().isoformat()
     if isinstance(raw, date):
         return raw.isoformat()
+    raw_str = str(raw)
     try:
-        return datetime.fromisoformat(str(raw)).date().isoformat()
+        parsed = datetime.fromisoformat(raw_str)
+        if include_time and "T" in raw_str:
+            return parsed.isoformat()
+        return parsed.date().isoformat()
     except Exception:
         try:
-            return datetime.strptime(str(raw), "%Y%m%d").date().isoformat()
+            return datetime.strptime(raw_str, "%Y%m%d").date().isoformat()
         except Exception:
-            return str(raw)
+            return raw_str
 
 
-def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
+def _fetch_bars_sync(
+    symbol: str,
+    *,
+    bar_size: str | None = None,
+    duration_days: int | None = None,
+    use_rth: bool | None = None,
+) -> tuple[list[dict], str]:
     settings = get_settings()
     start = time.perf_counter()
     attempt = 0
+    resolved_bar_size = (bar_size or settings.ibkr_bar_size).strip().strip('"').strip("'")
+    include_time = "day" not in resolved_bar_size.lower()
+    resolved_duration_days = duration_days or settings.ibkr_duration_days
+    resolved_use_rth = settings.ibkr_use_rth if use_rth is None else use_rth
     while attempt < max(1, settings.ibkr_max_retries):
         attempt += 1
         loop = asyncio.new_event_loop()
@@ -67,14 +81,13 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
             ib.reqMarketDataType(settings.ibkr_market_data_type)
             contract = Stock(symbol, "SMART", settings.base_currency)
             ib.qualifyContracts(contract)
-            bar_size = settings.ibkr_bar_size.strip().strip('"').strip("'")
             bars_iter: Iterable[BarData] = ib.reqHistoricalData(
                 contract,
                 "",
-                f"{settings.ibkr_duration_days} D",
-                bar_size,
+                f"{resolved_duration_days} D",
+                resolved_bar_size,
                 settings.ibkr_what_to_show,
-                settings.ibkr_use_rth,
+                resolved_use_rth,
                 1,
                 False,
             )
@@ -82,7 +95,7 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
             payload = [
                 {
                     "symbol": symbol,
-                    "date": _to_iso_date(bar.date),
+                    "date": _to_iso_date(bar.date, include_time=include_time),
                     "open": float(bar.open),
                     "high": float(bar.high),
                     "low": float(bar.low),
@@ -119,8 +132,20 @@ def _fetch_bars_sync(symbol: str) -> tuple[list[dict], str]:
                     loop.close()
 
 
-async def _fetch_bars_async(symbol: str) -> tuple[list[dict], str]:
-    return await asyncio.to_thread(_fetch_bars_sync, symbol)
+async def _fetch_bars_async(
+    symbol: str,
+    *,
+    bar_size: str | None = None,
+    duration_days: int | None = None,
+    use_rth: bool | None = None,
+) -> tuple[list[dict], str]:
+    return await asyncio.to_thread(
+        _fetch_bars_sync,
+        symbol,
+        bar_size=bar_size,
+        duration_days=duration_days,
+        use_rth=use_rth,
+    )
 
 
 def _search_symbols_sync(query: str) -> list[dict[str, Any]]:
@@ -226,9 +251,19 @@ async def _search_symbols_async(query: str) -> list[dict[str, Any]]:
 
 
 @app.post("/prices")
-async def get_prices(req: PriceRequest):
+async def get_prices(
+    req: PriceRequest,
+    bar_size: str | None = Query(default=None, description="IBKR bar size, e.g. '5 mins' or '15 mins'"),
+    duration_days: int | None = Query(default=None, ge=1, le=30, description="Number of days to look back"),
+    use_rth: bool | None = Query(default=None, description="Use regular trading hours"),
+):
     try:
-        payload, currency = await _fetch_bars_async(req.symbol)
+        payload, currency = await _fetch_bars_async(
+            req.symbol,
+            bar_size=bar_size,
+            duration_days=duration_days,
+            use_rth=use_rth,
+        )
         return {"bars": payload}
     except Exception as exc:  # noqa: BLE001
         log.exception("IBKR fetch failed for %s", req.symbol)

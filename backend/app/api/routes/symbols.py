@@ -17,7 +17,11 @@ from app.db.session import get_db
 from app.ingest.client import IngestServiceError, trigger_price_ingest
 from app.models import DailyBar, DailyPortfolioSnapshot, Portfolio, Transaction
 from app.providers.alpha_vantage import AlphaVantageError, get_alpha_vantage_client
-from app.providers.ibkr_service import IBKRServiceError, search_symbols as search_ibkr_service
+from app.providers.ibkr_service import (
+    IBKRServiceError,
+    fetch_price_bars,
+    search_symbols as search_ibkr_service,
+)
 from app.schemas.snapshots import (
     DailyPortfolioSnapshotSchema,
     TimelinePricePointSchema,
@@ -25,7 +29,7 @@ from app.schemas.snapshots import (
     TimelineTransactionSchema,
     TopMissedDaySchema,
 )
-from app.schemas.symbols import SymbolRefreshResponse, SymbolSearchResultSchema
+from app.schemas.symbols import IntradayBarSchema, SymbolRefreshResponse, SymbolSearchResultSchema
 from app.services import portfolio as portfolio_client
 from app.api.dependencies.auth import get_current_user
 from smart_advisor.api.models import User
@@ -190,6 +194,35 @@ async def get_symbol_timeline(
     ]
     logger.debug(f"Retrieved timeline for {symbol}: {len(snapshots)} snapshots, {len(prices)} prices, {len(transactions)} transactions")
     return TimelineResponse(symbol=normalized, snapshots=snapshots, prices=prices, transactions=transactions)
+
+
+@router.get("/{symbol}/intraday", response_model=list[IntradayBarSchema])
+async def get_intraday_bars(
+    symbol: str,
+    bar_size: str = Query(default="15 mins", description="IBKR bar size (e.g. 5 mins, 15 mins)"),
+    duration_days: int = Query(default=5, ge=1, le=30, description="Number of days to look back"),
+    use_rth: bool = Query(default=True, description="Use regular trading hours"),
+    current_user: User = Depends(get_current_user),
+) -> list[IntradayBarSchema]:
+    normalized = symbol.strip().upper()
+    settings = get_settings()
+    if not settings.ibkr_service_url:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="IBKR service not configured (IBKR_SERVICE_URL missing)",
+        )
+    try:
+        bars = await fetch_price_bars(
+            normalized,
+            base_url=settings.ibkr_service_url,
+            bar_size=bar_size,
+            duration_days=duration_days,
+            use_rth=use_rth,
+        )
+    except IBKRServiceError as exc:
+        logger.error("IBKR intraday fetch failed for %s: %s", normalized, exc)
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+    return bars
 
 
 @router.post("/{symbol}/refresh", response_model=SymbolRefreshResponse)

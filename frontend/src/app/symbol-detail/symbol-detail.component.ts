@@ -8,6 +8,7 @@ import { Subscription } from 'rxjs';
 
 import {
   PortfolioDataService,
+  IntradayBar,
   SymbolRefreshResponse,
   TimelinePricePoint,
   TimelineSnapshot,
@@ -27,6 +28,15 @@ interface SymbolSummary {
   readonly hypo: number | null;
 }
 
+interface QuickTradePlan {
+  readonly status: 'ready' | 'insufficient';
+  readonly sessions: number;
+  readonly middayDrawdownPct: number | null;
+  readonly closeLiftPct: number | null;
+  readonly helper: string;
+  readonly fallback: string;
+}
+
 @Component({
   selector: 'app-symbol-detail',
   standalone: true,
@@ -37,6 +47,11 @@ interface SymbolSummary {
 export class SymbolDetailComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly dataService = inject(PortfolioDataService);
+  private readonly intradayBarSize = '15 mins';
+  private readonly intradayDurationDays = 5;
+  private readonly intradayMinSessions = 3;
+  private readonly middayStartHour = 11;
+  private readonly middayEndHour = 13.5;
 
   private paramSub: Subscription | null = null;
 
@@ -49,6 +64,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);
+  readonly intradayBars = signal<IntradayBar[]>([]);
   readonly symbolMeta = signal<SymbolSearchResult | null>(null);
   readonly fromDate = signal<string>('');
   readonly toDate = signal<string>('');
@@ -92,12 +108,84 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     };
   });
 
+  readonly quickTradePlan = computed<QuickTradePlan>(() => {
+    const bars = this.intradayBars();
+    const windowLabel = `${this.intradayDurationDays}d`;
+    const intervalLabel = this.intradayBarSize;
+    if (!bars.length) {
+      return {
+        status: 'insufficient',
+        sessions: 0,
+        middayDrawdownPct: null,
+        closeLiftPct: null,
+        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries.`,
+        fallback: `Need at least ${this.intradayMinSessions} recent intraday sessions to estimate the noon drawdown and close lift.`
+      };
+    }
+
+    type DatedBar = { bar: IntradayBar; timestamp: Date };
+    const sessions = new Map<string, DatedBar[]>();
+    bars.forEach((bar) => {
+      const timestamp = new Date(bar.date);
+      if (Number.isNaN(timestamp.getTime())) {
+        return;
+      }
+      const key = this.formatDayKey(timestamp);
+      const list = sessions.get(key) ?? [];
+      list.push({ bar, timestamp });
+      sessions.set(key, list);
+    });
+
+    const drawdowns: number[] = [];
+    const lifts: number[] = [];
+    sessions.forEach((items) => {
+      const sorted = items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      const open = sorted[0]?.bar.open ?? 0;
+      const close = sorted[sorted.length - 1]?.bar.close ?? 0;
+      const midday = sorted.filter((item) => {
+        const hour = this.getHourFraction(item.timestamp);
+        return hour >= this.middayStartHour && hour <= this.middayEndHour;
+      });
+      if (!midday.length || open <= 0 || close <= 0) {
+        return;
+      }
+      const middayLow = Math.min(...midday.map((item) => item.bar.low));
+      if (!Number.isFinite(middayLow) || middayLow <= 0) {
+        return;
+      }
+      drawdowns.push((middayLow - open) / open);
+      lifts.push((close - middayLow) / middayLow);
+    });
+
+    const sessionsUsed = Math.min(drawdowns.length, lifts.length);
+    if (sessionsUsed < this.intradayMinSessions) {
+      return {
+        status: 'insufficient',
+        sessions: sessionsUsed,
+        middayDrawdownPct: null,
+        closeLiftPct: null,
+        helper: `Scanning ${windowLabel} of ${intervalLabel} bars for midday dips and late-day recoveries.`,
+        fallback: `Only ${sessionsUsed} intraday session${sessionsUsed === 1 ? '' : 's'} found. Need ${this.intradayMinSessions} to estimate the noon drawdown and close lift.`
+      };
+    }
+
+    return {
+      status: 'ready',
+      sessions: sessionsUsed,
+      middayDrawdownPct: this.median(drawdowns),
+      closeLiftPct: this.average(lifts),
+      helper: `Based on ${sessionsUsed} sessions in the last ${windowLabel} (${intervalLabel} bars).`,
+      fallback: ''
+    };
+  });
+
   ngOnInit(): void {
     this.paramSub = this.route.paramMap.subscribe((params) => {
       const symbol = (params.get('symbol') ?? '').toUpperCase();
       this.symbol.set(symbol);
       this.loadWatchlist();
       this.loadTimeline();
+      this.loadIntradayBars();
       this.fetchSymbolMeta();
     });
   }
@@ -147,6 +235,24 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         this.loadError.set('Unable to load analytics for this symbol.');
       }
     });
+  }
+
+  loadIntradayBars(): void {
+    const ticker = this.symbol();
+    if (!ticker) {
+      this.intradayBars.set([]);
+      return;
+    }
+    this.dataService
+      .getIntradayBars(ticker, {
+        barSize: this.intradayBarSize,
+        durationDays: this.intradayDurationDays,
+        useRth: true
+      })
+      .subscribe({
+        next: (bars) => this.intradayBars.set(bars),
+        error: () => this.intradayBars.set([])
+      });
   }
 
   private fetchSymbolMeta(): void {
@@ -225,6 +331,37 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
+  private formatDayKey(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private getHourFraction(d: Date): number {
+    return d.getHours() + d.getMinutes() / 60;
+  }
+
+  private average(values: number[]): number {
+    if (!values.length) {
+      return 0;
+    }
+    const total = values.reduce((sum, value) => sum + value, 0);
+    return total / values.length;
+  }
+
+  private median(values: number[]): number {
+    if (!values.length) {
+      return 0;
+    }
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    if (sorted.length % 2 === 0) {
+      return (sorted[mid - 1] + sorted[mid]) / 2;
+    }
+    return sorted[mid];
+  }
+
   private findFirstTransactionDate(transactions: TimelineTransaction[]): string | null {
     if (!transactions.length) {
       return null;
@@ -248,6 +385,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         );
         this.loadWatchlist();
         this.loadTimeline();
+        this.loadIntradayBars();
       },
       error: (err) => {
         const message = err?.error?.detail ?? 'Unable to refresh market data for this symbol.';

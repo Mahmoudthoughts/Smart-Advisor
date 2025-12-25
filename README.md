@@ -129,6 +129,11 @@ Downstream processors can either read directly from these tables or plug into th
   - Region/currency are sourced via `searchSymbols()` best match when available.
   - Files: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`.
 
+- Symbol detail intraday trade plan
+  - Quick trade plan card summarizes median midday drawdown and average close recovery from recent intraday bars.
+  - Uses the IBKR bridge via the backend intraday endpoint for 15-minute bars.
+  - Files: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`, `backend/app/api/routes/symbols.py`.
+
 - Theme toggle (light/dark)
   - Sun/Moon icon in the top bar toggles theme, persisted in `localStorage`.
   - Theming driven by CSS variables; dark mode applies `theme-dark` class to `<body>`.
