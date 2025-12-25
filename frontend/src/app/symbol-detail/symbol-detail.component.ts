@@ -52,7 +52,6 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   private readonly intradayMinSessions = 3;
   private readonly middayStartHour = 11;
   private readonly middayEndHour = 13.5;
-  private readonly intradayTimeZone = 'America/New_York';
 
   private paramSub: Subscription | null = null;
 
@@ -127,11 +126,14 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     type DatedBar = { bar: IntradayBar; timestamp: Date };
     const sessions = new Map<string, DatedBar[]>();
     bars.forEach((bar) => {
+      const key = this.getIsoDatePart(bar.date);
+      if (!key) {
+        return;
+      }
       const timestamp = new Date(bar.date);
       if (Number.isNaN(timestamp.getTime())) {
         return;
       }
-      const key = this.formatDayKey(timestamp, this.intradayTimeZone);
       const list = sessions.get(key) ?? [];
       list.push({ bar, timestamp });
       sessions.set(key, list);
@@ -144,7 +146,10 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       const open = sorted[0]?.bar.open ?? 0;
       const close = sorted[sorted.length - 1]?.bar.close ?? 0;
       const midday = sorted.filter((item) => {
-        const hour = this.getHourFraction(item.timestamp, this.intradayTimeZone);
+        const hour = this.getIsoHourFraction(item.bar.date);
+        if (hour === null) {
+          return false;
+        }
         return hour >= this.middayStartHour && hour <= this.middayEndHour;
       });
       if (!midday.length || open <= 0 || close <= 0) {
@@ -332,33 +337,26 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     return `${y}-${m}-${day}`;
   }
 
-  private formatDayKey(d: Date, timeZone: string): string {
-    const parts = this.getPartsInZone(d, timeZone);
-    return `${parts.year}-${parts.month}-${parts.day}`;
+  private getIsoDatePart(value: string): string | null {
+    const [datePart] = value.split('T');
+    return datePart || null;
   }
 
-  private getHourFraction(d: Date, timeZone: string): number {
-    const parts = this.getPartsInZone(d, timeZone);
-    return Number(parts.hour) + Number(parts.minute) / 60;
-  }
-
-  private getPartsInZone(d: Date, timeZone: string): Record<string, string> {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-    const parts = formatter.formatToParts(d);
-    return parts.reduce<Record<string, string>>((acc, part) => {
-      if (part.type !== 'literal') {
-        acc[part.type] = part.value;
-      }
-      return acc;
-    }, {});
+  private getIsoHourFraction(value: string): number | null {
+    const [, timePart] = value.split('T');
+    if (!timePart) {
+      return null;
+    }
+    const parts = timePart.split(':');
+    if (parts.length < 2) {
+      return null;
+    }
+    const hour = Number(parts[0]);
+    const minute = Number(parts[1]);
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      return null;
+    }
+    return hour + minute / 60;
   }
 
   private average(values: number[]): number {
