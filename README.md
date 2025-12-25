@@ -134,6 +134,11 @@ Downstream processors can either read directly from these tables or plug into th
   - Uses the IBKR bridge via the backend intraday endpoint for 15-minute bars.
   - Files: `frontend/src/app/symbol-detail/symbol-detail.component.{html,ts,scss}`, `backend/app/api/routes/symbols.py`.
 
+- Intraday insights page
+  - Dedicated page at `/app/intraday-insights` shows bar settings, session summaries, and raw intraday bars.
+  - Linked from My Stocks actions for each symbol.
+  - Files: `frontend/src/app/intraday-insights/intraday-insights.component.{html,ts,scss}`, `frontend/src/app/my-stocks/my-stocks.component.html`.
+
 - Theme toggle (light/dark)
   - Sun/Moon icon in the top bar toggles theme, persisted in `localStorage`.
   - Theming driven by CSS variables; dark mode applies `theme-dark` class to `<body>`.

@@ -20,6 +20,7 @@ import { TransactionsComponent } from './transactions/transactions.component';
 import { DecisionsComponent } from './decisions/decisions.component';
 import { AdminComponent } from './admin/admin.component';
 import { UnrealizedComponent } from './unrealized/unrealized.component';
+import { IntradayInsightsComponent } from './intraday-insights/intraday-insights.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -43,6 +44,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/stocks',
     component: MyStocksComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/intraday-insights',
+    component: IntradayInsightsComponent,
     canActivate: [authGuard]
   },
   {

@@ -58,6 +58,10 @@ export class MyStocksComponent implements OnInit {
     void this.router.navigate(['/app/symbols', symbol]);
   }
 
+  viewIntraday(symbol: string): void {
+    void this.router.navigate(['/app/intraday-insights'], { queryParams: { symbol } });
+  }
+
   recordTransaction(symbol: string): void {
     void this.router.navigate(['/app/transactions'], { queryParams: { symbol } });
   }
