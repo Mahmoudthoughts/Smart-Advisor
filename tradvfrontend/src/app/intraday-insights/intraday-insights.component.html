@@ -47,6 +47,30 @@
   <p class="status" *ngIf="isLoading()">Loading intraday bars...</p>
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
+  <section class="sessions" *ngIf="sessionDates().length">
+    <header>
+      <h2>Compare sessions</h2>
+      <p>Select which days to overlay. Median low/high time is computed from the selected sessions.</p>
+    </header>
+    <div class="session-actions">
+      <button type="button" (click)="selectAllSessions()">Select all</button>
+      <button type="button" class="ghost" (click)="clearAllSessions()">Clear all</button>
+      <span class="meta">
+        Median low: {{ medianLowTime() }} · Median high: {{ medianHighTime() }}
+      </span>
+    </div>
+    <div class="session-grid">
+      <label class="session-chip" *ngFor="let date of sessionDates()">
+        <input
+          type="checkbox"
+          [checked]="activeSessionDates().includes(date)"
+          (change)="toggleSession(date)"
+        />
+        <span>{{ date }}</span>
+      </label>
+    </div>
+  </section>
+
   <section class="summary">
     <article class="metric">
       <span class="label">Sessions analyzed</span>
@@ -70,6 +94,19 @@
   </section>
 
   <p class="fallback" *ngIf="intradaySummary().status === 'insufficient'">{{ intradaySummary().fallback }}</p>
+
+  <section class="chart-card" *ngIf="overlayCombinedSeries().length">
+    <header>
+      <h2>Overlayed intraday sessions</h2>
+      <p>Each line is a session plotted by time-of-day to spot common lows and highs.</p>
+    </header>
+    <app-tv-chart
+      class="overlay-chart"
+      [series]="overlayCombinedSeries()"
+      [legend]="overlayLegend()"
+      [showTimeScale]="true"
+    ></app-tv-chart>
+  </section>
 
   <section class="table-card">
     <header>

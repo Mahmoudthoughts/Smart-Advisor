@@ -3,8 +3,10 @@ import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
 import { Subscription } from 'rxjs';
+import { SeriesMarker, Time } from 'lightweight-charts';
 
 import { IntradayBar, PortfolioDataService, WatchlistSymbol } from '../portfolio-data.service';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type SessionSummary = {
   readonly date: string;
@@ -28,7 +30,7 @@ type IntradaySummary = {
 @Component({
   selector: 'app-intraday-insights',
   standalone: true,
-  imports: [CommonModule, RouterLink, CurrencyPipe, PercentPipe],
+  imports: [CommonModule, RouterLink, CurrencyPipe, PercentPipe, TvChartComponent],
   templateUrl: './intraday-insights.component.html',
   styleUrls: ['./intraday-insights.component.scss']
 })
@@ -58,8 +60,8 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     return [...this.bars()].sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date));
   });
 
-  readonly sessionSummaries = computed<SessionSummary[]>(() => {
-      const grouped = new Map<string, IntradayBar[]>();
+  readonly sessionGroups = computed(() => {
+    const grouped = new Map<string, IntradayBar[]>();
     this.sortedBars().forEach((bar) => {
       const key = this.getIsoDatePart(bar.date);
       if (!key) {
@@ -69,9 +71,18 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
       list.push(bar);
       grouped.set(key, list);
     });
+    return grouped;
+  });
 
+  readonly sessionDates = computed(() => {
+    return Array.from(this.sessionGroups().keys()).sort((a, b) => (a < b ? -1 : 1));
+  });
+
+  readonly selectedSessions = signal<string[]>([]);
+
+  readonly sessionSummaries = computed<SessionSummary[]>(() => {
     const summaries: SessionSummary[] = [];
-    grouped.forEach((items, date) => {
+    this.sessionGroups().forEach((items, date) => {
       const sorted = [...items].sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date));
       const open = sorted[0]?.open ?? null;
       const close = sorted[sorted.length - 1]?.close ?? null;
@@ -100,6 +111,125 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     });
     return summaries.sort((a, b) => (a.date < b.date ? 1 : -1));
   });
+
+  readonly activeSessionDates = computed(() => {
+    const selected = new Set(this.selectedSessions());
+    const all = this.sessionDates();
+    if (!selected.size) {
+      return all;
+    }
+    return all.filter((date) => selected.has(date));
+  });
+
+  readonly overlaySeries = computed<TvSeries[]>(() => {
+    const palette = ['#38bdf8', '#22c55e', '#f97316', '#6366f1', '#ef4444', '#14b8a6', '#eab308'];
+    const baseTimestamp = Date.UTC(2000, 0, 1) / 1000;
+    let colorIndex = 0;
+    const series: TvSeries[] = [];
+
+    this.activeSessionDates().forEach((date) => {
+      const items = this.sessionGroups().get(date) ?? [];
+        const color = palette[colorIndex % palette.length];
+        colorIndex += 1;
+        const points = items
+          .slice()
+          .sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date))
+          .map((bar) => ({
+            time: (baseTimestamp + this.minutesSinceMidnight(bar.date) * 60) as Time,
+            value: bar.close
+          }));
+
+        series.push({
+          name: date,
+          type: 'line',
+          data: points,
+          options: {
+            lineWidth: 2,
+            color
+          },
+          legendColor: color
+        });
+    });
+
+    return series;
+  });
+
+  readonly averageSessionSeries = computed<TvSeries>(() => {
+    const baseTimestamp = Date.UTC(2000, 0, 1) / 1000;
+    const minuteBuckets = new Map<number, number[]>();
+
+    this.activeSessionDates().forEach((date) => {
+      const items = this.sessionGroups().get(date) ?? [];
+      items.forEach((bar) => {
+        const minute = this.minutesSinceMidnight(bar.date);
+        const list = minuteBuckets.get(minute) ?? [];
+        list.push(bar.close);
+        minuteBuckets.set(minute, list);
+      });
+    });
+
+    const sortedMinutes = Array.from(minuteBuckets.entries()).sort(([a], [b]) => a - b);
+    const minuteToAvg = new Map<number, number>();
+    const points = sortedMinutes.map(([minute, values]) => {
+      const avg = values.reduce((sum, v) => sum + v, 0) / values.length;
+      minuteToAvg.set(minute, avg);
+      return {
+        time: (baseTimestamp + minute * 60) as Time,
+        value: avg
+      };
+    });
+
+    const [medianLowMinute, medianHighMinute] = this.medianLowHighMinutes();
+    const lowPrice = minuteToAvg.get(medianLowMinute) ?? points[0]?.value ?? 0;
+    const highPrice = minuteToAvg.get(medianHighMinute) ?? points[points.length - 1]?.value ?? 0;
+    const markers: SeriesMarker<Time>[] = [
+      {
+        time: (baseTimestamp + medianLowMinute * 60) as Time,
+        position: 'belowBar',
+        color: '#ef4444',
+        shape: 'circle',
+        text: `Median low ${this.formatMinuteLabel(medianLowMinute)}`,
+        price: lowPrice
+      },
+      {
+        time: (baseTimestamp + medianHighMinute * 60) as Time,
+        position: 'aboveBar',
+        color: '#22c55e',
+        shape: 'circle',
+        text: `Median high ${this.formatMinuteLabel(medianHighMinute)}`,
+        price: highPrice
+      }
+    ];
+
+    return {
+      name: 'Average session',
+      type: 'line',
+      data: points,
+      options: {
+        lineWidth: 3,
+        color: '#0ea5e9'
+      },
+      legendColor: '#0ea5e9',
+      markers
+    };
+  });
+
+  readonly overlayLegend = computed<TvLegendItem[]>(() => {
+    const legend = this.overlaySeries().map((entry) => ({
+      label: entry.name ?? 'Session',
+      color: entry.legendColor ?? '#38bdf8'
+    }));
+    return [{ label: 'Average session', color: '#0ea5e9' }, ...legend];
+  });
+
+  readonly overlayCombinedSeries = computed<TvSeries[]>(() => {
+    const series = [...this.overlaySeries()];
+    const average = this.averageSessionSeries();
+    return average.data.length ? [average, ...series] : series;
+  });
+
+  readonly medianLowTime = computed(() => this.formatMinuteLabel(this.medianLowHighMinutes()[0]));
+  readonly medianHighTime = computed(() => this.formatMinuteLabel(this.medianLowHighMinutes()[1]));
 
   readonly intradaySummary = computed<IntradaySummary>(() => {
     const summaries = this.sessionSummaries();
@@ -195,6 +325,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
           this.bars.set(bars);
           this.isLoading.set(false);
           this.lastUpdated.set(new Date().toLocaleString());
+          this.syncSelectedSessions();
         },
         error: () => {
           this.bars.set([]);
@@ -238,6 +369,48 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     return hour + minute / 60;
   }
 
+  private minutesSinceMidnight(value: string): number {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return 0;
+    }
+    return date.getUTCHours() * 60 + date.getUTCMinutes();
+  }
+
+  private medianLowHighMinutes(): [number, number] {
+    const lows: number[] = [];
+    const highs: number[] = [];
+    this.activeSessionDates().forEach((date) => {
+      const items = this.sessionGroups().get(date) ?? [];
+      if (!items.length) {
+        return;
+      }
+      let low = Number.POSITIVE_INFINITY;
+      let lowMinute = 0;
+      let high = Number.NEGATIVE_INFINITY;
+      let highMinute = 0;
+      items.forEach((bar) => {
+        if (bar.close < low) {
+          low = bar.close;
+          lowMinute = this.minutesSinceMidnight(bar.date);
+        }
+        if (bar.close > high) {
+          high = bar.close;
+          highMinute = this.minutesSinceMidnight(bar.date);
+        }
+      });
+      lows.push(lowMinute);
+      highs.push(highMinute);
+    });
+    return [this.median(lows) || 0, this.median(highs) || 0];
+  }
+
+  private formatMinuteLabel(minute: number): string {
+    const hours = Math.floor(minute / 60);
+    const mins = minute % 60;
+    return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+  }
+
   private average(values: number[]): number {
     if (!values.length) {
       return 0;
@@ -256,5 +429,36 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
       return (sorted[mid - 1] + sorted[mid]) / 2;
     }
     return sorted[mid];
+  }
+
+  toggleSession(date: string): void {
+    this.selectedSessions.update((current) => {
+      const next = new Set(current);
+      if (next.has(date)) {
+        next.delete(date);
+      } else {
+        next.add(date);
+      }
+      return Array.from(next);
+    });
+  }
+
+  selectAllSessions(): void {
+    this.selectedSessions.set(this.sessionDates());
+  }
+
+  clearAllSessions(): void {
+    this.selectedSessions.set([]);
+  }
+
+  private syncSelectedSessions(): void {
+    const available = this.sessionDates();
+    const selected = new Set(this.selectedSessions());
+    if (!selected.size) {
+      this.selectedSessions.set(available);
+      return;
+    }
+    const filtered = available.filter((date) => selected.has(date));
+    this.selectedSessions.set(filtered.length ? filtered : available);
   }
 }
