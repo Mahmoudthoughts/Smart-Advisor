@@ -5,7 +5,7 @@ import { AuthService } from '../auth.service';
 import { MarketDataService } from '../services/market-data.service';
 import { ChartPanelComponent } from '../shared/chart-panel/chart-panel.component';
 import { mapHistogramSeries, mapLineSeries } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface OpportunityRow {
   readonly rank: number;
@@ -89,6 +89,7 @@ export class AdvisorDashboardComponent {
 
   readonly liquidationSeries: TvSeries[] = [
     {
+      name: 'Hypo P&L',
       type: 'area',
       data: mapLineSeries([9.2, 9.6, 10.1, 10.8, 11.4, 11.2, 11.8]),
       options: {
@@ -99,6 +100,7 @@ export class AdvisorDashboardComponent {
       }
     },
     {
+      name: 'Unrealized P&L',
       type: 'line',
       data: mapLineSeries([6.1, 6.4, 6.8, 7.2, 7.5, 7.4, 7.8]),
       options: {
@@ -107,6 +109,7 @@ export class AdvisorDashboardComponent {
       }
     },
     {
+      name: 'Price',
       type: 'line',
       data: mapLineSeries([14.2, 14.6, 15, 15.4, 15.9, 15.5, 16.1]),
       options: {
@@ -116,8 +119,15 @@ export class AdvisorDashboardComponent {
     }
   ];
 
+  readonly liquidationLegend: TvLegendItem[] = [
+    { label: 'Hypo P&L', color: '#38bdf8' },
+    { label: 'Unrealized P&L', color: '#22c55e' },
+    { label: 'Price', color: '#f97316' }
+  ];
+
   readonly opportunitySeries: TvSeries[] = [
     {
+      name: 'Missed gain',
       type: 'histogram',
       data: mapHistogramSeries([4.8, 3.6, 2.9, 2.2, 1.8], undefined, '#38bdf8'),
       options: {
@@ -125,6 +135,8 @@ export class AdvisorDashboardComponent {
       }
     }
   ];
+
+  readonly opportunityLegend: TvLegendItem[] = [{ label: 'Missed gain (k)', color: '#38bdf8' }];
 
   readonly opportunities: OpportunityRow[] = [
     { rank: 1, symbol: 'PATH', missedGain: '$4.8k', driver: 'Sell signal + macro easing' },

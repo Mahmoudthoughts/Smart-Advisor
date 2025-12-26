@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { mapLineSeries } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface SentimentRow {
   readonly date: string;
@@ -21,25 +21,36 @@ interface SentimentRow {
 export class SentimentComponent {
   readonly sentimentSeries: TvSeries[] = [
     {
+      name: 'PATH',
       type: 'line',
       data: mapLineSeries([0.42, 0.61, 0.48, 0.15, -0.12]),
       options: { lineWidth: 2, color: '#38bdf8' }
     },
     {
+      name: 'TSLA',
       type: 'line',
       data: mapLineSeries([0.33, 0.64, 0.58, 0.47, 0.39]),
       options: { lineWidth: 2, color: '#22c55e' }
     },
     {
+      name: 'NVDA',
       type: 'line',
       data: mapLineSeries([0.12, 0.28, 0.45, 0.52, 0.22]),
       options: { lineWidth: 2, color: '#f97316' }
     },
     {
+      name: 'LAC',
       type: 'line',
       data: mapLineSeries([-0.34, -0.12, 0.05, 0.18, 0.09]),
       options: { lineWidth: 2, color: '#ef4444' }
     }
+  ];
+
+  readonly sentimentLegend: TvLegendItem[] = [
+    { label: 'PATH', color: '#38bdf8' },
+    { label: 'TSLA', color: '#22c55e' },
+    { label: 'NVDA', color: '#f97316' },
+    { label: 'LAC', color: '#ef4444' }
   ];
 
   readonly sentimentRows: SentimentRow[] = [

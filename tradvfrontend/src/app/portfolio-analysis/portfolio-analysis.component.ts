@@ -5,7 +5,7 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 
 import { PortfolioDataService, SymbolSearchResult, TimelineResponse, WatchlistSymbol } from '../portfolio-data.service';
 import { mapHistogramSeries } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type GroupKey = 'industry' | 'region' | 'currency';
 type MetricKey = 'unrealized' | 'realized' | 'total';
@@ -52,6 +52,12 @@ export class PortfolioAnalysisComponent implements OnInit {
   readonly metric = signal<MetricKey>('total');
 
   readonly chartSeries = computed<TvSeries[]>(() => this.buildGroupSeries());
+  readonly chartLegend = computed<TvLegendItem[]>(() => [
+    {
+      label: `${this.metricLabel(this.metric())} by ${this.groupBy()}`,
+      color: '#38bdf8'
+    }
+  ]);
   readonly summaryTotals = computed(() => {
     const holdings = this.holdings();
     const realized = holdings.reduce((sum, h) => sum + h.realized, 0);

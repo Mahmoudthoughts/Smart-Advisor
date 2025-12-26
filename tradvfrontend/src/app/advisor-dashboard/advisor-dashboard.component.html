@@ -39,7 +39,12 @@
     </div>
     <a class="view-link" routerLink="/app/timeline">View timeline</a>
   </header>
-  <app-tv-chart [series]="liquidationSeries" [showTimeScale]="false" class="chart chart-lg"></app-tv-chart>
+  <app-tv-chart
+    [series]="liquidationSeries"
+    [legend]="liquidationLegend"
+    [showTimeScale]="false"
+    class="chart chart-lg"
+  ></app-tv-chart>
 </section>
 
 <section class="panel two-column" id="opportunities">
@@ -51,7 +56,12 @@
       </div>
       <a class="view-link" routerLink="/app/opportunities">Explore opportunities</a>
     </header>
-    <app-tv-chart [series]="opportunitySeries" [showTimeScale]="false" class="chart"></app-tv-chart>
+    <app-tv-chart
+      [series]="opportunitySeries"
+      [legend]="opportunityLegend"
+      [showTimeScale]="false"
+      class="chart"
+    ></app-tv-chart>
     <table>
       <thead>
         <tr>

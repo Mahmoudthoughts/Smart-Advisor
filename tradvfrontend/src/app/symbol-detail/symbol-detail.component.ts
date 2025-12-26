@@ -4,7 +4,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { parseDateString } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { SeriesMarker, Time } from 'lightweight-charts';
 
 import {
   PortfolioDataService,
@@ -71,6 +72,13 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   readonly selectedRange = signal<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | null>(null);
 
   readonly chartSeries = signal<TvSeries[]>([]);
+  readonly chartLegend: TvLegendItem[] = [
+    { label: 'Hypo P&L', color: '#38bdf8' },
+    { label: 'Realized P&L', color: '#22c55e' },
+    { label: 'Unrealized P&L', color: '#6366f1' },
+    { label: 'Price', color: '#f97316' },
+    { label: 'Average Cost', color: '#f59e0b' }
+  ];
 
   readonly summary = computed<SymbolSummary>(() => {
     const entry = this.watchlistEntry();
@@ -418,6 +426,18 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
       : axisDates.map(() => null);
 
     const baseDates = axisDates.map((date) => parseDateString(date));
+    const transactions = this.transactions();
+    const tradeMarkers: SeriesMarker<Time>[] = transactions.map((tx: TimelineTransaction) => {
+      const date = parseDateString(tx.trade_datetime.split('T')[0]);
+      const isSell = tx.type === 'SELL';
+      return {
+        time: date,
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color: isSell ? '#ef4444' : '#22c55e',
+        shape: isSell ? 'arrowDown' : 'arrowUp',
+        text: `${tx.type} ${tx.quantity}`
+      };
+    });
     const series: TvSeries[] = [
       {
         type: 'area',
@@ -451,7 +471,8 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         options: {
           lineWidth: 2,
           color: '#f97316'
-        }
+        },
+        markers: tradeMarkers
       },
       {
         type: 'line',

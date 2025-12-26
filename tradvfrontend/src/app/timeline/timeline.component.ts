@@ -3,7 +3,8 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { parseDateString } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { SeriesMarker, Time } from 'lightweight-charts';
 
 import {
   PortfolioDataService,
@@ -49,6 +50,13 @@ export class TimelineComponent implements OnInit {
   readonly hasData = computed(() => this.snapshots().length > 0 || this.prices().length > 0);
 
   readonly timelineSeries = signal<TvSeries[]>([]);
+  readonly timelineLegend: TvLegendItem[] = [
+    { label: 'Hypo P&L', color: '#38bdf8' },
+    { label: 'Realized P&L', color: '#22c55e' },
+    { label: 'Unrealized P&L', color: '#6366f1' },
+    { label: 'Price', color: '#f97316' },
+    { label: 'Average Cost', color: '#f59e0b' }
+  ];
 
   ngOnInit(): void {
     this.loadWatchlist();
@@ -194,6 +202,7 @@ export class TimelineComponent implements OnInit {
   updateChart(): void {
     const snapshots = this.snapshots();
     const prices = this.prices();
+    const transactions = this.transactions();
     if (!snapshots.length && !prices.length) {
       this.timelineSeries.set([]);
       return;
@@ -213,6 +222,17 @@ export class TimelineComponent implements OnInit {
       : axisDates.map(() => null);
 
     const baseDates = axisDates.map((date) => parseDateString(date));
+    const tradeMarkers: SeriesMarker<Time>[] = transactions.map((tx) => {
+      const date = parseDateString(tx.trade_datetime.split('T')[0]);
+      const isSell = tx.type === 'SELL';
+      return {
+        time: date,
+        position: isSell ? 'aboveBar' : 'belowBar',
+        color: isSell ? '#ef4444' : '#22c55e',
+        shape: isSell ? 'arrowDown' : 'arrowUp',
+        text: `${tx.type} ${tx.quantity}`
+      };
+    });
     const series: TvSeries[] = [
       {
         type: 'area',
@@ -246,7 +266,8 @@ export class TimelineComponent implements OnInit {
         options: {
           lineWidth: 2,
           color: '#f97316'
-        }
+        },
+        markers: tradeMarkers
       },
       {
         type: 'line',

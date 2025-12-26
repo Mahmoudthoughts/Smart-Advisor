@@ -20,21 +20,32 @@ import {
   IChartApi,
   ISeriesApi,
   LineSeries,
+  SeriesMarker,
   SeriesType,
   Time
 } from 'lightweight-charts';
+import { NgFor, NgIf } from '@angular/common';
 
 export type TvSeriesType = 'line' | 'area' | 'histogram' | 'bar' | 'candlestick';
 
 export type TvSeries = {
+  name?: string;
   type: TvSeriesType;
   data: any[];
   options?: Record<string, unknown>;
+  markers?: SeriesMarker<Time>[];
+  legendColor?: string;
+};
+
+export type TvLegendItem = {
+  label: string;
+  color: string;
 };
 
 @Component({
   selector: 'app-tv-chart',
   standalone: true,
+  imports: [NgIf, NgFor],
   templateUrl: './tv-chart.component.html',
   styleUrl: './tv-chart.component.scss'
 })
@@ -44,6 +55,7 @@ export class TvChartComponent implements AfterViewInit, OnChanges, OnDestroy {
   @Input() showTimeScale = true;
   @Input() showPriceScale = true;
   @Input() autoFit = true;
+  @Input() legend: TvLegendItem[] | null = null;
 
   @Output() chartClick = new EventEmitter<{ time: Time | null }>();
 
@@ -141,6 +153,11 @@ export class TvChartComponent implements AfterViewInit, OnChanges, OnDestroy {
       const series = this.addSeries(entry.type, entry.options);
       if (series) {
         series.setData(entry.data ?? []);
+        if (entry.markers && 'setMarkers' in series) {
+          (series as ISeriesApi<SeriesType> & { setMarkers: (m: SeriesMarker<Time>[]) => void }).setMarkers(
+            entry.markers
+          );
+        }
         this.seriesEntries.push(series);
       }
     });

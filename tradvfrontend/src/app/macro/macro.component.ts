@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { mapLineSeries } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface MacroEventRow {
   readonly date: string;
@@ -20,6 +20,7 @@ interface MacroEventRow {
 export class MacroComponent {
   readonly yieldSeries: TvSeries[] = [
     {
+      name: '10Y Treasury yield',
       type: 'line',
       data: mapLineSeries([3.9, 4.1, 4.3, 4.2]),
       options: {
@@ -28,6 +29,8 @@ export class MacroComponent {
       }
     }
   ];
+
+  readonly yieldLegend: TvLegendItem[] = [{ label: '10Y Treasury yield', color: '#38bdf8' }];
 
   readonly events: MacroEventRow[] = [
     {

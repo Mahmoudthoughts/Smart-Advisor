@@ -9,3 +9,30 @@
   display: block;
   height: 100%;
 }
+
+.tv-chart-shell {
+  display: grid;
+  gap: 0.5rem;
+  height: 100%;
+}
+
+.tv-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.tv-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tv-legend__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  display: inline-block;
+}

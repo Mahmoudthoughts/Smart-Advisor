@@ -2,7 +2,7 @@ import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/comm
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { businessDayToString, parseDateString } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type LotType = 'REAL' | 'HYPOTHETICAL';
 
@@ -127,6 +127,7 @@ export class UnrealizedComponent {
       }
     ];
   });
+  readonly chartLegend: TvLegendItem[] = [{ label: 'Unrealized P&L', color: '#38bdf8' }];
 
   constructor() {
     this.generateReport();

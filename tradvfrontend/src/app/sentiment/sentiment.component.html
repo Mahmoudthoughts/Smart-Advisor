@@ -10,7 +10,12 @@
       <p>Visualize daily sentiment drift per ticker; values are normalized to [-1, +1].</p>
     </header>
 
-    <app-tv-chart class="heatmap" [series]="sentimentSeries" [showTimeScale]="false"></app-tv-chart>
+    <app-tv-chart
+      class="heatmap"
+      [series]="sentimentSeries"
+      [legend]="sentimentLegend"
+      [showTimeScale]="false"
+    ></app-tv-chart>
   </section>
 
   <section class="sentiment-table">

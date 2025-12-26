@@ -97,6 +97,7 @@
     </header>
     <app-tv-chart
       [series]="chartSeries()"
+      [legend]="chartLegend"
       class="chart"
       *ngIf="!isLoading(); else loading"
     ></app-tv-chart>

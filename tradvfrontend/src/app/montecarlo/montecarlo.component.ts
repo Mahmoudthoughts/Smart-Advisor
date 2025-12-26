@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { mapHistogramSeries } from '../shared/chart-utils';
-import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 import {
   MonteCarloRequestPayload,
@@ -37,6 +37,8 @@ export class MontecarloComponent {
 
   readonly finalReturnsSeries = signal<TvSeries[]>([]);
   readonly maxDrawdownsSeries = signal<TvSeries[]>([]);
+  readonly finalReturnsLegend: TvLegendItem[] = [{ label: 'Final returns', color: '#38bdf8' }];
+  readonly maxDrawdownsLegend: TvLegendItem[] = [{ label: 'Max drawdowns', color: '#ef4444' }];
 
   readonly requestPayload = computed<MonteCarloRequestPayload>(() => ({
     symbol: this.normalizeSymbol(this.symbol()) || undefined,

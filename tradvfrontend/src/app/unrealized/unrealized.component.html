@@ -121,6 +121,7 @@
       <div class="chart-wrapper" *ngIf="reportRows().length">
         <app-tv-chart
           [series]="chartSeries()"
+          [legend]="chartLegend"
           class="chart"
           (chartClick)="onChartClick($event)"
         ></app-tv-chart>

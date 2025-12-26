@@ -197,11 +197,21 @@
     </header>
     <div class="chart-grid">
       <div class="chart-card">
-        <app-tv-chart class="chart" [series]="finalReturnsSeries()" [showTimeScale]="false"></app-tv-chart>
+        <app-tv-chart
+          class="chart"
+          [series]="finalReturnsSeries()"
+          [legend]="finalReturnsLegend"
+          [showTimeScale]="false"
+        ></app-tv-chart>
         <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
       </div>
       <div class="chart-card">
-        <app-tv-chart class="chart" [series]="maxDrawdownsSeries()" [showTimeScale]="false"></app-tv-chart>
+        <app-tv-chart
+          class="chart"
+          [series]="maxDrawdownsSeries()"
+          [legend]="maxDrawdownsLegend"
+          [showTimeScale]="false"
+        ></app-tv-chart>
         <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
       </div>
     </div>
