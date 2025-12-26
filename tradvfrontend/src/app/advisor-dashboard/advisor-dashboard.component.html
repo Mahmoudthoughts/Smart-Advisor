@@ -39,7 +39,7 @@
     </div>
     <a class="view-link" routerLink="/app/timeline">View timeline</a>
   </header>
-  <div echarts [options]="liquidationChart" [autoResize]="true" class="chart chart-lg"></div>
+  <app-tv-chart [series]="liquidationSeries" [showTimeScale]="false" class="chart chart-lg"></app-tv-chart>
 </section>
 
 <section class="panel two-column" id="opportunities">
@@ -51,7 +51,7 @@
       </div>
       <a class="view-link" routerLink="/app/opportunities">Explore opportunities</a>
     </header>
-    <div echarts [options]="opportunityChart" [autoResize]="true" class="chart"></div>
+    <app-tv-chart [series]="opportunitySeries" [showTimeScale]="false" class="chart"></app-tv-chart>
     <table>
       <thead>
         <tr>

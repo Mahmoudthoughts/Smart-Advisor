@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { mapLineSeries } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface MacroEventRow {
   readonly date: string;
@@ -13,32 +13,21 @@ interface MacroEventRow {
 @Component({
   selector: 'app-macro-page',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective],
+  imports: [CommonModule, TvChartComponent],
   templateUrl: './macro.component.html',
   styleUrls: ['./macro.component.scss']
 })
 export class MacroComponent {
-  readonly yieldOption: EChartsOption = {
-    tooltip: { trigger: 'axis' },
-    grid: { left: 40, right: 16, top: 32, bottom: 48 },
-    xAxis: {
-      type: 'category',
-      data: ['Jan', 'Feb', 'Mar', 'Apr']
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { formatter: '{value}%' }
-    },
-    series: [
-      {
-        name: '10Y Treasury yield',
-        type: 'line',
-        smooth: true,
-        symbol: 'circle',
-        data: [3.9, 4.1, 4.3, 4.2]
+  readonly yieldSeries: TvSeries[] = [
+    {
+      type: 'line',
+      data: mapLineSeries([3.9, 4.1, 4.3, 4.2]),
+      options: {
+        lineWidth: 2,
+        color: '#38bdf8'
       }
-    ]
-  };
+    }
+  ];
 
   readonly events: MacroEventRow[] = [
     {

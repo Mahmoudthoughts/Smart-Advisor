@@ -2,10 +2,10 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
 
 import { PortfolioDataService, SymbolSearchResult, TimelineResponse, WatchlistSymbol } from '../portfolio-data.service';
+import { mapHistogramSeries } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type GroupKey = 'industry' | 'region' | 'currency';
 type MetricKey = 'unrealized' | 'realized' | 'total';
@@ -38,7 +38,7 @@ interface GroupBucket {
 @Component({
   selector: 'app-portfolio-analysis',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective],
+  imports: [CommonModule, TvChartComponent],
   templateUrl: './portfolio-analysis.component.html',
   styleUrls: ['./portfolio-analysis.component.scss']
 })
@@ -51,7 +51,7 @@ export class PortfolioAnalysisComponent implements OnInit {
   readonly groupBy = signal<GroupKey>('region');
   readonly metric = signal<MetricKey>('total');
 
-  readonly chartOption = computed<EChartsOption>(() => this.buildTreemap());
+  readonly chartSeries = computed<TvSeries[]>(() => this.buildGroupSeries());
   readonly summaryTotals = computed(() => {
     const holdings = this.holdings();
     const realized = holdings.reduce((sum, h) => sum + h.realized, 0);
@@ -145,64 +145,18 @@ export class PortfolioAnalysisComponent implements OnInit {
     return exact ?? metas[0];
   }
 
-  private buildTreemap(): EChartsOption {
+  private buildGroupSeries(): TvSeries[] {
     const buckets = this.groupHoldings(this.holdings(), this.groupBy(), this.metric());
-    const data = buckets.map((bucket) => ({
-      name: `${bucket.key} • ${this.formatCurrency(bucket.metricTotal)}`,
-      value: Math.max(Math.abs(bucket.metricTotal), 0.01),
-      rawValue: bucket.metricTotal,
-      itemStyle: { color: this.colorForValue(bucket.metricTotal) },
-      children: bucket.children.map((child) => ({
-        name: `${child.symbol} • ${this.formatCurrency(child.value)}`,
-        value: Math.max(Math.abs(child.value), 0.01),
-        rawValue: child.value,
-        itemStyle: { color: this.colorForValue(child.value) },
-        symbol: child.symbol,
-        marketValue: child.marketValue
-      }))
-    }));
-
-    return {
-      tooltip: {
-        formatter: (params: any) => {
-          const raw = params.data?.rawValue ?? params.value;
-          const metricLabel = this.metricLabel(this.metric());
-          const symbol = params.data?.symbol ?? params.name;
-          const marketValue = params.data?.marketValue;
-          const lines = [`<strong>${symbol}</strong>`, `${metricLabel}: ${this.formatCurrency(raw, true)}`];
-          if (typeof marketValue === 'number') {
-            lines.push(`Market value: ${this.formatCurrency(marketValue, true)}`);
-          }
-          return lines.join('<br/>');
+    const values = buckets.map((bucket) => Number(bucket.metricTotal.toFixed(2)));
+    return [
+      {
+        type: 'histogram',
+        data: mapHistogramSeries(values, undefined, '#38bdf8'),
+        options: {
+          priceFormat: { type: 'volume' }
         }
-      },
-      series: [
-        {
-          type: 'treemap',
-          roam: true,
-          breadcrumb: { show: false },
-          nodeClick: false,
-          data,
-          label: {
-            formatter: '{b}',
-            overflow: 'break'
-          },
-          upperLabel: { show: true, height: 22 },
-          itemStyle: {
-            borderColor: 'var(--gray-200)',
-            borderWidth: 1,
-            gapWidth: 2
-          },
-          levels: [
-            {
-              color: ['#22c55e', '#16a34a', '#0ea5e9', '#6366f1', '#a855f7', '#eab308', '#f97316', '#ef4444'],
-              colorMappingBy: 'value',
-              itemStyle: { borderColor: 'var(--gray-200)' }
-            }
-          ]
-        }
-      ]
-    };
+      }
+    ];
   }
 
   private groupHoldings(data: HoldingSnapshot[], groupKey: GroupKey, metric: MetricKey): GroupBucket[] {

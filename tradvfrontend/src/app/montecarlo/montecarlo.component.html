@@ -197,11 +197,11 @@
     </header>
     <div class="chart-grid">
       <div class="chart-card">
-        <div class="chart" echarts [options]="finalReturnsOption()"></div>
+        <app-tv-chart class="chart" [series]="finalReturnsSeries()" [showTimeScale]="false"></app-tv-chart>
         <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
       </div>
       <div class="chart-card">
-        <div class="chart" echarts [options]="maxDrawdownsOption()"></div>
+        <app-tv-chart class="chart" [series]="maxDrawdownsSeries()" [showTimeScale]="false"></app-tv-chart>
         <p class="chart-note" *ngIf="!results()">Awaiting simulation output.</p>
       </div>
     </div>

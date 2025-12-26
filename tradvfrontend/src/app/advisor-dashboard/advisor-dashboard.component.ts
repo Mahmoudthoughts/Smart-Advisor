@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
 import { AuthService } from '../auth.service';
 import { MarketDataService } from '../services/market-data.service';
 import { ChartPanelComponent } from '../shared/chart-panel/chart-panel.component';
+import { mapHistogramSeries, mapLineSeries } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface OpportunityRow {
   readonly rank: number;
@@ -37,7 +37,7 @@ interface MacroEvent {
 @Component({
   selector: 'app-advisor-dashboard',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective, RouterLink, ChartPanelComponent],
+  imports: [CommonModule, RouterLink, ChartPanelComponent, TvChartComponent],
   templateUrl: './advisor-dashboard.component.html',
   styleUrls: ['./advisor-dashboard.component.scss']
 })
@@ -87,73 +87,44 @@ export class AdvisorDashboardComponent {
     }
   ];
 
-  readonly liquidationChart: EChartsOption = {
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['Hypo P&L', 'Unrealized P&L', 'Price'] },
-    grid: { left: 40, right: 16, top: 40, bottom: 40 },
-    xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Mon', 'Tue']
+  readonly liquidationSeries: TvSeries[] = [
+    {
+      type: 'area',
+      data: mapLineSeries([9.2, 9.6, 10.1, 10.8, 11.4, 11.2, 11.8]),
+      options: {
+        lineWidth: 2,
+        color: '#38bdf8',
+        topColor: 'rgba(56, 189, 248, 0.35)',
+        bottomColor: 'rgba(56, 189, 248, 0.05)'
+      }
     },
-    yAxis: [
-      {
-        type: 'value',
-        axisLabel: { formatter: '${value}k' }
-      },
-      {
-        type: 'value',
-        axisLabel: { formatter: '${value}' },
-        position: 'right'
+    {
+      type: 'line',
+      data: mapLineSeries([6.1, 6.4, 6.8, 7.2, 7.5, 7.4, 7.8]),
+      options: {
+        lineWidth: 2,
+        color: '#22c55e'
       }
-    ],
-    series: [
-      {
-        name: 'Hypo P&L',
-        type: 'line',
-        smooth: true,
-        areaStyle: { opacity: 0.15 },
-        data: [9.2, 9.6, 10.1, 10.8, 11.4, 11.2, 11.8]
-      },
-      {
-        name: 'Unrealized P&L',
-        type: 'line',
-        smooth: true,
-        areaStyle: { opacity: 0.1 },
-        data: [6.1, 6.4, 6.8, 7.2, 7.5, 7.4, 7.8]
-      },
-      {
-        name: 'Price',
-        type: 'line',
-        yAxisIndex: 1,
-        smooth: true,
-        lineStyle: { width: 2, type: 'dashed' },
-        data: [14.2, 14.6, 15, 15.4, 15.9, 15.5, 16.1]
+    },
+    {
+      type: 'line',
+      data: mapLineSeries([14.2, 14.6, 15, 15.4, 15.9, 15.5, 16.1]),
+      options: {
+        lineWidth: 2,
+        color: '#f97316'
       }
-    ]
-  };
+    }
+  ];
 
-  readonly opportunityChart: EChartsOption = {
-    tooltip: { trigger: 'item', formatter: '{b}: ${c}k' },
-    xAxis: {
-      type: 'category',
-      data: ['PATH', 'TSLA', 'NVDA', 'LAC', 'MSFT']
-    },
-    yAxis: {
-      type: 'value',
-      axisLabel: { formatter: '${value}k' }
-    },
-    series: [
-      {
-        type: 'bar',
-        data: [4.8, 3.6, 2.9, 2.2, 1.8],
-        itemStyle: {
-          color: '#38bdf8',
-          borderRadius: [12, 12, 0, 0]
-        }
+  readonly opportunitySeries: TvSeries[] = [
+    {
+      type: 'histogram',
+      data: mapHistogramSeries([4.8, 3.6, 2.9, 2.2, 1.8], undefined, '#38bdf8'),
+      options: {
+        priceFormat: { type: 'volume' }
       }
-    ]
-  };
+    }
+  ];
 
   readonly opportunities: OpportunityRow[] = [
     { rank: 1, symbol: 'PATH', missedGain: '$4.8k', driver: 'Sell signal + macro easing' },

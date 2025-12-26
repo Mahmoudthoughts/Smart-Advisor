@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { mapLineSeries } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface SentimentRow {
   readonly date: string;
@@ -14,60 +14,33 @@ interface SentimentRow {
 @Component({
   selector: 'app-sentiment-page',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective],
+  imports: [CommonModule, TvChartComponent],
   templateUrl: './sentiment.component.html',
   styleUrls: ['./sentiment.component.scss']
 })
 export class SentimentComponent {
-  readonly heatmapOption: EChartsOption = {
-    tooltip: {
-      formatter: ({ value }: any) => `${value[0]}<br/>Score ${value[1]}: ${value[2]}`
+  readonly sentimentSeries: TvSeries[] = [
+    {
+      type: 'line',
+      data: mapLineSeries([0.42, 0.61, 0.48, 0.15, -0.12]),
+      options: { lineWidth: 2, color: '#38bdf8' }
     },
-    grid: { left: 40, right: 16, top: 40, bottom: 40 },
-    xAxis: {
-      type: 'category',
-      data: ['PATH', 'TSLA', 'NVDA', 'LAC']
+    {
+      type: 'line',
+      data: mapLineSeries([0.33, 0.64, 0.58, 0.47, 0.39]),
+      options: { lineWidth: 2, color: '#22c55e' }
     },
-    yAxis: {
-      type: 'category',
-      data: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']
+    {
+      type: 'line',
+      data: mapLineSeries([0.12, 0.28, 0.45, 0.52, 0.22]),
+      options: { lineWidth: 2, color: '#f97316' }
     },
-    visualMap: {
-      min: -1,
-      max: 1,
-      calculable: true,
-      orient: 'horizontal',
-      left: 'center',
-      bottom: 0
-    },
-    series: [
-      {
-        type: 'heatmap',
-        data: [
-          ['PATH', 'Mon', 0.42],
-          ['PATH', 'Tue', 0.61],
-          ['PATH', 'Wed', 0.48],
-          ['PATH', 'Thu', 0.15],
-          ['PATH', 'Fri', -0.12],
-          ['TSLA', 'Mon', 0.33],
-          ['TSLA', 'Tue', 0.64],
-          ['TSLA', 'Wed', 0.58],
-          ['TSLA', 'Thu', 0.47],
-          ['TSLA', 'Fri', 0.39],
-          ['NVDA', 'Mon', 0.12],
-          ['NVDA', 'Tue', 0.28],
-          ['NVDA', 'Wed', 0.45],
-          ['NVDA', 'Thu', 0.52],
-          ['NVDA', 'Fri', 0.22],
-          ['LAC', 'Mon', -0.34],
-          ['LAC', 'Tue', -0.12],
-          ['LAC', 'Wed', 0.05],
-          ['LAC', 'Thu', 0.18],
-          ['LAC', 'Fri', 0.09]
-        ].map(([symbol, day, score]) => [symbol, day, score])
-      }
-    ]
-  };
+    {
+      type: 'line',
+      data: mapLineSeries([-0.34, -0.12, 0.05, 0.18, 0.09]),
+      options: { lineWidth: 2, color: '#ef4444' }
+    }
+  ];
 
   readonly sentimentRows: SentimentRow[] = [
     {

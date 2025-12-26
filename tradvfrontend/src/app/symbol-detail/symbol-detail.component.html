@@ -95,7 +95,11 @@
         <button type="button" [class.active]="selectedRange() === '5Y'" (click)="applyRange('5Y')">5Y</button>
       </div>
     </header>
-    <div echarts [options]="chartOption()" [autoResize]="true" class="chart" *ngIf="!isLoading(); else loading"></div>
+    <app-tv-chart
+      [series]="chartSeries()"
+      class="chart"
+      *ngIf="!isLoading(); else loading"
+    ></app-tv-chart>
     <ng-template #loading>
       <div class="chart-placeholder">Loading chart…</div>
     </ng-template>

@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { mapHistogramSeries } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 import {
   MonteCarloRequestPayload,
@@ -13,7 +13,7 @@ import {
 @Component({
   selector: 'app-montecarlo-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxEchartsDirective],
+  imports: [CommonModule, FormsModule, TvChartComponent],
   templateUrl: './montecarlo.component.html',
   styleUrls: ['./montecarlo.component.scss']
 })
@@ -35,8 +35,8 @@ export class MontecarloComponent {
   readonly loadError = signal<string | null>(null);
   readonly results = signal<MonteCarloResponse | null>(null);
 
-  readonly finalReturnsOption = signal<EChartsOption>(this.createHistogramOption('Final returns', [], [], 'var(--primary-600)'));
-  readonly maxDrawdownsOption = signal<EChartsOption>(this.createHistogramOption('Max drawdowns', [], [], 'var(--danger-600)'));
+  readonly finalReturnsSeries = signal<TvSeries[]>([]);
+  readonly maxDrawdownsSeries = signal<TvSeries[]>([]);
 
   readonly requestPayload = computed<MonteCarloRequestPayload>(() => ({
     symbol: this.normalizeSymbol(this.symbol()) || undefined,
@@ -117,17 +117,25 @@ export class MontecarloComponent {
     const finalHistogram = this.buildHistogram(series.final_returns, 28);
     const drawdownHistogram = this.buildHistogram(series.max_drawdowns, 28);
 
-    this.finalReturnsOption.set(
-      this.createHistogramOption('Final returns', finalHistogram.labels, finalHistogram.counts, 'var(--primary-600)')
-    );
-    this.maxDrawdownsOption.set(
-      this.createHistogramOption('Max drawdowns', drawdownHistogram.labels, drawdownHistogram.counts, 'var(--danger-600)')
-    );
+    this.finalReturnsSeries.set([
+      {
+        type: 'histogram',
+        data: mapHistogramSeries(finalHistogram.counts, undefined, '#38bdf8'),
+        options: { priceFormat: { type: 'volume' } }
+      }
+    ]);
+    this.maxDrawdownsSeries.set([
+      {
+        type: 'histogram',
+        data: mapHistogramSeries(drawdownHistogram.counts, undefined, '#ef4444'),
+        options: { priceFormat: { type: 'volume' } }
+      }
+    ]);
   }
 
   private resetCharts(): void {
-    this.finalReturnsOption.set(this.createHistogramOption('Final returns', [], [], 'var(--primary-600)'));
-    this.maxDrawdownsOption.set(this.createHistogramOption('Max drawdowns', [], [], 'var(--danger-600)'));
+    this.finalReturnsSeries.set([]);
+    this.maxDrawdownsSeries.set([]);
   }
 
   private buildHistogram(values: number[], binCount: number): { labels: string[]; counts: number[] } {
@@ -154,49 +162,6 @@ export class MontecarloComponent {
     });
 
     return { labels, counts };
-  }
-
-  private createHistogramOption(title: string, labels: string[], counts: number[], color: string): EChartsOption {
-    return {
-      title: {
-        text: title,
-        left: 'center',
-        textStyle: {
-          color: 'var(--color-text)',
-          fontSize: 14,
-          fontWeight: 600
-        }
-      },
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'shadow' }
-      },
-      grid: { left: 48, right: 24, top: 56, bottom: 64 },
-      xAxis: {
-        type: 'category',
-        data: labels,
-        axisLabel: {
-          color: 'var(--gray-600)',
-          rotate: labels.length > 18 ? 40 : 0,
-          interval: labels.length > 18 ? Math.ceil(labels.length / 10) : 0
-        },
-        axisLine: { lineStyle: { color: 'var(--gray-300)' } },
-        axisTick: { alignWithLabel: true }
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { color: 'var(--gray-600)' },
-        splitLine: { lineStyle: { color: 'var(--gray-100)' } }
-      },
-      series: [
-        {
-          type: 'bar',
-          data: counts,
-          barWidth: '70%',
-          itemStyle: { color }
-        }
-      ]
-    };
   }
 
   private cleanNumber(value: number, fallback: number): number {

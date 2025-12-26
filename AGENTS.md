@@ -30,7 +30,7 @@ Frontend Conventions
 - Components are standalone. Import Angular features directly in the `imports: []` array of each component.
 - State uses Angular Signals (`signal`, `computed`, `effect`). Prefer signals over RxJS component state where feasible.
 - HTTP via `HttpClient` and `environment.apiBaseUrl`. Do not hardcode URLs.
-- Charts via `ngx-echarts`. Keep `EChartsOption` immutable; update via `.set()` or `.update()` on a signal.
+- Charts: `frontend/` uses `ngx-echarts`. `tradvfrontend/` uses TradingView `lightweight-charts` via shared chart components.
 - Styling: SCSS with CSS variables in `frontend/src/styles.scss`. Use `var(--color-*)` tokens for theme-aware colors.
 - Theming: body gets `.theme-dark` class for dark mode. Toggle with a button in the header (sun/moon icons). Persist to `localStorage` key `smart-advisor.theme`.
 - Navigation: left-side collapsible drawer (scrollable). The menu button is on the left of the top bar.

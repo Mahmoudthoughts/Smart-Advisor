@@ -1,8 +1,8 @@
 import { CommonModule, CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { businessDayToString, parseDateString } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type LotType = 'REAL' | 'HYPOTHETICAL';
 
@@ -40,7 +40,7 @@ interface TargetSelection {
 @Component({
   selector: 'app-unrealized',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxEchartsDirective, CurrencyPipe, DecimalPipe, DatePipe],
+  imports: [CommonModule, FormsModule, CurrencyPipe, DecimalPipe, DatePipe, TvChartComponent],
   templateUrl: './unrealized.component.html',
   styleUrls: ['./unrealized.component.scss']
 })
@@ -108,34 +108,24 @@ export class UnrealizedComponent {
     return this.totalShares();
   });
 
-  readonly chartOption = computed<EChartsOption>(() => {
+  readonly chartSeries = computed<TvSeries[]>(() => {
     const rows = this.reportRows();
-    return {
-      tooltip: { trigger: 'axis', valueFormatter: (v: unknown) => `$${Number(v).toFixed(2)}` },
-      grid: { left: 48, right: 16, top: 24, bottom: 32 },
-      xAxis: {
-        type: 'category',
-        data: rows.map((row) => row.date),
-        boundaryGap: false
-      },
-      yAxis: {
-        type: 'value',
-        axisLabel: { formatter: '${value}' }
-      },
-      series: [
-        {
-          name: 'Unrealized P&L',
-          type: 'line',
-          smooth: true,
-          areaStyle: { opacity: 0.18 },
-          lineStyle: { width: 3 },
-          symbol: 'circle',
-          symbolSize: 10,
-          data: rows.map((row) => Number(row.profitValue.toFixed(2)))
+    const baseDates = rows.map((row) => parseDateString(row.date));
+    return [
+      {
+        type: 'area',
+        data: baseDates.map((date, idx) => ({
+          time: date,
+          value: Number(rows[idx].profitValue.toFixed(2))
+        })),
+        options: {
+          lineWidth: 2,
+          color: '#38bdf8',
+          topColor: 'rgba(56, 189, 248, 0.35)',
+          bottomColor: 'rgba(56, 189, 248, 0.05)'
         }
-      ],
-      color: ['#2563eb']
-    };
+      }
+    ];
   });
 
   constructor() {
@@ -234,9 +224,14 @@ export class UnrealizedComponent {
     return Number.isNaN(numeric) ? 0 : numeric;
   }
 
-  onChartClick(event: any): void {
+  onChartClick(event: { time: any } | null): void {
     const rows = this.reportRows();
-    const row = event?.name ? rows.find((r) => r.date === event.name) : undefined;
+    const time = event?.time;
+    if (!time || typeof time !== 'object') {
+      return;
+    }
+    const dateLabel = businessDayToString(time);
+    const row = rows.find((r) => r.date === dateLabel);
     if (!row) {
       return;
     }

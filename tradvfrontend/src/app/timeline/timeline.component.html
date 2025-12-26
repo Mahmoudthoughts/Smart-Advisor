@@ -38,7 +38,11 @@
       <h2>Timeline View</h2>
       <p>Overlay price with hypothetical liquidation and unrealized P&amp;L to highlight regret windows.</p>
     </header>
-    <div echarts [options]="timelineOption()" [autoResize]="true" class="chart" *ngIf="hasData(); else emptyState"></div>
+    <app-tv-chart
+      [series]="timelineSeries()"
+      class="chart"
+      *ngIf="hasData(); else emptyState"
+    ></app-tv-chart>
     <ng-template #emptyState>
       <div class="chart-placeholder">
         <p>Select a symbol with price history and recorded trades to render the chart.</p>

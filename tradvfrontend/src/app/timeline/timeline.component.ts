@@ -2,10 +2,8 @@ import { CommonModule } from '@angular/common';
 
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import type { EChartsOption, MarkPointComponentOption } from 'echarts';
-
-type TimelineMarkPoint = NonNullable<MarkPointComponentOption['data']>[number];
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { parseDateString } from '../shared/chart-utils';
+import { TvChartComponent, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 import {
   PortfolioDataService,
@@ -13,13 +11,13 @@ import {
   TimelineResponse,
   TimelineSnapshot,
   TimelineTransaction,
-  WatchlistSymbol,
+  WatchlistSymbol
 } from '../portfolio-data.service';
 
 @Component({
   selector: 'app-timeline-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgxEchartsDirective],
+  imports: [CommonModule, FormsModule, TvChartComponent],
   templateUrl: './timeline.component.html',
   styleUrls: ['./timeline.component.scss']
 })
@@ -50,28 +48,7 @@ export class TimelineComponent implements OnInit {
 
   readonly hasData = computed(() => this.snapshots().length > 0 || this.prices().length > 0);
 
-  readonly timelineOption = signal<EChartsOption>({
-    tooltip: { trigger: 'axis' },
-    legend: { data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'] },
-    grid: { left: 32, right: 24, top: 32, bottom: 48 },
-    xAxis: { type: 'category', boundaryGap: false, data: [] },
-    yAxis: [
-      {
-        type: 'value',
-        axisLabel: {
-          formatter: (value: number) => `$${value.toLocaleString()}`
-        }
-      },
-      {
-        type: 'value',
-        position: 'right',
-        axisLabel: {
-          formatter: (value: number) => `$${value.toFixed(2)}`
-        }
-      }
-    ],
-    series: []
-  });
+  readonly timelineSeries = signal<TvSeries[]>([]);
 
   ngOnInit(): void {
     this.loadWatchlist();
@@ -217,13 +194,8 @@ export class TimelineComponent implements OnInit {
   updateChart(): void {
     const snapshots = this.snapshots();
     const prices = this.prices();
-    const transactions = this.transactions();
     if (!snapshots.length && !prices.length) {
-      this.timelineOption.update((option) => ({
-        ...option,
-        xAxis: { ...option.xAxis, data: [] },
-        series: []
-      }));
+      this.timelineSeries.set([]);
       return;
     }
 
@@ -239,177 +211,57 @@ export class TimelineComponent implements OnInit {
             : null
         )
       : axisDates.map(() => null);
-    const tradeMarkers = transactions.map((tx) => {
-      const tradeDate = tx.trade_datetime.split('T')[0];
-      const markerColor = tx.type === 'SELL' ? '#dc2626' : '#16a34a';
-      return {
-        name: tx.type,
-        value: [tradeDate, Number(tx.price)],
-        symbol: 'triangle',
-        symbolRotate: tx.type === 'SELL' ? 180 : 0,
-        symbolSize: Math.max(12, Math.min(32, Math.abs(tx.quantity) * 1.5)),
-        itemStyle: { color: markerColor },
-        tx
-      };
-    });
 
-    let latestSnapshot: TimelineSnapshot | null = null;
-    if (snapshots.length > 0) {
-      latestSnapshot = snapshots[snapshots.length - 1];
-    }
-
-    const realizedMarkers: TimelineMarkPoint[] = [];
-    if (snapshots.length > 1) {
-      let previousRealized = Number(snapshots[0].realized_pl_to_date_base);
-      for (let i = 1; i < snapshots.length; i += 1) {
-        const snapshot = snapshots[i];
-        const delta = Number(snapshot.realized_pl_to_date_base) - previousRealized;
-        const date = snapshot.date;
-        const sellsForDay = transactions.filter((tx) => tx.type === 'SELL' && tx.trade_datetime.startsWith(date));
-        if (sellsForDay.length > 0 && Math.abs(delta) > 0.01) {
-          realizedMarkers.push({
-            name: delta >= 0 ? 'Realized Gain' : 'Realized Loss',
-            coord: [date, Number(snapshot.realized_pl_to_date_base)],
-            value: delta,
-            itemStyle: { color: delta >= 0 ? '#16a34a' : '#dc2626' },
-            label: {
-              formatter: () =>
-                `${delta >= 0 ? '▲' : '▼'} $${delta.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
-            }
-          });
-        }
-        previousRealized = Number(snapshot.realized_pl_to_date_base);
-      }
-    }
-
-    const legendFormatter = (name: string) => {
-      if (!latestSnapshot) {
-        return name;
-      }
-      if (name === 'Unrealized P&L') {
-        const value = Number(latestSnapshot.unrealized_pl_base).toLocaleString(undefined, { maximumFractionDigits: 0 });
-        return `${name} ($${value})`;
-      }
-      if (name === 'Realized P&L') {
-        const value = Number(latestSnapshot.realized_pl_to_date_base).toLocaleString(undefined, { maximumFractionDigits: 0 });
-        return `${name} ($${value})`;
-      }
-      return name;
-    };
-
-    this.timelineOption.set({
-      tooltip: {
-        trigger: 'axis',
-        axisPointer: { type: 'cross' },
-        formatter: (params: any) => {
-          const entries = Array.isArray(params) ? params : [params];
-          const dateLabel = entries[0]?.axisValueLabel ?? '';
-          const lines = entries
-            .filter((entry: any) => entry.seriesName !== 'Trades')
-            .map((entry: any) => {
-              const value = Number(entry.data).toLocaleString(undefined, {
-                maximumFractionDigits: entry.seriesName === 'Price' ? 2 : 0
-              });
-              const prefix = entry.seriesName === 'Price' ? '$' : '$';
-              return `${entry.marker} ${entry.seriesName}: ${prefix}${value}`;
-            });
-          const tradesForDay = transactions.filter((tx) => tx.trade_datetime.startsWith(dateLabel));
-          tradesForDay.forEach((tx) => {
-            const direction = tx.type === 'SELL' ? 'Sold' : 'Bought';
-            const value = (tx.quantity * tx.price).toLocaleString(undefined, { maximumFractionDigits: 2 });
-            const feePart = tx.fee ? `, fees $${tx.fee.toFixed(2)}` : '';
-            lines.push(
-              `${tx.type === 'SELL' ? '🔻' : '🔺'} ${direction} ${tx.quantity} @ $${tx.price.toFixed(2)} (≈ $${value}${feePart})`
-            );
-          });
-          return [`<strong>${dateLabel}</strong>`, ...lines].join('<br/>');
+    const baseDates = axisDates.map((date) => parseDateString(date));
+    const series: TvSeries[] = [
+      {
+        type: 'area',
+        data: baseDates.map((date, idx) => ({ time: date, value: hypoSeries[idx] })),
+        options: {
+          lineWidth: 2,
+          color: '#38bdf8',
+          topColor: 'rgba(56, 189, 248, 0.35)',
+          bottomColor: 'rgba(56, 189, 248, 0.05)'
         }
       },
-      legend: { data: ['Hypo P&L', 'Realized P&L', 'Unrealized P&L', 'Price', 'Average Cost', 'Trades'], formatter: legendFormatter },
-      grid: { left: 32, right: 24, top: 32, bottom: 48 },
-      xAxis: {
-        type: 'category',
-        boundaryGap: false,
-        data: axisDates
+      {
+        type: 'line',
+        data: baseDates.map((date, idx) => ({ time: date, value: realizedSeries[idx] })),
+        options: {
+          lineWidth: 2,
+          color: '#22c55e'
+        }
       },
-      yAxis: [
-        {
-          type: 'value',
-          axisLabel: {
-            formatter: (value: number) => `$${value.toLocaleString()}`
-          }
-        },
-        {
-          type: 'value',
-          position: 'right',
-          axisLabel: {
-            formatter: (value: number) => `$${value.toFixed(2)}`
-          }
+      {
+        type: 'line',
+        data: baseDates.map((date, idx) => ({ time: date, value: unrealizedSeries[idx] })),
+        options: {
+          lineWidth: 2,
+          color: '#6366f1'
         }
-      ],
-      series: [
-        {
-          name: 'Hypo P&L',
-          type: 'line',
-          smooth: true,
-          symbol: 'circle',
-          areaStyle: { opacity: 0.12 },
-          data: hypoSeries
-        },
-        {
-          name: 'Realized P&L',
-          type: 'line',
-          smooth: true,
-          symbol: 'none',
-          stack: 'pnl',
-          areaStyle: { opacity: 0.1 },
-          lineStyle: { width: 1.5 },
-          data: realizedSeries,
-          markPoint: { data: realizedMarkers }
-        },
-        {
-          name: 'Unrealized P&L',
-          type: 'line',
-          smooth: true,
-          stack: 'pnl',
-          areaStyle: { opacity: 0.1 },
-          data: unrealizedSeries
-        },
-        {
-          name: 'Price',
-          type: 'line',
-          smooth: true,
-          yAxisIndex: 1,
-          lineStyle: { width: 2, type: 'dashed' },
-          data: priceSeries
-        },
-        {
-          name: 'Average Cost',
-          type: 'line',
-          step: 'end',
-          connectNulls: false,
-          showSymbol: false,
-          yAxisIndex: 1,
-          lineStyle: { width: 1.5, color: '#f59e0b' },
-          data: averageCostSeries
-        },
-        {
-          name: 'Trades',
-          type: 'scatter',
-          yAxisIndex: 1,
-          data: tradeMarkers,
-          tooltip: {
-            formatter: (param: any) => {
-              const tx = param.data.tx;
-              const value = Number(tx.quantity * tx.price).toFixed(2);
-              const feeNote = tx.fee ? `<br/>Fees: $${Number(tx.fee).toFixed(2)}` : '';
-              const accountNote = tx.account ? `<br/>Account: ${tx.account}` : '';
-              const notes = tx.notes ? `<br/>Notes: ${tx.notes}` : '';
-              return `${param.seriesName}: ${param.name} ${tx.quantity} @ $${Number(tx.price).toFixed(2)}<br/>Value: $${value}${feeNote}${accountNote}${notes}`;
-            }
-          }
+      },
+      {
+        type: 'line',
+        data: baseDates.map((date, idx) => ({ time: date, value: priceSeries[idx] })),
+        options: {
+          lineWidth: 2,
+          color: '#f97316'
         }
-      ]
-    });
+      },
+      {
+        type: 'line',
+        data: baseDates.map((date, idx) =>
+          averageCostSeries[idx] === null
+            ? { time: date }
+            : { time: date, value: averageCostSeries[idx] }
+        ),
+        options: {
+          lineWidth: 1,
+          color: '#f59e0b'
+        }
+      }
+    ];
+
+    this.timelineSeries.set(series);
   }
 }
