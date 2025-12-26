@@ -56,7 +56,7 @@
       <button type="button" (click)="selectAllSessions()">Select all</button>
       <button type="button" class="ghost" (click)="clearAllSessions()">Clear all</button>
       <span class="meta">
-        Median low: {{ medianLowTime() }} · Median high: {{ medianHighTime() }}
+        Median low: {{ medianLowTime() }} / Median high: {{ medianHighTime() }}
       </span>
     </div>
     <div class="session-grid">
@@ -94,6 +94,48 @@
   </section>
 
   <p class="fallback" *ngIf="intradaySummary().status === 'insufficient'">{{ intradaySummary().fallback }}</p>
+
+  <section class="ai-card">
+    <header>
+      <div>
+        <h2>AI timing insight</h2>
+        <p>Generated using intraday data for {{ selectedSymbol() }} ({{ durationDays() }} days, {{ barSize() }}).</p>
+      </div>
+      <button type="button" class="apply" (click)="requestAiTiming()" [disabled]="aiLoading()">
+        {{ aiLoading() ? 'Generating...' : 'Regenerate' }}
+      </button>
+    </header>
+
+    <p class="status" *ngIf="aiLoading()">Generating AI timing insight...</p>
+    <p class="error" *ngIf="aiError()">{{ aiError() }}</p>
+
+    <div class="ai-body" *ngIf="aiResult() as ai">
+      <p class="summary-text">{{ ai.summary }}</p>
+      <div class="ai-metrics">
+        <div>
+          <span class="label">Best buy window</span>
+          <strong>{{ ai.best_buy_window }}</strong>
+        </div>
+        <div>
+          <span class="label">Best sell window</span>
+          <strong>{{ ai.best_sell_window }}</strong>
+        </div>
+        <div>
+          <span class="label">Confidence</span>
+          <strong>{{ ai.confidence | percent: '1.0-0' }}</strong>
+        </div>
+      </div>
+      <div class="ai-citations" *ngIf="ai.citations?.length">
+        <h3>Citations</h3>
+        <ul>
+          <li *ngFor="let cite of ai.citations">
+            <span class="badge">{{ cite.id }}</span>
+            <span>{{ cite.text }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
 
   <section class="chart-card" *ngIf="overlayCombinedSeries().length">
     <header>

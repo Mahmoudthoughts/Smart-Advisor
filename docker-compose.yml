@@ -21,6 +21,7 @@ services:
       DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
       ALPHAVANTAGE_API_KEY: W7NAEL9D8ERL47FW
       INGEST_BASE_URL: http://ingest:8100
+      AI_TIMING_BASE_URL: http://ai-timing:8300
       PORTFOLIO_SERVICE_URL: http://portfolio:8200/portfolio
       PORTFOLIO_SERVICE_TOKEN: ${PORTFOLIO_INTERNAL_TOKEN:-portfolio-internal-token}
       IBKR_SERVICE_URL: http://ibkr:8110
@@ -39,6 +40,7 @@ services:
     depends_on:
       - db
       - portfolio
+      - ai-timing
     ports:
       - '8000:8000'
 
@@ -129,6 +131,17 @@ services:
       - ingest
     ports:
       - '8200:8200'
+
+  ai-timing:
+    build:
+      context: ./services/ai_timing
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+      AI_TIMING_CACHE_TTL_SEC: ${AI_TIMING_CACHE_TTL_SEC:-900}
+      AI_TIMING_DEFAULT_TZ: ${AI_TIMING_DEFAULT_TZ:-US/Eastern}
+    ports:
+      - '8300:8300'
 
 volumes:
   db_data:

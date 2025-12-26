@@ -6,16 +6,18 @@ Purpose
 - Scope: the entire repository unless a more specific AGENTS.md appears deeper in a directory.
 
 Tech Stack
-- Frontend: Angular (standalone components, Signals API), ngx-echarts, SCSS, served via NGINX.
+- Frontend: Angular (standalone components, Signals API), ngx-echarts (frontend), TradingView lightweight-charts (tradvfrontend), SCSS, served via NGINX.
 - Backend: FastAPI (Python 3.11), SQLAlchemy (async), PostgreSQL, Alembic, OpenTelemetry optional.
-- Orchestration: Docker Compose (db, backend, frontend).
+- Orchestration: Docker Compose (db, backend, frontend, ai-timing).
   - Ingest microservice: FastAPI service under `services/ingest` (Alpha Vantage data fetcher), now the only path for price ingest.
+  - AI timing microservice: FastAPI service under `services/ai_timing` (OpenAI-driven intraday timing insights).
 
 Run & Build
 - Compose: `docker compose up --build`
 - Backend: http://localhost:8000 (health: `/health`, auth: `/auth/*`)
 - Frontend: http://localhost:4200 (served by NGINX from production build)
 - TradV Frontend: http://localhost:4300 (served by NGINX from production build)
+- AI Timing: http://localhost:8300 (health: `/health`, timing: `/timing`)
 - DB: `postgres://smart_advisor:smart_advisor@localhost:5432/smart_advisor`
 
 API Base URL
@@ -117,6 +119,9 @@ Notes for Agents
  - Ingest-related env vars to keep in sync:
    - Backend: `INGEST_BASE_URL`, `IBKR_SERVICE_URL`.
    - Ingest: `DATABASE_URL`, `ALPHAVANTAGE_API_KEY`, `ALPHAVANTAGE_REQUESTS_PER_MINUTE`, `BASE_CURRENCY`, OTEL envs.
+ - AI timing env vars to keep in sync:
+   - Backend: `AI_TIMING_BASE_URL`.
+   - AI timing: `OPENAI_API_KEY`, `OPENAI_MODEL`, `AI_TIMING_CACHE_TTL_SEC`, `AI_TIMING_DEFAULT_TZ`.
 - Portfolio service calls must include both `X-Internal-Token` (when configured) and `X-User-Id`; reuse the helpers under `app/services/portfolio.py` rather than issuing ad-hoc httpx requests.
 
 This document applies to all subdirectories unless overridden by a deeper AGENTS.md.

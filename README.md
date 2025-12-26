@@ -10,6 +10,7 @@ For contributor/agent guidelines, see `AGENTS.md`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
 - `services/ingest/` — Standalone Alpha Vantage ingest service that can run independently to populate the shared PostgreSQL schema or feed downstream consumers.
 - `services/portfolio/` — Dedicated FastAPI portfolio service that owns transactions, watchlists, accounts, and snapshot recompute logic plus an outbox for domain events.
+- `services/ai_timing/` — FastAPI microservice that calls OpenAI to generate intraday timing insights from market data.
 
 ## Running with Docker Compose
 
@@ -27,6 +28,7 @@ Services exposed locally:
 - **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
 - **IBKR Bridge:** http://localhost:8110 (FastAPI `/prices`, `/symbols/search` - talks to your IB Gateway/TWS session)
 - **Portfolio Service:** http://localhost:8200 (FastAPI `/health`, `/portfolio/*` proxied internally by the backend)
+- **AI Timing Service:** http://localhost:8300 (FastAPI `/health`, `/timing`)
 - **PostgreSQL:** localhost:5432 (credentials `smart_advisor`/`smart_advisor`)
 
 ## API
@@ -104,6 +106,18 @@ Jobs persist normalized rows into the existing schema:
 - `fx_rate` (`date`, `from_ccy`, `to_ccy`, `rate_close`) via an upsert keyed on `(date, from_ccy, to_ccy)`.
 
 Downstream processors can either read directly from these tables or plug into the job helpers (`services.ingest.prices.ingest_prices` / `services.ingest.fx.ingest_fx_pair`) to reroute records to a message broker.
+
+## AI timing service
+
+The AI timing microservice under `services/ai_timing` computes intraday timing features and calls OpenAI to generate a short recommendation with citations.
+
+### Configuration
+
+- `OPENAI_API_KEY` — OpenAI API key used by the AI timing service.
+- `OPENAI_MODEL` — Model name (default `gpt-4.1-mini`).
+- `AI_TIMING_CACHE_TTL_SEC` — Cache TTL in seconds (default `900`).
+- `AI_TIMING_DEFAULT_TZ` — Default timezone for session grouping (default `US/Eastern`).
+- Backend requires `AI_TIMING_BASE_URL` to reach the service (Compose sets `http://ai-timing:8300`).
 
 ## Recent UI changes and usage
 

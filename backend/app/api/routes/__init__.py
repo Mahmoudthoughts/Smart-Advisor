@@ -9,6 +9,7 @@ from .forecast import router as forecast_router
 from .portfolio import router as portfolio_router
 from .debug import router as debug_router
 from .ingest import router as ingest_router
+from .ai_timing import router as ai_timing_router
 from .sentiment import router as sentiment_router
 from .signals import router as signals_router
 from .simulate import router as simulate_router
@@ -28,5 +29,6 @@ api_router.include_router(sentiment_router, prefix="/sentiment", tags=["sentimen
 api_router.include_router(forecast_router, prefix="/forecast", tags=["forecast"])
 api_router.include_router(simulate_router, prefix="/simulate", tags=["simulate"])
 api_router.include_router(montecarlo_router, prefix="/risk/montecarlo", tags=["risk"])
+api_router.include_router(ai_timing_router, prefix="/ai", tags=["ai"])
 
 __all__ = ["api_router"]

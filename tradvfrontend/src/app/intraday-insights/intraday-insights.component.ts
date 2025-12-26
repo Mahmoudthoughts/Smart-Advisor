@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { SeriesMarker, Time } from 'lightweight-charts';
 
 import { IntradayBar, PortfolioDataService, WatchlistSymbol } from '../portfolio-data.service';
+import { AiTimingResponse, AiTimingService } from '../services/ai-timing.service';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type SessionSummary = {
@@ -36,6 +37,7 @@ type IntradaySummary = {
 })
 export class IntradayInsightsComponent implements OnInit, OnDestroy {
   private readonly dataService = inject(PortfolioDataService);
+  private readonly aiTiming = inject(AiTimingService);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private querySub: Subscription | null = null;
@@ -55,6 +57,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   readonly durationDays = signal<number>(5);
   readonly useRth = signal<boolean>(true);
   readonly barSizeOptions = ['5 mins', '15 mins', '30 mins', '1 hour'];
+  readonly aiTimezone = signal<string>('US/Eastern');
 
   readonly sortedBars = computed(() => {
     return [...this.bars()].sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date));
@@ -79,6 +82,15 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   });
 
   readonly selectedSessions = signal<string[]>([]);
+  readonly aiLoading = signal<boolean>(false);
+  readonly aiError = signal<string | null>(null);
+  readonly aiResult = signal<AiTimingResponse | null>(null);
+
+  readonly selectedSymbolName = computed(() => {
+    const symbol = this.selectedSymbol();
+    const entry = this.watchlist().find((row) => row.symbol === symbol);
+    return entry?.name ?? null;
+  });
 
   readonly sessionSummaries = computed<SessionSummary[]>(() => {
     const summaries: SessionSummary[] = [];
@@ -326,11 +338,14 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
           this.isLoading.set(false);
           this.lastUpdated.set(new Date().toLocaleString());
           this.syncSelectedSessions();
+          this.requestAiTiming();
         },
         error: () => {
           this.bars.set([]);
           this.isLoading.set(false);
           this.loadError.set('Unable to load intraday bars right now.');
+          this.aiResult.set(null);
+          this.aiError.set('AI timing insight unavailable until bars load.');
         }
       });
   }
@@ -460,5 +475,53 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     }
     const filtered = available.filter((date) => selected.has(date));
     this.selectedSessions.set(filtered.length ? filtered : available);
+  }
+
+  requestAiTiming(): void {
+    const symbol = this.selectedSymbol();
+    const bars = this.sortedBars();
+    if (!symbol || bars.length === 0) {
+      this.aiResult.set(null);
+      return;
+    }
+    this.aiLoading.set(true);
+    this.aiError.set(null);
+    const payload = {
+      symbol,
+      bar_size: this.barSize(),
+      duration_days: this.durationDays(),
+      timezone: this.aiTimezone(),
+      use_rth: this.useRth(),
+      symbol_name: this.selectedSymbolName(),
+      session_summaries: this.sessionSummaries().map((summary) => ({
+        date: summary.date,
+        bars: summary.bars,
+        open: summary.open,
+        midday_low: summary.middayLow,
+        close: summary.close,
+        drawdown_pct: summary.drawdownPct,
+        recovery_pct: summary.recoveryPct
+      })),
+      bars: bars.map((bar) => ({
+        date: bar.date,
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close,
+        volume: bar.volume
+      }))
+    };
+    this.aiTiming.getTiming(payload).subscribe({
+      next: (response) => {
+        this.aiResult.set(response);
+        this.aiLoading.set(false);
+      },
+      error: (err) => {
+        const detail = err?.error?.detail ?? 'Unable to load AI timing insight right now.';
+        this.aiError.set(detail);
+        this.aiResult.set(null);
+        this.aiLoading.set(false);
+      }
+    });
   }
 }

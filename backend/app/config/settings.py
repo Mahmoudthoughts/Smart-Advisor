@@ -29,6 +29,7 @@ class AppSettings(BaseSettings):
     alphavantage_api_key: str = Field(default="W7NAEL9D8ERL47FW", env="ALPHAVANTAGE_API_KEY")
     alphavantage_requests_per_minute: int = Field(default=5)
     ingest_base_url: str | None = Field(default=None, env="INGEST_BASE_URL")
+    ai_timing_base_url: str | None = Field(default=None, env="AI_TIMING_BASE_URL")
     ibkr_service_url: str | None = Field(
         default=None,
         env="IBKR_SERVICE_URL",
