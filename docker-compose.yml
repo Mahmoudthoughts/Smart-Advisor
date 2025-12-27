@@ -25,18 +25,18 @@ services:
       PORTFOLIO_SERVICE_URL: http://portfolio:8200/portfolio
       PORTFOLIO_SERVICE_TOKEN: ${PORTFOLIO_INTERNAL_TOKEN:-portfolio-internal-token}
       IBKR_SERVICE_URL: http://ibkr:8110
-      TELEMETRY_ENABLED: "true"
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       TELEMETRY_SERVICE_NAME: smart-advisor-backend
       OTEL_SERVICE_NAME: smart-advisor-backend
-      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=dev,service.version=1.0.0
-      OTEL_TRACES_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: grpc
-      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://otel-collector:4317
-      OTEL_LOGS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: grpc
-      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: http://otel-collector:4317/v1/logs
-      OTEL_METRICS_EXPORTER: otlp
-      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://otel-collector:4317/v1/metrics
+      OTEL_RESOURCE_ATTRIBUTES: ${OTEL_RESOURCE_ATTRIBUTES:-deployment.environment=dev,service.version=1.0.0}
+      OTEL_TRACES_EXPORTER: ${OTEL_TRACES_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: ${OTEL_EXPORTER_OTLP_TRACES_PROTOCOL:-grpc}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:-http://otel-collector:4317}
+      OTEL_LOGS_EXPORTER: ${OTEL_LOGS_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_LOGS_PROTOCOL: ${OTEL_EXPORTER_OTLP_LOGS_PROTOCOL:-grpc}
+      OTEL_EXPORTER_OTLP_LOGS_ENDPOINT: ${OTEL_EXPORTER_OTLP_LOGS_ENDPOINT:-http://otel-collector:4317/v1/logs}
+      OTEL_METRICS_EXPORTER: ${OTEL_METRICS_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:-http://otel-collector:4317/v1/metrics}
     depends_on:
       - db
       - portfolio
@@ -101,11 +101,11 @@ services:
       IBKR_BASE_CURRENCY: ${IBKR_BASE_CURRENCY:-USD}
       IBKR_TIMEOUT_SECONDS: ${IBKR_TIMEOUT_SECONDS:-30}
       IBKR_MAX_RETRIES: ${IBKR_MAX_RETRIES:-2}
-      TELEMETRY_ENABLED: "true"
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       TELEMETRY_SERVICE_NAME: ibkr-service
-      TELEMETRY_OTLP_ENDPOINT: http://otel-collector:4317
-      TELEMETRY_OTLP_INSECURE: "true"
-      TELEMETRY_SAMPLE_RATIO: 1.0
+      TELEMETRY_OTLP_ENDPOINT: ${TELEMETRY_OTLP_ENDPOINT:-http://otel-collector:4317}
+      TELEMETRY_OTLP_INSECURE: ${TELEMETRY_OTLP_INSECURE:-true}
+      TELEMETRY_SAMPLE_RATIO: ${TELEMETRY_SAMPLE_RATIO:-1.0}
     depends_on:
       - db
     ports:
@@ -121,11 +121,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://smart_advisor:smart_advisor@db:5432/smart_advisor
       INGEST_SERVICE_URL: http://ingest:8100
       INTERNAL_AUTH_TOKEN: ${PORTFOLIO_INTERNAL_TOKEN:-portfolio-internal-token}
-      TELEMETRY_ENABLED: "true"
+      TELEMETRY_ENABLED: ${TELEMETRY_ENABLED:-true}
       TELEMETRY_SERVICE_NAME: portfolio-service
-      TELEMETRY_OTLP_ENDPOINT: http://otel-collector:4317
-      TELEMETRY_OTLP_INSECURE: "true"
-      TELEMETRY_SAMPLE_RATIO: 1.0
+      TELEMETRY_OTLP_ENDPOINT: ${TELEMETRY_OTLP_ENDPOINT:-http://otel-collector:4317}
+      TELEMETRY_OTLP_INSECURE: ${TELEMETRY_OTLP_INSECURE:-true}
+      TELEMETRY_SAMPLE_RATIO: ${TELEMETRY_SAMPLE_RATIO:-1.0}
     depends_on:
       - db
       - ingest
