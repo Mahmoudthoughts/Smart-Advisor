@@ -15,7 +15,7 @@ from fastapi import FastAPI, HTTPException, status
 from openai import OpenAI
 from pydantic import BaseModel, Field
 
-from .config import get_settings
+from config import get_settings
 
 logger = logging.getLogger("services.ai_timing")
 if not logging.getLogger().handlers:
