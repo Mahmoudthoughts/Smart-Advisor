@@ -1,0 +1,242 @@
+.ai-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.page-header h1 {
+  color: var(--color-text);
+  font-weight: 800;
+}
+
+.page-header p {
+  color: var(--color-text-muted);
+  max-width: 44rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.actions .secondary {
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.controls {
+  background: var(--color-surface);
+  border-radius: 18px;
+  padding: 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 1rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+  align-items: end;
+}
+
+.controls .field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.controls label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.controls input,
+.controls select {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  padding: 0.5rem 0.75rem;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.controls .apply {
+  border-radius: 999px;
+  padding: 0.6rem 1.4rem;
+  border: none;
+  background: var(--primary-600);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status {
+  color: var(--primary-600);
+  font-weight: 600;
+}
+
+.error {
+  color: var(--danger-600);
+  font-weight: 600;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 320px) 1fr;
+  gap: 1.5rem;
+}
+
+.history-list,
+.history-detail,
+.empty-card {
+  background: var(--color-surface);
+  border-radius: 18px;
+  padding: 1.5rem;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, 0.1);
+}
+
+.history-list h2 {
+  margin-bottom: 0.25rem;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+.history-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.history-item {
+  text-align: left;
+  background: var(--color-surface-alt);
+  border-radius: 14px;
+  border: 1px solid var(--color-border);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.history-item.active {
+  border-color: var(--primary-600);
+  box-shadow: 0 0 0 2px rgba(14, 165, 233, 0.25);
+}
+
+.history-item .stamp {
+  font-weight: 700;
+}
+
+.history-item .meta {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.history-detail header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.history-detail header p {
+  color: var(--color-text-muted);
+}
+
+.history-detail .apply {
+  border-radius: 999px;
+  padding: 0.5rem 1.3rem;
+  border: none;
+  background: var(--primary-600);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inputs,
+.outputs {
+  margin-top: 1.25rem;
+}
+
+.input-grid,
+.output-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.label {
+  display: block;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.summary {
+  margin: 0.5rem 0 0;
+  color: var(--color-text);
+}
+
+.citations ul {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.citations li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  color: var(--color-text-muted);
+}
+
+.citations .badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+@media (max-width: 900px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .history-grid {
+    grid-template-columns: 1fr;
+  }
+}

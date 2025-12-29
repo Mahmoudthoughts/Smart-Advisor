@@ -21,6 +21,7 @@ import { DecisionsComponent } from './decisions/decisions.component';
 import { AdminComponent } from './admin/admin.component';
 import { UnrealizedComponent } from './unrealized/unrealized.component';
 import { IntradayInsightsComponent } from './intraday-insights/intraday-insights.component';
+import { AiHistoryComponent } from './ai-history/ai-history.component';
 
 export const APP_ROUTES: Routes = [
   {
@@ -49,6 +50,11 @@ export const APP_ROUTES: Routes = [
   {
     path: 'app/intraday-insights',
     component: IntradayInsightsComponent,
+    canActivate: [authGuard]
+  },
+  {
+    path: 'app/ai-history',
+    component: AiHistoryComponent,
     canActivate: [authGuard]
   },
   {

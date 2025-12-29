@@ -156,6 +156,11 @@ The AI timing microservice under `services/ai_timing` computes intraday timing f
   - Intraday bars are cached in the backend database per symbol/bar size to reduce IBKR calls.
   - Files: `frontend/src/app/intraday-insights/intraday-insights.component.{html,ts,scss}`, `frontend/src/app/my-stocks/my-stocks.component.html`.
 
+- AI timing history (TradV)
+  - New page at `/app/ai-history` shows stored AI timing recommendations per symbol, plus inputs and outputs.
+  - Linked from the intraday insights page and reads from the backend history log (no new model calls).
+  - Files: `tradvfrontend/src/app/ai-history/ai-history.component.{html,ts,scss}`, `tradvfrontend/src/app/intraday-insights/intraday-insights.component.html`.
+
 - Theme toggle (light/dark)
   - Sun/Moon icon in the top bar toggles theme, persisted in `localStorage`.
   - Theming driven by CSS variables; dark mode applies `theme-dark` class to `<body>`.

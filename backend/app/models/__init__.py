@@ -1,5 +1,6 @@
 """Database model exports."""
 
+from .ai_timing import AiTimingHistory
 from .analyst import AnalystSnapshot
 from .dashboard import DashboardKPI
 from .daily import DailyBar, DailyPortfolioSnapshot, FXRate
@@ -32,6 +33,7 @@ __all__ = [
     "DailyPortfolioSnapshot",
     "SignalEvent",
     "TickerSentimentDaily",
+    "AiTimingHistory",
     "AnalystSnapshot",
     "ForecastDaily",
     "IntradayBar",

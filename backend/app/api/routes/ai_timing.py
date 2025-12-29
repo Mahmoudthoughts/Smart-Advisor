@@ -3,13 +3,19 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies.auth import get_current_user
 from app.config import get_settings
+from app.db.session import get_db
+from app.models.ai_timing import AiTimingHistory
 from smart_advisor.api.models import User
 
 router = APIRouter()
@@ -47,11 +53,25 @@ class TimingRequest(BaseModel):
     force_refresh: bool | None = None
 
 
+class TimingHistoryEntry(BaseModel):
+    id: int
+    symbol: str
+    symbol_name: str | None
+    bar_size: str
+    duration_days: int
+    timezone: str
+    use_rth: bool
+    created_at: datetime
+    request_payload: dict[str, Any]
+    response_payload: dict[str, Any]
+
+
 @router.post("/timing")
 async def get_timing(
     payload: TimingRequest,
     request: Request,
     current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
 ) -> dict:
     settings = get_settings()
     if not settings.ai_timing_base_url:
@@ -74,7 +94,9 @@ async def get_timing(
                 status_code=status.HTTP_502_BAD_GATEWAY,
                 detail=f"AI timing service failed with {resp.status_code}: {resp.text}",
             )
-        return resp.json()
+        response_data = resp.json()
+        await _save_history(db, current_user, payload, response_data)
+        return response_data
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover - defensive
@@ -83,6 +105,85 @@ async def get_timing(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Unable to reach AI timing service: {exc}",
         ) from exc
+
+
+@router.get("/timing/history", response_model=list[TimingHistoryEntry])
+async def get_timing_history(
+    symbol: str | None = Query(default=None, min_length=1),
+    start_date: str | None = None,
+    end_date: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[TimingHistoryEntry]:
+    query = select(AiTimingHistory).where(AiTimingHistory.user_id == str(current_user.id))
+    if symbol:
+        query = query.where(AiTimingHistory.symbol == symbol.upper())
+    start_dt = _parse_history_date(start_date)
+    if start_dt:
+        query = query.where(AiTimingHistory.created_at >= start_dt)
+    end_dt = _parse_history_date(end_date)
+    if end_dt:
+        query = query.where(AiTimingHistory.created_at < end_dt + timedelta(days=1))
+
+    query = query.order_by(AiTimingHistory.created_at.desc()).limit(limit).offset(offset)
+    result = await db.execute(query)
+    entries = result.scalars().all()
+    return [
+        TimingHistoryEntry(
+            id=entry.id,
+            symbol=entry.symbol,
+            symbol_name=entry.symbol_name,
+            bar_size=entry.bar_size,
+            duration_days=entry.duration_days,
+            timezone=entry.timezone,
+            use_rth=entry.use_rth,
+            created_at=entry.created_at,
+            request_payload=entry.request_payload,
+            response_payload=entry.response_payload,
+        )
+        for entry in entries
+    ]
+
+
+def _parse_history_date(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+async def _save_history(
+    db: AsyncSession,
+    current_user: User,
+    payload: TimingRequest,
+    response_data: dict[str, Any],
+) -> None:
+    settings = get_settings()
+    tz_name = payload.timezone or settings.timezone_default
+    entry = AiTimingHistory(
+        user_id=str(current_user.id),
+        symbol=payload.symbol.upper(),
+        symbol_name=payload.symbol_name,
+        bar_size=payload.bar_size,
+        duration_days=payload.duration_days,
+        timezone=tz_name,
+        use_rth=payload.use_rth,
+        request_payload=payload.model_dump(mode="json"),
+        response_payload=response_data,
+    )
+    try:
+        db.add(entry)
+        await db.commit()
+    except Exception:  # pragma: no cover - defensive
+        await db.rollback()
+        logger.exception("Failed to persist AI timing history.")
 
 
 __all__ = ["router"]

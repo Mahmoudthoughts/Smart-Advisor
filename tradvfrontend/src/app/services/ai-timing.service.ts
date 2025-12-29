@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Observable } from 'rxjs';
 
@@ -15,6 +15,19 @@ export type AiTimingResponse = {
   confidence: number;
   citations: AiTimingCitation[];
   features: Record<string, unknown>;
+};
+
+export type AiTimingHistoryEntry = {
+  id: number;
+  symbol: string;
+  symbol_name?: string | null;
+  bar_size: string;
+  duration_days: number;
+  timezone: string;
+  use_rth: boolean;
+  created_at: string;
+  request_payload: Record<string, unknown>;
+  response_payload: Record<string, unknown>;
 };
 
 export type AiTimingRequest = {
@@ -51,5 +64,31 @@ export class AiTimingService {
 
   getTiming(payload: AiTimingRequest): Observable<AiTimingResponse> {
     return this.http.post<AiTimingResponse>(`${this.baseUrl}/ai/timing`, payload);
+  }
+
+  getTimingHistory(params: {
+    readonly symbol?: string;
+    readonly startDate?: string;
+    readonly endDate?: string;
+    readonly limit?: number;
+    readonly offset?: number;
+  }): Observable<AiTimingHistoryEntry[]> {
+    let query = new HttpParams();
+    if (params.symbol) {
+      query = query.set('symbol', params.symbol);
+    }
+    if (params.startDate) {
+      query = query.set('start_date', params.startDate);
+    }
+    if (params.endDate) {
+      query = query.set('end_date', params.endDate);
+    }
+    if (params.limit) {
+      query = query.set('limit', String(params.limit));
+    }
+    if (params.offset) {
+      query = query.set('offset', String(params.offset));
+    }
+    return this.http.get<AiTimingHistoryEntry[]>(`${this.baseUrl}/ai/timing/history`, { params: query });
   }
 }

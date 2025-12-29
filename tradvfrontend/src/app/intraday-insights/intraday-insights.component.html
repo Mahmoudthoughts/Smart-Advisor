@@ -101,9 +101,18 @@
         <h2>AI timing insight</h2>
         <p>Generated using intraday data for {{ selectedSymbol() }} ({{ durationDays() }} days, {{ barSize() }}).</p>
       </div>
-      <button type="button" class="apply" (click)="requestAiTiming(true)" [disabled]="aiLoading()">
-        {{ aiLoading() ? 'Generating...' : 'Regenerate' }}
-      </button>
+      <div class="ai-actions">
+        <a
+          class="ghost"
+          [routerLink]="['/app/ai-history']"
+          [queryParams]="{ symbol: selectedSymbol() }"
+        >
+          View history
+        </a>
+        <button type="button" class="apply" (click)="requestAiTiming(true)" [disabled]="aiLoading()">
+          {{ aiLoading() ? 'Generating...' : 'Regenerate' }}
+        </button>
+      </div>
     </header>
 
     <p class="status" *ngIf="aiLoading()">Generating AI timing insight...</p>

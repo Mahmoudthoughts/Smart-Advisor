@@ -110,6 +110,7 @@ File Map (UI features)
 - Global styles + theme variables: `frontend/src/styles.scss`
 - NGINX SPA + API proxy: `frontend/nginx.conf`
 - TradV Frontend shell + lightweight charts: `tradvfrontend/src/app/home/home.component.{html,ts,scss}`, `tradvfrontend/src/app/shared/chart-panel/chart-panel.component.{html,ts,scss}`
+- TradV AI timing history page: `tradvfrontend/src/app/ai-history/ai-history.component.{html,ts,scss}`
 - Backend CORS: `backend/app/main.py`
 
 Notes for Agents
