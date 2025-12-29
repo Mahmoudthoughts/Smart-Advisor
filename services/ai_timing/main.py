@@ -52,6 +52,7 @@ class TimingRequest(BaseModel):
     symbol_name: str | None = None
     session_summaries: list[SessionSummaryPayload] | None = None
     bars: list[IntradayBar]
+    force_refresh: bool = Field(default=False, description="Bypass cached timing response")
 
 
 class Citation(BaseModel):
@@ -90,9 +91,10 @@ async def timing(payload: TimingRequest) -> TimingResponse:
     settings = get_settings()
     tz_name = payload.timezone or settings.timezone_default
     cache_key = build_cache_key(payload, tz_name)
-    cached = get_cached(cache_key)
-    if cached:
-        return TimingResponse(**cached)
+    if not payload.force_refresh:
+        cached = get_cached(cache_key)
+        if cached:
+            return TimingResponse(**cached)
 
     features = build_features(payload, tz_name)
     citations = build_citations(features)
@@ -327,30 +329,39 @@ async def call_llm(
     }
 
     try:
-        response = client.responses.create(
-            model=settings.openai_model,
-            input=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a trading assistant. Provide educational, non-financial advice. "
-                        "Use only the provided citations in square brackets like [C1]. "
-                        "Do not mention you are an AI. Keep it concise."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": (
-                        "Using the provided intraday feature summary, write a short recommendation "
-                        "for day-trading timing. Use citations for every factual claim. "
-                        "Return JSON matching the schema."
-                    ),
-                },
-                {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
-            ],
-            response_format={"type": "json_schema", "json_schema": schema},
-        )
-        parsed = json.loads(response.output_text)
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a trading assistant. Provide educational, non-financial advice. "
+                    "Use only the provided citations in square brackets like [C1]. "
+                    "Do not mention you are an AI. Keep it concise."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Using the provided intraday feature summary, write a short recommendation "
+                    "for day-trading timing. Use citations for every factual claim. "
+                    "Return JSON matching the schema."
+                ),
+            },
+            {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
+        ]
+        if hasattr(client, "responses"):
+            response = client.responses.create(
+                model=settings.openai_model,
+                input=messages,
+                response_format={"type": "json_schema", "json_schema": schema},
+            )
+            raw_text = response.output_text
+        else:
+            response = client.chat.completions.create(
+                model=settings.openai_model,
+                messages=messages,
+            )
+            raw_text = response.choices[0].message.content or ""
+        parsed = json.loads(raw_text)
         logger.info("AI timing response: %s", json.dumps(parsed, ensure_ascii=True))
         return parsed
     except Exception as exc:  # pragma: no cover - defensive
@@ -415,7 +426,7 @@ def minute_window_label(
 ) -> str:
     start = buckets[idx]
     end = start + window_size * bar_minutes
-    return f"{format_minute(start)}–{format_minute(end)}"
+    return f"{format_minute(start)}-{format_minute(end)}"
 
 
 def sliding_argmin(values: list[float], window: int) -> int:

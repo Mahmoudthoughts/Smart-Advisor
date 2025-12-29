@@ -477,7 +477,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     this.selectedSessions.set(filtered.length ? filtered : available);
   }
 
-  requestAiTiming(): void {
+  requestAiTiming(forceRefresh = false): void {
     const symbol = this.selectedSymbol();
     const bars = this.sortedBars();
     if (!symbol || bars.length === 0) {
@@ -492,6 +492,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
       duration_days: this.durationDays(),
       timezone: this.aiTimezone(),
       use_rth: this.useRth(),
+      force_refresh: forceRefresh,
       symbol_name: this.selectedSymbolName(),
       session_summaries: this.sessionSummaries().map((summary) => ({
         date: summary.date,

@@ -101,7 +101,7 @@
         <h2>AI timing insight</h2>
         <p>Generated using intraday data for {{ selectedSymbol() }} ({{ durationDays() }} days, {{ barSize() }}).</p>
       </div>
-      <button type="button" class="apply" (click)="requestAiTiming()" [disabled]="aiLoading()">
+      <button type="button" class="apply" (click)="requestAiTiming(true)" [disabled]="aiLoading()">
         {{ aiLoading() ? 'Generating...' : 'Regenerate' }}
       </button>
     </header>

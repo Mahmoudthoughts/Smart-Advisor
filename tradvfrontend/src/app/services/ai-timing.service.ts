@@ -23,6 +23,7 @@ export type AiTimingRequest = {
   duration_days: number;
   timezone: string;
   use_rth: boolean;
+  force_refresh?: boolean;
   symbol_name?: string | null;
   session_summaries?: Array<{
     date: string;

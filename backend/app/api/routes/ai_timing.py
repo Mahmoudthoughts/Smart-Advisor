@@ -44,6 +44,7 @@ class TimingRequest(BaseModel):
     symbol_name: str | None = None
     session_summaries: list[SessionSummaryPayload] | None = None
     bars: list[IntradayBarPayload]
+    force_refresh: bool | None = None
 
 
 @router.post("/timing")
