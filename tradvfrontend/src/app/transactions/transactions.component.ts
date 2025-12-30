@@ -37,6 +37,7 @@ export class TransactionsComponent implements OnInit {
   readonly loadError = signal<string | null>(null);
   readonly importStatus = signal<string | null>(null);
   readonly importError = signal<string | null>(null);
+  readonly importSkippedRows = signal<number[]>([]);
   readonly exportStatus = signal<string | null>(null);
   readonly isLoading = signal<boolean>(true);
   readonly isImporting = signal<boolean>(false);
@@ -90,6 +91,17 @@ export class TransactionsComponent implements OnInit {
     this.filteredTransactions().reduce((acc, tx) => acc + tx.tax, 0)
   );
 
+  readonly skippedImportHint = computed(() => {
+    const rows = this.importSkippedRows();
+    if (!rows.length) {
+      return '';
+    }
+    const maxRows = 5;
+    const displayRows = rows.slice(0, maxRows).join(', ');
+    const extra = rows.length > maxRows ? ` and ${rows.length - maxRows} more` : '';
+    return `Skipped duplicate rows: ${displayRows}${extra}.`;
+  });
+
   ngOnInit(): void {
     this.route.queryParamMap.subscribe((params) => {
       const symbol = params.get('symbol');
@@ -139,10 +151,30 @@ export class TransactionsComponent implements OnInit {
 
   private normalizeNumber(value: unknown): string {
     const numeric = this.toNumber(value);
-    return numeric.toFixed(10);
+    return numeric.toFixed(8);
   }
 
-  private buildTransactionKey(value: {
+  private normalizeKeyNumber(value: unknown): string {
+    const numeric = this.toNumber(value);
+    return numeric.toFixed(4);
+  }
+
+  private normalizeText(value: string | null | undefined): string {
+    return (value ?? '').trim().replace(/\s+/g, ' ');
+  }
+
+  private normalizeDate(value: string | undefined): string {
+    if (!value) {
+      return '';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+      return '';
+    }
+    return parsed.toISOString().slice(0, 19);
+  }
+
+  private buildTransactionKeyCore(value: {
     symbol?: string;
     type?: string;
     quantity?: number;
@@ -154,18 +186,35 @@ export class TransactionsComponent implements OnInit {
     account?: string | null;
     notes?: string | null;
   }): string {
-    const tradeDate = value.trade_datetime ? new Date(value.trade_datetime).toISOString() : '';
+    const tradeDate = this.normalizeDate(value.trade_datetime);
     return [
       value.symbol?.trim().toUpperCase() ?? '',
       value.type?.trim().toUpperCase() ?? '',
-      this.normalizeNumber(value.quantity ?? 0),
-      this.normalizeNumber(value.price ?? 0),
+      this.normalizeKeyNumber(value.quantity ?? 0),
+      this.normalizeKeyNumber(value.price ?? 0),
       tradeDate,
-      this.normalizeNumber(value.fee ?? 0),
-      this.normalizeNumber(value.tax ?? 0),
-      value.currency?.trim().toUpperCase() ?? 'USD',
-      value.account?.trim() ?? '',
-      value.notes?.trim() ?? ''
+      value.currency?.trim().toUpperCase() ?? 'USD'
+    ].join('|');
+  }
+
+  private buildTransactionKeyFull(value: {
+    symbol?: string;
+    type?: string;
+    quantity?: number;
+    price?: number;
+    trade_datetime?: string;
+    fee?: number;
+    tax?: number;
+    currency?: string;
+    account?: string | null;
+    notes?: string | null;
+  }): string {
+    return [
+      this.buildTransactionKeyCore(value),
+      this.normalizeKeyNumber(value.fee ?? 0),
+      this.normalizeKeyNumber(value.tax ?? 0),
+      this.normalizeText(value.account ?? ''),
+      this.normalizeText(value.notes ?? '')
     ].join('|');
   }
 
@@ -353,6 +402,7 @@ export class TransactionsComponent implements OnInit {
     this.isImporting.set(true);
     this.importStatus.set(null);
     this.importError.set(null);
+    this.importSkippedRows.set([]);
     try {
       const text = await file.text();
       const rows = text
@@ -376,9 +426,21 @@ export class TransactionsComponent implements OnInit {
       if (dateIndex === -1 || typeIndex === -1 || symbolIndex === -1 || qtyIndex === -1 || priceIndex === -1) {
         throw new Error('CSV header missing required columns (date, type, symbol, quantity, price).');
       }
-      const existingKeys = new Set(
+      const existingCoreKeys = new Set(
         this.transactions().map((tx) =>
-          this.buildTransactionKey({
+          this.buildTransactionKeyCore({
+            symbol: tx.symbol,
+            type: tx.type,
+            quantity: tx.quantity,
+            price: tx.price,
+            trade_datetime: tx.trade_datetime,
+            currency: tx.currency
+          })
+        )
+      );
+      const existingFullKeys = new Set(
+        this.transactions().map((tx) =>
+          this.buildTransactionKeyFull({
             symbol: tx.symbol,
             type: tx.type,
             quantity: tx.quantity,
@@ -394,6 +456,7 @@ export class TransactionsComponent implements OnInit {
       );
       let importedCount = 0;
       let skippedCount = 0;
+      const skippedRows: number[] = [];
       for (let i = 1; i < rows.length; i += 1) {
         const cells = rows[i].split(',').map((cell) => cell.trim());
         const payload: TransactionPayload = {
@@ -408,17 +471,21 @@ export class TransactionsComponent implements OnInit {
           account: accountIndex !== -1 ? cells[accountIndex] || undefined : undefined,
           notes: notesIndex !== -1 ? cells[notesIndex] || undefined : undefined
         };
-        const payloadKey = this.buildTransactionKey(payload);
-        if (existingKeys.has(payloadKey)) {
+        const payloadCoreKey = this.buildTransactionKeyCore(payload);
+        const payloadFullKey = this.buildTransactionKeyFull(payload);
+        if (existingCoreKeys.has(payloadCoreKey) || existingFullKeys.has(payloadFullKey)) {
           skippedCount += 1;
+          skippedRows.push(i + 1);
           continue;
         }
-        existingKeys.add(payloadKey);
+        existingCoreKeys.add(payloadCoreKey);
+        existingFullKeys.add(payloadFullKey);
         // eslint-disable-next-line no-await-in-loop
         const created = await firstValueFrom(this.dataService.createTransaction(payload));
         this.transactions.update((current) => [created, ...current]);
         importedCount += 1;
       }
+      this.importSkippedRows.set(skippedRows);
       if (!importedCount && skippedCount) {
         this.importStatus.set(`${skippedCount} duplicate transactions skipped.`);
       } else if (skippedCount) {
