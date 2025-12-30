@@ -41,9 +41,15 @@ export class TimelineComponent implements OnInit {
     return this.snapshots().map((snapshot) => ({
       date: snapshot.date,
       price: priceLookup.get(snapshot.date) ?? null,
+      sharesOpen: snapshot.shares_open,
+      marketValue: snapshot.market_value_base,
+      costBasis: snapshot.cost_basis_open_base,
       hypoPnl: snapshot.hypo_liquidation_pl_base,
+      realizedPnl: snapshot.realized_pl_to_date_base,
       unrealizedPnl: snapshot.unrealized_pl_base,
       dayOpportunity: snapshot.day_opportunity_base,
+      peakHypoPnl: snapshot.peak_hypo_pl_to_date_base,
+      drawdownPct: snapshot.drawdown_from_peak_pct,
     }));
   });
 

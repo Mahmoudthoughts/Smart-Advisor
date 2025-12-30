@@ -26,7 +26,7 @@
         To
         <input type="date" [ngModel]="toDate()" (ngModelChange)="onToChange($event)" name="to" />
       </label>
-      <button type="button" (click)="loadTimeline()" [disabled]="isLoading()">{{ isLoading() ? 'Loading…' : 'Refresh' }}</button>
+      <button type="button" (click)="loadTimeline()" [disabled]="isLoading()">{{ isLoading() ? 'Loading...' : 'Refresh' }}</button>
     </form>
   </header>
 
@@ -53,30 +53,48 @@
 
   <section class="data-grid" aria-live="polite">
     <h2>Daily opportunity breakdown</h2>
-    <table *ngIf="tableRows().length; else noRows">
-      <thead>
-        <tr>
-          <th scope="col">Date</th>
-          <th scope="col">Close</th>
-          <th scope="col">Hypo P&amp;L</th>
-          <th scope="col">Unrealized P&amp;L</th>
-          <th scope="col">Day Opportunity</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let row of tableRows()">
-          <td data-label="Date">{{ row.date }}</td>
-          <td data-label="Close">{{ row.price === null ? '—' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
-          <td data-label="Hypo P&L">{{ row.hypoPnl | currency: 'USD' }}</td>
-          <td data-label="Unrealized P&L">{{ row.unrealizedPnl | currency: 'USD' }}</td>
-          <td data-label="Day opportunity">
-            <span [class.positive]="row.dayOpportunity > 0">
-              {{ row.dayOpportunity | currency: 'USD' }}
-            </span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-scroll" *ngIf="tableRows().length; else noRows">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Close</th>
+            <th scope="col" class="numeric">Shares Open</th>
+            <th scope="col" class="numeric">Market Value</th>
+            <th scope="col" class="numeric">Cost Basis</th>
+            <th scope="col" class="numeric">Hypo P&amp;L</th>
+            <th scope="col" class="numeric">Realized P&amp;L</th>
+            <th scope="col" class="numeric">Unrealized P&amp;L</th>
+            <th scope="col" class="numeric">Day Opportunity</th>
+            <th scope="col" class="numeric">Peak Hypo P&amp;L</th>
+            <th scope="col" class="numeric">Drawdown</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of tableRows()">
+            <td data-label="Date">{{ row.date }}</td>
+            <td data-label="Close">{{ row.price === null ? 'N/A' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
+            <td data-label="Shares open" class="numeric">{{ row.sharesOpen | number: '1.0-2' }}</td>
+            <td data-label="Market value" class="numeric">{{ row.marketValue | currency: 'USD' }}</td>
+            <td data-label="Cost basis" class="numeric">{{ row.costBasis | currency: 'USD' }}</td>
+            <td data-label="Hypo P&L" class="numeric">{{ row.hypoPnl | currency: 'USD' }}</td>
+            <td data-label="Realized P&L" class="numeric">{{ row.realizedPnl | currency: 'USD' }}</td>
+            <td data-label="Unrealized P&L" class="numeric">{{ row.unrealizedPnl | currency: 'USD' }}</td>
+            <td data-label="Day opportunity" class="numeric">
+              <span [class.positive]="row.dayOpportunity > 0" [class.negative]="row.dayOpportunity < 0">
+                {{ row.dayOpportunity | currency: 'USD' }}
+              </span>
+            </td>
+            <td data-label="Peak hypo P&L" class="numeric">{{ row.peakHypoPnl | currency: 'USD' }}</td>
+            <td data-label="Drawdown" class="numeric">
+              <span [class.negative]="row.drawdownPct < 0">
+                {{ row.drawdownPct === null ? 'N/A' : (row.drawdownPct | number: '1.1-1') + '%' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
     <ng-template #noRows>
       <p class="empty">No timeline data yet. Add trades to visualize missed opportunities for this symbol.</p>
     </ng-template>
@@ -91,8 +109,9 @@
         <span>{{ tx.trade_datetime | date: 'mediumDate' }}</span>
         <span>{{ tx.quantity }} &#64;{{ tx.price | currency: 'USD' }}</span>
         <span *ngIf="tx.account">Account: {{ tx.account }}</span>
-        <span class="value">Value ≈ {{ (tx.quantity * tx.price) | currency: 'USD' }}</span>
+        <span class="value">Value {{ (tx.quantity * tx.price) | currency: 'USD' }}</span>
       </li>
     </ul>
   </section>
 </section>
+

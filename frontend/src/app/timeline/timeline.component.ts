@@ -42,9 +42,15 @@ export class TimelineComponent implements OnInit {
     return this.snapshots().map((snapshot) => ({
       date: snapshot.date,
       price: priceLookup.get(snapshot.date) ?? null,
+      sharesOpen: snapshot.shares_open,
+      marketValue: snapshot.market_value_base,
+      costBasis: snapshot.cost_basis_open_base,
       hypoPnl: snapshot.hypo_liquidation_pl_base,
+      realizedPnl: snapshot.realized_pl_to_date_base,
       unrealizedPnl: snapshot.unrealized_pl_base,
       dayOpportunity: snapshot.day_opportunity_base,
+      peakHypoPnl: snapshot.peak_hypo_pl_to_date_base,
+      drawdownPct: snapshot.drawdown_from_peak_pct,
     }));
   });
 
@@ -274,7 +280,7 @@ export class TimelineComponent implements OnInit {
             itemStyle: { color: delta >= 0 ? '#16a34a' : '#dc2626' },
             label: {
               formatter: () =>
-                `${delta >= 0 ? '▲' : '▼'} $${delta.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
+                `${delta >= 0 ? '+' : '-'} $${delta.toLocaleString(undefined, { maximumFractionDigits: 0 })}`
             }
           });
         }
@@ -319,7 +325,7 @@ export class TimelineComponent implements OnInit {
             const value = (tx.quantity * tx.price).toLocaleString(undefined, { maximumFractionDigits: 2 });
             const feePart = tx.fee ? `, fees $${tx.fee.toFixed(2)}` : '';
             lines.push(
-              `${tx.type === 'SELL' ? '🔻' : '🔺'} ${direction} ${tx.quantity} @ $${tx.price.toFixed(2)} (≈ $${value}${feePart})`
+              `${direction} ${tx.quantity} @ $${tx.price.toFixed(2)} (~ $${value}${feePart})`
             );
           });
           return [`<strong>${dateLabel}</strong>`, ...lines].join('<br/>');
