@@ -137,6 +137,38 @@ export class TransactionsComponent implements OnInit {
     return Number.isNaN(numeric) ? 0 : numeric;
   }
 
+  private normalizeNumber(value: unknown): string {
+    const numeric = this.toNumber(value);
+    return numeric.toFixed(10);
+  }
+
+  private buildTransactionKey(value: {
+    symbol?: string;
+    type?: string;
+    quantity?: number;
+    price?: number;
+    trade_datetime?: string;
+    fee?: number;
+    tax?: number;
+    currency?: string;
+    account?: string | null;
+    notes?: string | null;
+  }): string {
+    const tradeDate = value.trade_datetime ? new Date(value.trade_datetime).toISOString() : '';
+    return [
+      value.symbol?.trim().toUpperCase() ?? '',
+      value.type?.trim().toUpperCase() ?? '',
+      this.normalizeNumber(value.quantity ?? 0),
+      this.normalizeNumber(value.price ?? 0),
+      tradeDate,
+      this.normalizeNumber(value.fee ?? 0),
+      this.normalizeNumber(value.tax ?? 0),
+      value.currency?.trim().toUpperCase() ?? 'USD',
+      value.account?.trim() ?? '',
+      value.notes?.trim() ?? ''
+    ].join('|');
+  }
+
   updateNewTransaction(patch: Partial<TransactionPayload>): void {
     this.newTransaction.update((current) => ({ ...current, ...patch }));
   }
@@ -339,16 +371,34 @@ export class TransactionsComponent implements OnInit {
       const feeIndex = header.indexOf('fee');
       const taxIndex = header.indexOf('tax');
       const currencyIndex = header.indexOf('currency');
-      const accountIndex = header.indexOf('broker_id');
+      const accountIndex = header.indexOf('account') !== -1 ? header.indexOf('account') : header.indexOf('broker_id');
       const notesIndex = header.indexOf('notes');
       if (dateIndex === -1 || typeIndex === -1 || symbolIndex === -1 || qtyIndex === -1 || priceIndex === -1) {
         throw new Error('CSV header missing required columns (date, type, symbol, quantity, price).');
       }
+      const existingKeys = new Set(
+        this.transactions().map((tx) =>
+          this.buildTransactionKey({
+            symbol: tx.symbol,
+            type: tx.type,
+            quantity: tx.quantity,
+            price: tx.price,
+            trade_datetime: tx.trade_datetime,
+            fee: tx.fee,
+            tax: tx.tax,
+            currency: tx.currency,
+            account: tx.account ?? null,
+            notes: tx.notes ?? null
+          })
+        )
+      );
+      let importedCount = 0;
+      let skippedCount = 0;
       for (let i = 1; i < rows.length; i += 1) {
         const cells = rows[i].split(',').map((cell) => cell.trim());
         const payload: TransactionPayload = {
-          symbol: cells[symbolIndex],
-          type: cells[typeIndex].toUpperCase(),
+          symbol: cells[symbolIndex]?.trim().toUpperCase() ?? '',
+          type: cells[typeIndex]?.trim().toUpperCase() ?? '',
           quantity: Number(cells[qtyIndex]),
           price: Number(cells[priceIndex]),
           trade_datetime: new Date(cells[dateIndex]).toISOString(),
@@ -358,11 +408,24 @@ export class TransactionsComponent implements OnInit {
           account: accountIndex !== -1 ? cells[accountIndex] || undefined : undefined,
           notes: notesIndex !== -1 ? cells[notesIndex] || undefined : undefined
         };
+        const payloadKey = this.buildTransactionKey(payload);
+        if (existingKeys.has(payloadKey)) {
+          skippedCount += 1;
+          continue;
+        }
+        existingKeys.add(payloadKey);
         // eslint-disable-next-line no-await-in-loop
         const created = await firstValueFrom(this.dataService.createTransaction(payload));
         this.transactions.update((current) => [created, ...current]);
+        importedCount += 1;
       }
-      this.importStatus.set(`${rows.length - 1} transactions imported.`);
+      if (!importedCount && skippedCount) {
+        this.importStatus.set(`${skippedCount} duplicate transactions skipped.`);
+      } else if (skippedCount) {
+        this.importStatus.set(`${importedCount} transactions imported. ${skippedCount} duplicates skipped.`);
+      } else {
+        this.importStatus.set(`${importedCount} transactions imported.`);
+      }
     } catch (error: any) {
       this.importError.set(error?.message ?? 'Import failed. Ensure the CSV matches the template.');
     } finally {
