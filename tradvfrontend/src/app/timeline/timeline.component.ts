@@ -24,12 +24,25 @@ import {
 })
 export class TimelineComponent implements OnInit {
   private readonly dataService = inject(PortfolioDataService);
+  private readonly defaultColumnVisibility = {
+    sharesOpen: true,
+    marketValue: true,
+    costBasis: true,
+    hypoPnl: true,
+    realizedPnl: true,
+    unrealizedPnl: true,
+    dayOpportunity: true,
+    peakHypoPnl: true,
+    drawdownPct: true
+  };
 
   readonly watchlist = signal<WatchlistSymbol[]>([]);
   readonly selectedSymbol = signal<string>('');
   readonly fromDate = signal<string>('');
   readonly toDate = signal<string>('');
   readonly selectedPreset = signal<string | null>(null);
+  readonly tableFirst = signal<boolean>(false);
+  readonly columnVisibility = signal({ ...this.defaultColumnVisibility });
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);
@@ -203,6 +216,14 @@ export class TimelineComponent implements OnInit {
   onSymbolChange(symbol: string): void {
     this.selectedSymbol.set(symbol);
     this.loadTimeline();
+  }
+
+  setColumnVisibility(key: keyof typeof this.defaultColumnVisibility, value: boolean): void {
+    this.columnVisibility.update((current) => ({ ...current, [key]: value }));
+  }
+
+  resetColumns(): void {
+    this.columnVisibility.set({ ...this.defaultColumnVisibility });
   }
 
   updateChart(): void {
