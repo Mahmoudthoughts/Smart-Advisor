@@ -1,4 +1,4 @@
-<section class="intraday-insights">
+﻿<section class="intraday-insights">
   <header class="page-header">
     <div>
       <p class="eyebrow">Intraday insights</p>
@@ -146,7 +146,7 @@
     </div>
   </section>
 
-  <section class="chart-card" *ngIf="overlayCombinedSeries().length">
+  <section class="chart-card" *ngIf="overlayCombinedSeries().length && !tableFirst()">
     <header>
       <h2>Overlayed intraday sessions</h2>
       <p>Each line is a session plotted by time-of-day to spot common lows and highs.</p>
@@ -164,28 +164,93 @@
       <h2>Session summary</h2>
       <p>Daily sessions derived from intraday bars (midday window: 11:00-13:30 ET).</p>
     </header>
-    <div class="table-wrapper" *ngIf="sessionSummaries().length; else noSessions">
+    <div class="table-controls">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="tableFirst()" (ngModelChange)="tableFirst.set($event)" />
+        Table first (hide chart)
+      </label>
+      <button type="button" class="reset" (click)="resetSessionColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle session summary columns">
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().date"
+            (ngModelChange)="setSessionColumnVisibility('date', $event)"
+          />
+          Date
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().bars"
+            (ngModelChange)="setSessionColumnVisibility('bars', $event)"
+          />
+          Bars
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().open"
+            (ngModelChange)="setSessionColumnVisibility('open', $event)"
+          />
+          Open
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().middayLow"
+            (ngModelChange)="setSessionColumnVisibility('middayLow', $event)"
+          />
+          Midday low
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().close"
+            (ngModelChange)="setSessionColumnVisibility('close', $event)"
+          />
+          Close
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().drawdownPct"
+            (ngModelChange)="setSessionColumnVisibility('drawdownPct', $event)"
+          />
+          Drawdown
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().recoveryPct"
+            (ngModelChange)="setSessionColumnVisibility('recoveryPct', $event)"
+          />
+          Recovery
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll" *ngIf="sessionSummaries().length; else noSessions">
       <table>
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Bars</th>
-            <th>Open</th>
-            <th>Midday low</th>
-            <th>Close</th>
-            <th>Drawdown</th>
-            <th>Recovery</th>
+            <th *ngIf="sessionColumns().date">Date</th>
+            <th *ngIf="sessionColumns().bars" class="numeric">Bars</th>
+            <th *ngIf="sessionColumns().open" class="numeric">Open</th>
+            <th *ngIf="sessionColumns().middayLow" class="numeric">Midday low</th>
+            <th *ngIf="sessionColumns().close" class="numeric">Close</th>
+            <th *ngIf="sessionColumns().drawdownPct" class="numeric">Drawdown</th>
+            <th *ngIf="sessionColumns().recoveryPct" class="numeric">Recovery</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let session of sessionSummaries()">
-            <td>{{ session.date }}</td>
-            <td>{{ session.bars }}</td>
-            <td>{{ session.open === null ? 'n/a' : (session.open | currency: 'USD':'symbol':'1.2-2') }}</td>
-            <td>{{ session.middayLow === null ? 'n/a' : (session.middayLow | currency: 'USD':'symbol':'1.2-2') }}</td>
-            <td>{{ session.close === null ? 'n/a' : (session.close | currency: 'USD':'symbol':'1.2-2') }}</td>
-            <td>{{ session.drawdownPct === null ? 'n/a' : (session.drawdownPct | percent: '1.2-2') }}</td>
-            <td>{{ session.recoveryPct === null ? 'n/a' : (session.recoveryPct | percent: '1.2-2') }}</td>
+            <td *ngIf="sessionColumns().date">{{ session.date }}</td>
+            <td *ngIf="sessionColumns().bars" class="numeric">{{ session.bars }}</td>
+            <td *ngIf="sessionColumns().open" class="numeric">{{ session.open === null ? 'n/a' : (session.open | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().middayLow" class="numeric">{{ session.middayLow === null ? 'n/a' : (session.middayLow | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().close" class="numeric">{{ session.close === null ? 'n/a' : (session.close | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().drawdownPct" class="numeric">{{ session.drawdownPct === null ? 'n/a' : (session.drawdownPct | percent: '1.2-2') }}</td>
+            <td *ngIf="sessionColumns().recoveryPct" class="numeric">{{ session.recoveryPct === null ? 'n/a' : (session.recoveryPct | percent: '1.2-2') }}</td>
           </tr>
         </tbody>
       </table>
@@ -200,26 +265,55 @@
       <h2>Raw intraday bars</h2>
       <p>Timestamped bars returned by the IBKR bridge.</p>
     </header>
-    <div class="table-wrapper" *ngIf="sortedBars().length; else noBars">
+    <div class="table-controls">
+      <button type="button" class="reset" (click)="resetBarColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle intraday bars columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().date" (ngModelChange)="setBarColumnVisibility('date', $event)" />
+          Timestamp
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().open" (ngModelChange)="setBarColumnVisibility('open', $event)" />
+          Open
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().high" (ngModelChange)="setBarColumnVisibility('high', $event)" />
+          High
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().low" (ngModelChange)="setBarColumnVisibility('low', $event)" />
+          Low
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().close" (ngModelChange)="setBarColumnVisibility('close', $event)" />
+          Close
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().volume" (ngModelChange)="setBarColumnVisibility('volume', $event)" />
+          Volume
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll" *ngIf="sortedBars().length; else noBars">
       <table>
         <thead>
           <tr>
-            <th>Timestamp</th>
-            <th>Open</th>
-            <th>High</th>
-            <th>Low</th>
-            <th>Close</th>
-            <th>Volume</th>
+            <th *ngIf="barColumns().date">Timestamp</th>
+            <th *ngIf="barColumns().open" class="numeric">Open</th>
+            <th *ngIf="barColumns().high" class="numeric">High</th>
+            <th *ngIf="barColumns().low" class="numeric">Low</th>
+            <th *ngIf="barColumns().close" class="numeric">Close</th>
+            <th *ngIf="barColumns().volume" class="numeric">Volume</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let bar of sortedBars()">
-            <td>{{ bar.date }}</td>
-            <td>{{ bar.open | currency: 'USD':'symbol':'1.2-2' }}</td>
-            <td>{{ bar.high | currency: 'USD':'symbol':'1.2-2' }}</td>
-            <td>{{ bar.low | currency: 'USD':'symbol':'1.2-2' }}</td>
-            <td>{{ bar.close | currency: 'USD':'symbol':'1.2-2' }}</td>
-            <td>{{ bar.volume | number: '1.0-0' }}</td>
+            <td *ngIf="barColumns().date">{{ bar.date }}</td>
+            <td *ngIf="barColumns().open" class="numeric">{{ bar.open | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().high" class="numeric">{{ bar.high | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().low" class="numeric">{{ bar.low | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().close" class="numeric">{{ bar.close | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().volume" class="numeric">{{ bar.volume | number: '1.0-0' }}</td>
           </tr>
         </tbody>
       </table>
@@ -229,3 +323,6 @@
     </ng-template>
   </section>
 </section>
+
+
+

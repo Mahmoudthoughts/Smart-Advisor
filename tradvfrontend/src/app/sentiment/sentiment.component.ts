@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { mapLineSeries } from '../shared/chart-utils';
+import { createColumnVisibility } from '../shared/column-visibility';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 interface SentimentRow {
@@ -14,11 +16,28 @@ interface SentimentRow {
 @Component({
   selector: 'app-sentiment-page',
   standalone: true,
-  imports: [CommonModule, TvChartComponent],
+  imports: [CommonModule, FormsModule, TvChartComponent],
   templateUrl: './sentiment.component.html',
   styleUrls: ['./sentiment.component.scss']
 })
 export class SentimentComponent {
+  private readonly columnDefaults = {
+    date: true,
+    symbol: true,
+    score: true,
+    articles: true,
+    highlights: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.tradv.sentiment.columns',
+    this.columnDefaults
+  );
+
+  readonly tableFirst = signal<boolean>(false);
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
+
   readonly sentimentSeries: TvSeries[] = [
     {
       name: 'PATH',

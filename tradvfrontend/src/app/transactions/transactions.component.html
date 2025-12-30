@@ -1,4 +1,4 @@
-<section class="transactions">
+﻿<section class="transactions">
   <header class="page-header">
     <div>
       <h1>Transactions</h1>
@@ -8,7 +8,7 @@
       <button type="button" (click)="exportCsv()">Export CSV</button>
       <label class="import">
         <input type="file" accept=".csv" (change)="importCsv($event)" [disabled]="isImporting()" />
-        <span>{{ isImporting() ? 'Importing…' : 'Import CSV' }}</span>
+        <span>{{ isImporting() ? 'Importingâ€¦' : 'Import CSV' }}</span>
       </label>
     </div>
   </header>
@@ -59,7 +59,7 @@
         <label>
           Account
           <select name="new-account" [ngModel]="model.account" (ngModelChange)="updateNewTransaction({ account: $event })">
-            <option value="">—</option>
+            <option value="">â€”</option>
             <option *ngFor="let account of accounts()" [value]="account.name">{{ account.name }}</option>
           </select>
         </label>
@@ -67,7 +67,7 @@
           Notes
           <input type="text" name="new-notes" [ngModel]="model.notes" (ngModelChange)="updateNewTransaction({ notes: $event })" />
         </label>
-        <button type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Saving…' : 'Add transaction' }}</button>
+        <button type="submit" [disabled]="isSaving()">{{ isSaving() ? 'Savingâ€¦' : 'Add transaction' }}</button>
       </form>
     </ng-container>
     <p class="status" *ngIf="createStatus()">{{ createStatus() }}</p>
@@ -136,33 +136,78 @@
       <strong>{{ totalTaxes() | currency: 'USD' }}</strong>
     </div>
   </section>
+  <div class="table-controls" *ngIf="filteredTransactions().length">
+    <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+    <div class="column-toggles" role="group" aria-label="Toggle transaction columns">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+        Date
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+        Symbol
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().type" (ngModelChange)="setColumnVisibility('type', $event)" />
+        Type
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().quantity" (ngModelChange)="setColumnVisibility('quantity', $event)" />
+        Quantity
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().price" (ngModelChange)="setColumnVisibility('price', $event)" />
+        Price
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().fee" (ngModelChange)="setColumnVisibility('fee', $event)" />
+        Fee
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().tax" (ngModelChange)="setColumnVisibility('tax', $event)" />
+        Tax
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().account" (ngModelChange)="setColumnVisibility('account', $event)" />
+        Account
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().notes" (ngModelChange)="setColumnVisibility('notes', $event)" />
+        Notes
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().actions" (ngModelChange)="setColumnVisibility('actions', $event)" />
+        Actions
+      </label>
+    </div>
+  </div>
 
-  <div class="table-wrapper" *ngIf="filteredTransactions().length; else emptyState">
+  <div class="table-scroll" *ngIf="filteredTransactions().length; else emptyState">
     <table>
       <thead>
         <tr>
-          <th>Date</th>
-          <th>Symbol</th>
-          <th>Type</th>
-          <th>Quantity</th>
-          <th>Price</th>
-          <th>Fee</th>
-          <th>Tax</th>
-          <th>Account</th>
-          <th>Notes</th>
-          <th>Actions</th>
+          <th *ngIf="columns().date">Date</th>
+          <th *ngIf="columns().symbol">Symbol</th>
+          <th *ngIf="columns().type">Type</th>
+          <th *ngIf="columns().quantity" class="numeric">Quantity</th>
+          <th *ngIf="columns().price" class="numeric">Price</th>
+          <th *ngIf="columns().fee" class="numeric">Fee</th>
+          <th *ngIf="columns().tax" class="numeric">Tax</th>
+          <th *ngIf="columns().account">Account</th>
+          <th *ngIf="columns().notes">Notes</th>
+          <th *ngIf="columns().actions">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let tx of filteredTransactions()">
           <ng-container *ngIf="editingId() === tx.id && editModel() as model; else readRow">
-            <td><input type="datetime-local" [(ngModel)]="model.trade_datetime" name="edit-date-{{ tx.id }}" /></td>
-            <td>
+            <td *ngIf="columns().date"><input type="datetime-local" [(ngModel)]="model.trade_datetime" name="edit-date-{{ tx.id }}" /></td>
+            <td *ngIf="columns().symbol">
               <select [(ngModel)]="model.symbol" name="edit-symbol-{{ tx.id }}">
                 <option *ngFor="let item of watchlist()" [value]="item.symbol">{{ item.symbol }}</option>
               </select>
             </td>
-            <td>
+            <td *ngIf="columns().type">
               <select [(ngModel)]="model.type" name="edit-type-{{ tx.id }}">
                 <option value="BUY">BUY</option>
                 <option value="SELL">SELL</option>
@@ -170,18 +215,26 @@
                 <option value="FEE">FEE</option>
               </select>
             </td>
-            <td><input type="number" step="0.0001" [(ngModel)]="model.quantity" name="edit-qty-{{ tx.id }}" /></td>
-            <td><input type="number" step="0.0001" [(ngModel)]="model.price" name="edit-price-{{ tx.id }}" /></td>
-            <td><input type="number" step="0.0001" [(ngModel)]="model.fee" name="edit-fee-{{ tx.id }}" /></td>
-            <td><input type="number" step="0.0001" [(ngModel)]="model.tax" name="edit-tax-{{ tx.id }}" /></td>
-            <td>
+            <td *ngIf="columns().quantity" class="numeric">
+              <input type="number" step="0.0001" [(ngModel)]="model.quantity" name="edit-qty-{{ tx.id }}" />
+            </td>
+            <td *ngIf="columns().price" class="numeric">
+              <input type="number" step="0.0001" [(ngModel)]="model.price" name="edit-price-{{ tx.id }}" />
+            </td>
+            <td *ngIf="columns().fee" class="numeric">
+              <input type="number" step="0.0001" [(ngModel)]="model.fee" name="edit-fee-{{ tx.id }}" />
+            </td>
+            <td *ngIf="columns().tax" class="numeric">
+              <input type="number" step="0.0001" [(ngModel)]="model.tax" name="edit-tax-{{ tx.id }}" />
+            </td>
+            <td *ngIf="columns().account">
               <select [(ngModel)]="model.account" name="edit-account-{{ tx.id }}">
-                <option value="">—</option>
+                <option value="">ƒ?"</option>
                 <option *ngFor="let account of accounts()" [value]="account.name">{{ account.name }}</option>
               </select>
             </td>
-            <td><input type="text" [(ngModel)]="model.notes" name="edit-notes-{{ tx.id }}" /></td>
-            <td class="actions">
+            <td *ngIf="columns().notes"><input type="text" [(ngModel)]="model.notes" name="edit-notes-{{ tx.id }}" /></td>
+            <td *ngIf="columns().actions" class="actions">
               <form #editForm="ngForm" (ngSubmit)="saveEdit(editForm, tx)">
                 <button type="submit">Save</button>
                 <button type="button" class="link" (click)="cancelEdit()">Cancel</button>
@@ -189,16 +242,16 @@
             </td>
           </ng-container>
           <ng-template #readRow>
-            <td>{{ tx.trade_datetime | date: 'medium' }}</td>
-            <td>{{ tx.symbol }}</td>
-            <td><span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span></td>
-            <td>{{ tx.quantity | number: '1.0-2' }}</td>
-            <td>{{ tx.price | currency: 'USD' }}</td>
-            <td>{{ tx.fee | currency: 'USD' }}</td>
-            <td>{{ tx.tax | currency: 'USD' }}</td>
-            <td>{{ tx.account || '—' }}</td>
-            <td>{{ tx.notes || '—' }}</td>
-            <td class="actions">
+            <td *ngIf="columns().date">{{ tx.trade_datetime | date: 'medium' }}</td>
+            <td *ngIf="columns().symbol">{{ tx.symbol }}</td>
+            <td *ngIf="columns().type"><span class="badge" [class.sell]="tx.type === 'SELL'">{{ tx.type }}</span></td>
+            <td *ngIf="columns().quantity" class="numeric">{{ tx.quantity | number: '1.0-2' }}</td>
+            <td *ngIf="columns().price" class="numeric">{{ tx.price | currency: 'USD' }}</td>
+            <td *ngIf="columns().fee" class="numeric">{{ tx.fee | currency: 'USD' }}</td>
+            <td *ngIf="columns().tax" class="numeric">{{ tx.tax | currency: 'USD' }}</td>
+            <td *ngIf="columns().account">{{ tx.account || 'N/A' }}</td>
+            <td *ngIf="columns().notes">{{ tx.notes || 'N/A' }}</td>
+            <td *ngIf="columns().actions" class="actions">
               <button type="button" (click)="beginEdit(tx)">Edit</button>
               <button
                 type="button"
@@ -206,7 +259,7 @@
                 [disabled]="deletingId() === tx.id"
                 (click)="deleteTransaction(tx)"
               >
-                {{ deletingId() === tx.id ? 'Deleting…' : 'Delete' }}
+                {{ deletingId() === tx.id ? 'Deletingƒ?İ' : 'Delete' }}
               </button>
             </td>
           </ng-template>
@@ -227,3 +280,4 @@
     </div>
   </ng-template>
 </section>
+

@@ -1,10 +1,10 @@
-<section class="sentiment-page">
+<section class="sentiment-page" [class.table-first]="tableFirst()">
   <header class="page-header">
     <h1>Sentiment Overlays</h1>
     <p>Aggregate Alpha Vantage news sentiment, normalize scores, and align with signals.</p>
   </header>
 
-  <section class="heatmap-card">
+  <section class="heatmap-card" *ngIf="!tableFirst()">
     <header>
       <h2>5-day sentiment matrix</h2>
       <p>Visualize daily sentiment drift per ticker; values are normalized to [-1, +1].</p>
@@ -23,25 +23,66 @@
       <h2>Latest aggregated stories</h2>
       <p>Summaries include classification rationale to support rule verification.</p>
     </header>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Symbol</th>
-          <th>Score</th>
-          <th>Articles</th>
-          <th>Highlights</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let row of sentimentRows">
-          <td data-label="Date">{{ row.date }}</td>
-          <td data-label="Symbol"><span class="ticker">{{ row.symbol }}</span></td>
-          <td data-label="Score"><span [class.positive]="row.score >= 0" [class.negative]="row.score < 0">{{ row.score | number: '1.2-2' }}</span></td>
-          <td data-label="Articles">{{ row.articles }}</td>
-          <td data-label="Highlights">{{ row.highlights }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-controls">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="tableFirst()" (ngModelChange)="tableFirst.set($event)" />
+        Table first (hide chart)
+      </label>
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle sentiment columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+          Date
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+          Symbol
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().score" (ngModelChange)="setColumnVisibility('score', $event)" />
+          Score
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columns().articles"
+            (ngModelChange)="setColumnVisibility('articles', $event)"
+          />
+          Articles
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columns().highlights"
+            (ngModelChange)="setColumnVisibility('highlights', $event)"
+          />
+          Highlights
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="columns().date">Date</th>
+            <th *ngIf="columns().symbol">Symbol</th>
+            <th *ngIf="columns().score" class="numeric">Score</th>
+            <th *ngIf="columns().articles" class="numeric">Articles</th>
+            <th *ngIf="columns().highlights">Highlights</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of sentimentRows">
+            <td *ngIf="columns().date" data-label="Date">{{ row.date }}</td>
+            <td *ngIf="columns().symbol" data-label="Symbol"><span class="ticker">{{ row.symbol }}</span></td>
+            <td *ngIf="columns().score" data-label="Score" class="numeric">
+              <span [class.positive]="row.score >= 0" [class.negative]="row.score < 0">{{ row.score | number: '1.2-2' }}</span>
+            </td>
+            <td *ngIf="columns().articles" data-label="Articles" class="numeric">{{ row.articles }}</td>
+            <td *ngIf="columns().highlights" data-label="Highlights">{{ row.highlights }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 </section>

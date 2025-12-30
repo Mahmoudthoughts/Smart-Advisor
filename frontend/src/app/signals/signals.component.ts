@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface SignalDefinition {
   readonly id: string;
@@ -34,6 +35,22 @@ type RuleForm = {
   styleUrls: ['./signals.component.scss']
 })
 export class SignalsComponent {
+  private readonly columnDefaults = {
+    date: true,
+    symbol: true,
+    signalType: true,
+    severity: true,
+    context: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.frontend.signals.columns',
+    this.columnDefaults
+  );
+
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
+
   readonly rules: SignalDefinition[] = [
     {
       id: 'path_breakout',

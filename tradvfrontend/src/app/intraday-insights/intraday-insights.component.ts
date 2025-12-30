@@ -2,11 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Subscription } from 'rxjs';
 import { SeriesMarker, Time } from 'lightweight-charts';
 
 import { IntradayBar, PortfolioDataService, WatchlistSymbol } from '../portfolio-data.service';
 import { AiTimingResponse, AiTimingService } from '../services/ai-timing.service';
+import { createColumnVisibility } from '../shared/column-visibility';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
 type SessionSummary = {
@@ -31,7 +33,7 @@ type IntradaySummary = {
 @Component({
   selector: 'app-intraday-insights',
   standalone: true,
-  imports: [CommonModule, RouterLink, CurrencyPipe, PercentPipe, TvChartComponent],
+  imports: [CommonModule, FormsModule, RouterLink, CurrencyPipe, PercentPipe, TvChartComponent],
   templateUrl: './intraday-insights.component.html',
   styleUrls: ['./intraday-insights.component.scss']
 })
@@ -41,6 +43,31 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private querySub: Subscription | null = null;
+  private readonly sessionColumnDefaults = {
+    date: true,
+    bars: true,
+    open: true,
+    middayLow: true,
+    close: true,
+    drawdownPct: true,
+    recoveryPct: true
+  };
+  private readonly barColumnDefaults = {
+    date: true,
+    open: true,
+    high: true,
+    low: true,
+    close: true,
+    volume: true
+  };
+  private readonly sessionColumnState = createColumnVisibility(
+    'smart-advisor.tradv.intraday.sessions.columns',
+    this.sessionColumnDefaults
+  );
+  private readonly barColumnState = createColumnVisibility(
+    'smart-advisor.tradv.intraday.bars.columns',
+    this.barColumnDefaults
+  );
 
   private readonly intradayMinSessions = 3;
   private readonly middayStartHour = 11;
@@ -58,6 +85,13 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   readonly useRth = signal<boolean>(true);
   readonly barSizeOptions = ['5 mins', '15 mins', '30 mins', '1 hour'];
   readonly aiTimezone = signal<string>('US/Eastern');
+  readonly tableFirst = signal<boolean>(false);
+  readonly sessionColumns = this.sessionColumnState.visibility;
+  readonly setSessionColumnVisibility = this.sessionColumnState.setVisibility;
+  readonly resetSessionColumns = this.sessionColumnState.resetVisibility;
+  readonly barColumns = this.barColumnState.visibility;
+  readonly setBarColumnVisibility = this.barColumnState.setVisibility;
+  readonly resetBarColumns = this.barColumnState.resetVisibility;
 
   readonly sortedBars = computed(() => {
     return [...this.bars()].sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date));

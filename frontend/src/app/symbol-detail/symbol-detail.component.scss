@@ -4,6 +4,12 @@
   gap: 2rem;
 }
 
+.symbol-detail.table-first {
+  .chart-card {
+    display: none;
+  }
+}
+
 .page-header {
   display: flex;
   justify-content: space-between;

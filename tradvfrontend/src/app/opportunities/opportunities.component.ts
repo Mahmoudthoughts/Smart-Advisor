@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface OpportunityDay {
   readonly rank: number;
@@ -26,8 +27,25 @@ interface OpportunityTheme {
   styleUrls: ['./opportunities.component.scss']
 })
 export class OpportunitiesComponent {
+  private readonly columnDefaults = {
+    rank: true,
+    date: true,
+    symbol: true,
+    hypoPnl: true,
+    dayOpportunity: true,
+    deltaVsToday: true,
+    narrative: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.tradv.opportunities.columns',
+    this.columnDefaults
+  );
+
   readonly strategies = ['All signals', 'Regret spikes', 'Volume momentum', 'Analyst verified'];
   selectedStrategy = this.strategies[0];
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
 
   readonly topMissed: OpportunityDay[] = [
     {

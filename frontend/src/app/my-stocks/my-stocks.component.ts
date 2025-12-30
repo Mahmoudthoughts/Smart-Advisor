@@ -2,29 +2,48 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 import {
   PortfolioDataService,
   SymbolRefreshResponse,
   WatchlistSymbol
 } from '../portfolio-data.service';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 @Component({
   selector: 'app-my-stocks',
   standalone: true,
-  imports: [CommonModule, RouterLink, CurrencyPipe, PercentPipe],
+  imports: [CommonModule, FormsModule, RouterLink, CurrencyPipe, PercentPipe],
   templateUrl: './my-stocks.component.html',
   styleUrls: ['./my-stocks.component.scss']
 })
 export class MyStocksComponent implements OnInit {
   private readonly dataService = inject(PortfolioDataService);
   private readonly router = inject(Router);
+  private readonly columnDefaults = {
+    symbol: true,
+    name: true,
+    last: true,
+    change: true,
+    position: true,
+    avgCost: true,
+    unrealized: true,
+    actions: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.frontend.my-stocks.columns',
+    this.columnDefaults
+  );
 
   readonly isLoading = signal<boolean>(true);
   readonly loadError = signal<string | null>(null);
   readonly refreshStatus = signal<string | null>(null);
   readonly refreshError = signal<string | null>(null);
   readonly watchlist = signal<WatchlistSymbol[]>([]);
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
 
   readonly totalUnrealized = computed(() =>
     this.watchlist().reduce((acc, item) => acc + (item.unrealized_pl ?? 0), 0)

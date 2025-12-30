@@ -3,6 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule, NgForm } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 import {
   PortfolioAccount,
@@ -30,6 +31,22 @@ interface TransactionFilters {
 export class TransactionsComponent implements OnInit {
   private readonly dataService = inject(PortfolioDataService);
   private readonly route = inject(ActivatedRoute);
+  private readonly columnDefaults = {
+    date: true,
+    symbol: true,
+    type: true,
+    quantity: true,
+    price: true,
+    fee: true,
+    tax: true,
+    account: true,
+    notes: true,
+    actions: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.frontend.transactions.columns',
+    this.columnDefaults
+  );
 
   readonly transactions = signal<PortfolioTransaction[]>([]);
   readonly watchlist = signal<WatchlistSymbol[]>([]);
@@ -40,6 +57,9 @@ export class TransactionsComponent implements OnInit {
   readonly exportStatus = signal<string | null>(null);
   readonly isLoading = signal<boolean>(true);
   readonly isImporting = signal<boolean>(false);
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
 
   readonly filters = signal<TransactionFilters>({ symbol: '', type: '', account: '' });
   readonly editingId = signal<number | null>(null);

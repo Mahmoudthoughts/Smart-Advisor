@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface ActionRow {
   readonly id: number;
@@ -25,8 +26,24 @@ interface ResultMetric {
   styleUrls: ['./simulator.component.scss']
 })
 export class SimulatorComponent {
+  private readonly columnDefaults = {
+    type: true,
+    date: true,
+    qtyPct: true,
+    price: true,
+    limitPrice: true,
+    actions: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.frontend.simulator.actions.columns',
+    this.columnDefaults
+  );
+
   readonly baseTimeline = ['current', 'path_rule_peak', 'macro_shock'];
   selectedTimeline = this.baseTimeline[0];
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
   readonly actions = signal<ActionRow[]>([
     { id: 1, type: 'SELL', date: '2024-03-20', qtyPct: 50, price: 'mkt_close' },
     { id: 2, type: 'BUY', date: '2024-04-01', qtyPct: 50, price: 'limit', limitPrice: 15.5 }

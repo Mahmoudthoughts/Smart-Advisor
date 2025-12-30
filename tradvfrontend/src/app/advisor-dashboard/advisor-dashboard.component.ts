@@ -1,11 +1,13 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { AuthService } from '../auth.service';
 import { MarketDataService } from '../services/market-data.service';
 import { ChartPanelComponent } from '../shared/chart-panel/chart-panel.component';
 import { mapHistogramSeries, mapLineSeries } from '../shared/chart-utils';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface OpportunityRow {
   readonly rank: number;
@@ -37,15 +39,29 @@ interface MacroEvent {
 @Component({
   selector: 'app-advisor-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, ChartPanelComponent, TvChartComponent],
+  imports: [CommonModule, FormsModule, RouterLink, ChartPanelComponent, TvChartComponent],
   templateUrl: './advisor-dashboard.component.html',
   styleUrls: ['./advisor-dashboard.component.scss']
 })
 export class AdvisorDashboardComponent {
   private readonly auth = inject(AuthService);
   private readonly marketData = inject(MarketDataService);
+  private readonly opportunityColumnDefaults = {
+    rank: true,
+    symbol: true,
+    missedGain: true,
+    driver: true
+  };
+  private readonly opportunityColumnState = createColumnVisibility(
+    'smart-advisor.tradv.dashboard.opportunities.columns',
+    this.opportunityColumnDefaults
+  );
 
   readonly user = this.auth.user;
+  readonly opportunityTableFirst = signal<boolean>(false);
+  readonly opportunityColumns = this.opportunityColumnState.visibility;
+  readonly setOpportunityColumnVisibility = this.opportunityColumnState.setVisibility;
+  readonly resetOpportunityColumns = this.opportunityColumnState.resetVisibility;
   readonly chartSymbol = 'AAPL';
   readonly chartCandles = this.marketData.getSampleCandles('3M');
   readonly greeting = computed(() => {

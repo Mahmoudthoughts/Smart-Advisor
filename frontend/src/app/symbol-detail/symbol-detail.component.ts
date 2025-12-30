@@ -2,9 +2,11 @@ import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { CurrencyPipe, PercentPipe } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import type { EChartsOption, MarkPointComponentOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { Subscription } from 'rxjs';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 import {
   PortfolioDataService,
@@ -40,7 +42,7 @@ interface QuickTradePlan {
 @Component({
   selector: 'app-symbol-detail',
   standalone: true,
-  imports: [CommonModule, RouterLink, NgxEchartsDirective, CurrencyPipe, PercentPipe],
+  imports: [CommonModule, FormsModule, RouterLink, NgxEchartsDirective, CurrencyPipe, PercentPipe],
   templateUrl: './symbol-detail.component.html',
   styleUrls: ['./symbol-detail.component.scss']
 })
@@ -52,6 +54,19 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   private readonly intradayMinSessions = 3;
   private readonly middayStartHour = 11;
   private readonly middayEndHour = 13.5;
+  private readonly ledgerColumnDefaults = {
+    date: true,
+    side: true,
+    quantity: true,
+    price: true,
+    fees: true,
+    account: true,
+    notes: true
+  };
+  private readonly ledgerColumnState = createColumnVisibility(
+    'smart-advisor.frontend.symbol-detail.ledger.columns',
+    this.ledgerColumnDefaults
+  );
 
   private paramSub: Subscription | null = null;
 
@@ -69,6 +84,10 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
   readonly fromDate = signal<string>('');
   readonly toDate = signal<string>('');
   readonly selectedRange = signal<'1D' | '1W' | '1M' | '3M' | '6M' | '1Y' | '5Y' | null>(null);
+  readonly tableFirst = signal<boolean>(false);
+  readonly ledgerColumns = this.ledgerColumnState.visibility;
+  readonly setLedgerColumnVisibility = this.ledgerColumnState.setVisibility;
+  readonly resetLedgerColumns = this.ledgerColumnState.resetVisibility;
 
   readonly chartOption = signal<EChartsOption>({
     tooltip: { trigger: 'axis' },

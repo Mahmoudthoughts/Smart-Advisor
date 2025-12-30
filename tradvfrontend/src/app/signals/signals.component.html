@@ -29,26 +29,57 @@
       <h2>Recent signal events</h2>
       <p>Deduplicated daily triggers with severity context and reasoning snippets.</p>
     </header>
-    <table>
-      <thead>
-        <tr>
-          <th>Date</th>
-          <th>Symbol</th>
-          <th>Signal</th>
-          <th>Severity</th>
-          <th>Context</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let event of events">
-          <td>{{ event.date }}</td>
-          <td><span class="ticker">{{ event.symbol }}</span></td>
-          <td>{{ event.signalType }}</td>
-          <td><span class="badge" [class.action]="event.severity === 'action'" [class.watch]="event.severity === 'watch'">{{ event.severity }}</span></td>
-          <td>{{ event.context }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-controls">
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle signal event columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+          Date
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+          Symbol
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().signalType" (ngModelChange)="setColumnVisibility('signalType', $event)" />
+          Signal
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().severity" (ngModelChange)="setColumnVisibility('severity', $event)" />
+          Severity
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().context" (ngModelChange)="setColumnVisibility('context', $event)" />
+          Context
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="columns().date">Date</th>
+            <th *ngIf="columns().symbol">Symbol</th>
+            <th *ngIf="columns().signalType">Signal</th>
+            <th *ngIf="columns().severity">Severity</th>
+            <th *ngIf="columns().context">Context</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let event of events">
+            <td *ngIf="columns().date">{{ event.date }}</td>
+            <td *ngIf="columns().symbol"><span class="ticker">{{ event.symbol }}</span></td>
+            <td *ngIf="columns().signalType">{{ event.signalType }}</td>
+            <td *ngIf="columns().severity">
+              <span class="badge" [class.action]="event.severity === 'action'" [class.watch]="event.severity === 'watch'">
+                {{ event.severity }}
+              </span>
+            </td>
+            <td *ngIf="columns().context">{{ event.context }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="form-card">

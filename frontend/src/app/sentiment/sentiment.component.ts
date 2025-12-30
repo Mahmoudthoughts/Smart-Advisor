@@ -1,7 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
+import { FormsModule } from '@angular/forms';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface SentimentRow {
   readonly date: string;
@@ -14,11 +16,28 @@ interface SentimentRow {
 @Component({
   selector: 'app-sentiment-page',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective],
+  imports: [CommonModule, FormsModule, NgxEchartsDirective],
   templateUrl: './sentiment.component.html',
   styleUrls: ['./sentiment.component.scss']
 })
 export class SentimentComponent {
+  private readonly columnDefaults = {
+    date: true,
+    symbol: true,
+    score: true,
+    articles: true,
+    highlights: true
+  };
+  private readonly columnState = createColumnVisibility(
+    'smart-advisor.frontend.sentiment.columns',
+    this.columnDefaults
+  );
+
+  readonly tableFirst = signal<boolean>(false);
+  readonly columns = this.columnState.visibility;
+  readonly setColumnVisibility = this.columnState.setVisibility;
+  readonly resetColumns = this.columnState.resetVisibility;
+
   readonly heatmapOption: EChartsOption = {
     tooltip: {
       formatter: ({ value }: any) => `${value[0]}<br/>Score ${value[1]}: ${value[2]}`

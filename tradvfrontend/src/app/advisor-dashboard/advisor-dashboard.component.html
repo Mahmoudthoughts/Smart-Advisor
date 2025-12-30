@@ -56,30 +56,74 @@
       </div>
       <a class="view-link" routerLink="/app/opportunities">Explore opportunities</a>
     </header>
+    <div class="table-controls">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="opportunityTableFirst()" (ngModelChange)="opportunityTableFirst.set($event)" />
+        Table first (hide chart)
+      </label>
+      <button type="button" class="reset" (click)="resetOpportunityColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle opportunity table columns">
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="opportunityColumns().rank"
+            (ngModelChange)="setOpportunityColumnVisibility('rank', $event)"
+          />
+          Rank
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="opportunityColumns().symbol"
+            (ngModelChange)="setOpportunityColumnVisibility('symbol', $event)"
+          />
+          Symbol
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="opportunityColumns().missedGain"
+            (ngModelChange)="setOpportunityColumnVisibility('missedGain', $event)"
+          />
+          Missed gain
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="opportunityColumns().driver"
+            (ngModelChange)="setOpportunityColumnVisibility('driver', $event)"
+          />
+          Driver
+        </label>
+      </div>
+    </div>
     <app-tv-chart
       [series]="opportunitySeries"
       [legend]="opportunityLegend"
       [showTimeScale]="false"
       class="chart"
+      *ngIf="!opportunityTableFirst()"
     ></app-tv-chart>
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Symbol</th>
-          <th>Missed gain</th>
-          <th>Driver</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let row of opportunities">
-          <td data-label="Rank">{{ row.rank }}</td>
-          <td data-label="Symbol">{{ row.symbol }}</td>
-          <td data-label="Missed gain">{{ row.missedGain }}</td>
-          <td data-label="Driver">{{ row.driver }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="opportunityColumns().rank">#</th>
+            <th *ngIf="opportunityColumns().symbol">Symbol</th>
+            <th *ngIf="opportunityColumns().missedGain">Missed gain</th>
+            <th *ngIf="opportunityColumns().driver">Driver</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of opportunities">
+            <td data-label="Rank" *ngIf="opportunityColumns().rank">{{ row.rank }}</td>
+            <td data-label="Symbol" *ngIf="opportunityColumns().symbol">{{ row.symbol }}</td>
+            <td data-label="Missed gain" *ngIf="opportunityColumns().missedGain">{{ row.missedGain }}</td>
+            <td data-label="Driver" *ngIf="opportunityColumns().driver">{{ row.driver }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <div class="panel-block" id="signals">
     <header>
