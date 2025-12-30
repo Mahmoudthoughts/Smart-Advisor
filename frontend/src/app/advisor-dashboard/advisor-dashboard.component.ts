@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import type { EChartsOption } from 'echarts';
 import { NgxEchartsDirective } from 'ngx-echarts';
 import { AuthService } from '../auth.service';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 interface OpportunityRow {
   readonly rank: number;
@@ -35,14 +37,28 @@ interface MacroEvent {
 @Component({
   selector: 'app-advisor-dashboard',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective, RouterLink],
+  imports: [CommonModule, FormsModule, NgxEchartsDirective, RouterLink],
   templateUrl: './advisor-dashboard.component.html',
   styleUrls: ['./advisor-dashboard.component.scss']
 })
 export class AdvisorDashboardComponent {
   private readonly auth = inject(AuthService);
+  private readonly opportunityColumnDefaults = {
+    rank: true,
+    symbol: true,
+    missedGain: true,
+    driver: true
+  };
+  private readonly opportunityColumnState = createColumnVisibility(
+    'smart-advisor.frontend.dashboard.opportunities.columns',
+    this.opportunityColumnDefaults
+  );
 
   readonly user = this.auth.user;
+  readonly opportunityTableFirst = signal<boolean>(false);
+  readonly opportunityColumns = this.opportunityColumnState.visibility;
+  readonly setOpportunityColumnVisibility = this.opportunityColumnState.setVisibility;
+  readonly resetOpportunityColumns = this.opportunityColumnState.resetVisibility;
   readonly greeting = computed(() => {
     const now = new Date();
     const hour = now.getHours();

@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { parseDateString } from '../shared/chart-utils';
+import { createColumnVisibility } from '../shared/column-visibility';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 import { SeriesMarker, Time } from 'lightweight-charts';
 
@@ -42,7 +43,13 @@ export class TimelineComponent implements OnInit {
   readonly toDate = signal<string>('');
   readonly selectedPreset = signal<string | null>(null);
   readonly tableFirst = signal<boolean>(false);
-  readonly columnVisibility = signal({ ...this.defaultColumnVisibility });
+  private readonly columnVisibilityState = createColumnVisibility(
+    'smart-advisor.tradv.timeline.columns',
+    this.defaultColumnVisibility
+  );
+  readonly columnVisibility = this.columnVisibilityState.visibility;
+  readonly setColumnVisibility = this.columnVisibilityState.setVisibility;
+  readonly resetColumns = this.columnVisibilityState.resetVisibility;
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);
@@ -216,14 +223,6 @@ export class TimelineComponent implements OnInit {
   onSymbolChange(symbol: string): void {
     this.selectedSymbol.set(symbol);
     this.loadTimeline();
-  }
-
-  setColumnVisibility(key: keyof typeof this.defaultColumnVisibility, value: boolean): void {
-    this.columnVisibility.update((current) => ({ ...current, [key]: value }));
-  }
-
-  resetColumns(): void {
-    this.columnVisibility.set({ ...this.defaultColumnVisibility });
   }
 
   updateChart(): void {

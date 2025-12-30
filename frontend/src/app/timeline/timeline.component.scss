@@ -178,6 +178,16 @@
   }
 }
 
+.timeline-page.table-first {
+  .chart-card {
+    display: none;
+  }
+
+  .data-grid {
+    order: 1;
+  }
+}
+
 .transactions {
   background: var(--color-surface);
   border-radius: 1rem;

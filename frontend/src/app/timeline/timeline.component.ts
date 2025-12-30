@@ -6,6 +6,7 @@ import type { EChartsOption, MarkPointComponentOption } from 'echarts';
 
 type TimelineMarkPoint = NonNullable<MarkPointComponentOption['data']>[number];
 import { NgxEchartsDirective } from 'ngx-echarts';
+import { createColumnVisibility } from '../shared/column-visibility';
 
 import {
   PortfolioDataService,
@@ -25,12 +26,31 @@ import {
 })
 export class TimelineComponent implements OnInit {
   private readonly dataService = inject(PortfolioDataService);
+  private readonly defaultColumnVisibility = {
+    sharesOpen: true,
+    marketValue: true,
+    costBasis: true,
+    hypoPnl: true,
+    realizedPnl: true,
+    unrealizedPnl: true,
+    dayOpportunity: true,
+    peakHypoPnl: true,
+    drawdownPct: true
+  };
 
   readonly watchlist = signal<WatchlistSymbol[]>([]);
   readonly selectedSymbol = signal<string>('');
   readonly fromDate = signal<string>('');
   readonly toDate = signal<string>('');
   readonly selectedPreset = signal<string | null>(null);
+  readonly tableFirst = signal<boolean>(false);
+  private readonly columnVisibilityState = createColumnVisibility(
+    'smart-advisor.frontend.timeline.columns',
+    this.defaultColumnVisibility
+  );
+  readonly columnVisibility = this.columnVisibilityState.visibility;
+  readonly setColumnVisibility = this.columnVisibilityState.setVisibility;
+  readonly resetColumns = this.columnVisibilityState.resetVisibility;
   readonly snapshots = signal<TimelineSnapshot[]>([]);
   readonly prices = signal<TimelinePricePoint[]>([]);
   readonly transactions = signal<TimelineTransaction[]>([]);

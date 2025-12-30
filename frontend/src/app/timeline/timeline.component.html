@@ -1,4 +1,4 @@
-<section class="timeline-page">
+<section class="timeline-page" [class.table-first]="tableFirst()">
   <header class="page-header">
     <div>
       <h1>Portfolio Timeline</h1>
@@ -33,7 +33,7 @@
   <p class="empty" *ngIf="!watchlist().length">Add a symbol from My Stocks to start building a personalized timeline.</p>
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
-  <section class="chart-card">
+  <section class="chart-card" *ngIf="!tableFirst()">
     <header>
       <h2>Timeline View</h2>
       <p>Overlay price with hypothetical liquidation and unrealized P&amp;L to highlight regret windows.</p>
@@ -48,40 +48,135 @@
 
   <section class="data-grid" aria-live="polite">
     <h2>Daily opportunity breakdown</h2>
+    <div class="table-controls">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="tableFirst()" (ngModelChange)="tableFirst.set($event)" />
+        Table first (hide chart)
+      </label>
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle table columns">
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().sharesOpen"
+            (ngModelChange)="setColumnVisibility('sharesOpen', $event)"
+          />
+          Shares open
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().marketValue"
+            (ngModelChange)="setColumnVisibility('marketValue', $event)"
+          />
+          Market value
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().costBasis"
+            (ngModelChange)="setColumnVisibility('costBasis', $event)"
+          />
+          Cost basis
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().hypoPnl"
+            (ngModelChange)="setColumnVisibility('hypoPnl', $event)"
+          />
+          Hypo P&amp;L
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().realizedPnl"
+            (ngModelChange)="setColumnVisibility('realizedPnl', $event)"
+          />
+          Realized P&amp;L
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().unrealizedPnl"
+            (ngModelChange)="setColumnVisibility('unrealizedPnl', $event)"
+          />
+          Unrealized P&amp;L
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().dayOpportunity"
+            (ngModelChange)="setColumnVisibility('dayOpportunity', $event)"
+          />
+          Day opportunity
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().peakHypoPnl"
+            (ngModelChange)="setColumnVisibility('peakHypoPnl', $event)"
+          />
+          Peak hypo P&amp;L
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columnVisibility().drawdownPct"
+            (ngModelChange)="setColumnVisibility('drawdownPct', $event)"
+          />
+          Drawdown
+        </label>
+      </div>
+    </div>
     <div class="table-scroll" *ngIf="tableRows().length; else noRows">
       <table>
         <thead>
           <tr>
             <th scope="col">Date</th>
             <th scope="col">Close</th>
-            <th scope="col" class="numeric">Shares Open</th>
-            <th scope="col" class="numeric">Market Value</th>
-            <th scope="col" class="numeric">Cost Basis</th>
-            <th scope="col" class="numeric">Hypo P&amp;L</th>
-            <th scope="col" class="numeric">Realized P&amp;L</th>
-            <th scope="col" class="numeric">Unrealized P&amp;L</th>
-            <th scope="col" class="numeric">Day Opportunity</th>
-            <th scope="col" class="numeric">Peak Hypo P&amp;L</th>
-            <th scope="col" class="numeric">Drawdown</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().sharesOpen">Shares Open</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().marketValue">Market Value</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().costBasis">Cost Basis</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().hypoPnl">Hypo P&amp;L</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().realizedPnl">Realized P&amp;L</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().unrealizedPnl">Unrealized P&amp;L</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().dayOpportunity">Day Opportunity</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().peakHypoPnl">Peak Hypo P&amp;L</th>
+            <th scope="col" class="numeric" *ngIf="columnVisibility().drawdownPct">Drawdown</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let row of tableRows()">
             <td data-label="Date">{{ row.date }}</td>
             <td data-label="Close">{{ row.price === null ? 'N/A' : (row.price | currency: 'USD':'symbol-narrow':'1.2-2') }}</td>
-            <td data-label="Shares open" class="numeric">{{ row.sharesOpen | number: '1.0-2' }}</td>
-            <td data-label="Market value" class="numeric">{{ row.marketValue | currency: 'USD' }}</td>
-            <td data-label="Cost basis" class="numeric">{{ row.costBasis | currency: 'USD' }}</td>
-            <td data-label="Hypo P&L" class="numeric">{{ row.hypoPnl | currency: 'USD' }}</td>
-            <td data-label="Realized P&L" class="numeric">{{ row.realizedPnl | currency: 'USD' }}</td>
-            <td data-label="Unrealized P&L" class="numeric">{{ row.unrealizedPnl | currency: 'USD' }}</td>
-            <td data-label="Day opportunity" class="numeric">
+            <td data-label="Shares open" class="numeric" *ngIf="columnVisibility().sharesOpen">
+              {{ row.sharesOpen | number: '1.0-2' }}
+            </td>
+            <td data-label="Market value" class="numeric" *ngIf="columnVisibility().marketValue">
+              {{ row.marketValue | currency: 'USD' }}
+            </td>
+            <td data-label="Cost basis" class="numeric" *ngIf="columnVisibility().costBasis">
+              {{ row.costBasis | currency: 'USD' }}
+            </td>
+            <td data-label="Hypo P&L" class="numeric" *ngIf="columnVisibility().hypoPnl">
+              {{ row.hypoPnl | currency: 'USD' }}
+            </td>
+            <td data-label="Realized P&L" class="numeric" *ngIf="columnVisibility().realizedPnl">
+              {{ row.realizedPnl | currency: 'USD' }}
+            </td>
+            <td data-label="Unrealized P&L" class="numeric" *ngIf="columnVisibility().unrealizedPnl">
+              {{ row.unrealizedPnl | currency: 'USD' }}
+            </td>
+            <td data-label="Day opportunity" class="numeric" *ngIf="columnVisibility().dayOpportunity">
               <span [class.positive]="row.dayOpportunity > 0" [class.negative]="row.dayOpportunity < 0">
                 {{ row.dayOpportunity | currency: 'USD' }}
               </span>
             </td>
-            <td data-label="Peak hypo P&L" class="numeric">{{ row.peakHypoPnl | currency: 'USD' }}</td>
-            <td data-label="Drawdown" class="numeric">
+            <td data-label="Peak hypo P&L" class="numeric" *ngIf="columnVisibility().peakHypoPnl">
+              {{ row.peakHypoPnl | currency: 'USD' }}
+            </td>
+            <td data-label="Drawdown" class="numeric" *ngIf="columnVisibility().drawdownPct">
               <span [class.negative]="row.drawdownPct < 0">
                 {{ row.drawdownPct === null ? 'N/A' : (row.drawdownPct | number: '1.1-1') + '%' }}
               </span>
