@@ -1,20 +1,22 @@
-﻿<section class="symbol-detail" *ngIf="symbol(); else missing" [class.table-first]="tableFirst()">
+<section class="symbol-detail" *ngIf="symbol(); else missing" [class.table-first]="tableFirst()">
   <header class="page-header">
     <div>
       <p class="eyebrow">Symbol detail</p>
       <h1 class="symbol-title">
         <span class="ticker">{{ symbol() }}</span>
-        <span class="separator" aria-hidden="true">Â·</span>
+        <span class="separator" aria-hidden="true">-</span>
         <span class="company">{{ watchlistEntry()?.name || symbolMeta()?.name || symbol() }}</span>
         <ng-container *ngIf="symbolMeta()?.region || symbolMeta()?.currency">
-          <span class="separator" aria-hidden="true">Â·</span>
-          <span class="market">{{ symbolMeta()?.region }}<ng-container *ngIf="symbolMeta()?.currency"> Â· {{ symbolMeta()?.currency }}</ng-container></span>
+          <span class="separator" aria-hidden="true">-</span>
+          <span class="market">
+            {{ symbolMeta()?.region }}<ng-container *ngIf="symbolMeta()?.currency"> - {{ symbolMeta()?.currency }}</ng-container>
+          </span>
         </ng-container>
       </h1>
       <p class="labels">
         <span>{{ symbol() }}</span>
         <span>{{ watchlistEntry()?.name || symbolMeta()?.name || symbol() }}</span>
-        <span>{{ symbolMeta()?.region || 'â€”' }}</span>
+        <span>{{ symbolMeta()?.region || 'N/A' }}</span>
       </p>
       <p>Historical performance, trade overlays, and current position analytics for this symbol.</p>
     </div>
@@ -32,27 +34,27 @@
   <section class="overview">
     <article class="metric">
       <span class="label">Last price</span>
-      <strong>{{ summary().lastPrice === null ? 'â€”' : (summary().lastPrice | currency: 'USD':'symbol':'1.2-2') }}</strong>
+      <strong>{{ summary().lastPrice === null ? 'N/A' : (summary().lastPrice | currency: 'USD':'symbol':'1.2-2') }}</strong>
       <span class="delta" [class.positive]="(summary().change ?? 0) >= 0" [class.negative]="(summary().change ?? 0) < 0">
-        {{ summary().change === null ? 'â€”' : (summary().change | currency: 'USD':'symbol':'1.2-2') }}
+        {{ summary().change === null ? 'N/A' : (summary().change | currency: 'USD':'symbol':'1.2-2') }}
         <small *ngIf="summary().changePercent !== null">({{ summary().changePercent | percent: '1.2-2' }})</small>
       </span>
     </article>
     <article class="metric">
       <span class="label">Position</span>
-      <strong>{{ summary().positionQty === null ? 'â€”' : (summary().positionQty | number: '1.0-2') }} shares</strong>
-      <span class="delta">Avg cost {{ summary().averageCost === null ? 'â€”' : (summary().averageCost | currency: 'USD') }}</span>
+      <strong>{{ summary().positionQty === null ? 'N/A' : (summary().positionQty | number: '1.0-2') }} shares</strong>
+      <span class="delta">Avg cost {{ summary().averageCost === null ? 'N/A' : (summary().averageCost | currency: 'USD') }}</span>
     </article>
     <article class="metric">
       <span class="label">Unrealized P&amp;L</span>
       <strong [class.positive]="(summary().unrealized ?? 0) >= 0" [class.negative]="(summary().unrealized ?? 0) < 0">
-        {{ summary().unrealized === null ? 'â€”' : (summary().unrealized | currency: 'USD') }}
+        {{ summary().unrealized === null ? 'N/A' : (summary().unrealized | currency: 'USD') }}
       </strong>
-      <span class="delta">Realized {{ summary().realized === null ? 'â€”' : (summary().realized | currency: 'USD') }}</span>
+      <span class="delta">Realized {{ summary().realized === null ? 'N/A' : (summary().realized | currency: 'USD') }}</span>
     </article>
     <article class="metric">
       <span class="label">Hypo liquidation</span>
-      <strong>{{ summary().hypo === null ? 'â€”' : (summary().hypo | currency: 'USD') }}</strong>
+      <strong>{{ summary().hypo === null ? 'N/A' : (summary().hypo | currency: 'USD') }}</strong>
       <span class="delta">Today if you sold everything</span>
     </article>
   </section>
@@ -98,13 +100,16 @@
     <app-tv-chart
       [series]="chartSeries()"
       [legend]="chartLegend"
+      [showTooltip]="true"
+      [tooltipMode]="'magnifier'"
       class="chart"
       *ngIf="!isLoading(); else loading"
     ></app-tv-chart>
     <ng-template #loading>
-      <div class="chart-placeholder">Loading chartâ€¦</div>
+      <div class="chart-placeholder">Loading chart...</div>
     </ng-template>
   </section>
+
   <section class="ledger" *ngIf="transactions().length">
     <header>
       <h2>Trade history</h2>
@@ -189,4 +194,3 @@
 <ng-template #missing>
   <p class="error">Symbol not provided. Return to <a routerLink="/app/stocks">My Stocks</a>.</p>
 </ng-template>
-

@@ -459,6 +459,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
     });
     const series: TvSeries[] = [
       {
+        name: 'Hypo P&L',
         type: 'area',
         data: baseDates.map((date, idx) => ({ time: date, value: hypoSeries[idx] })),
         options: {
@@ -469,6 +470,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         }
       },
       {
+        name: 'Realized P&L',
         type: 'line',
         data: baseDates.map((date, idx) => ({ time: date, value: realizedSeries[idx] })),
         options: {
@@ -477,6 +479,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         }
       },
       {
+        name: 'Unrealized P&L',
         type: 'line',
         data: baseDates.map((date, idx) => ({ time: date, value: unrealizedSeries[idx] })),
         options: {
@@ -485,6 +488,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         }
       },
       {
+        name: 'Price',
         type: 'line',
         data: baseDates.map((date, idx) => ({ time: date, value: priceSeries[idx] })),
         options: {
@@ -494,6 +498,7 @@ export class SymbolDetailComponent implements OnInit, OnDestroy {
         markers: tradeMarkers
       },
       {
+        name: 'Average Cost',
         type: 'line',
         data: baseDates.map((date, idx) =>
           averageCostSeries[idx] === null

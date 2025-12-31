@@ -5,6 +5,12 @@
   overflow: hidden;
 }
 
+.tv-chart-wrapper {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+}
+
 :host {
   display: block;
   height: 100%;
@@ -14,6 +20,7 @@
   display: grid;
   gap: 0.5rem;
   height: 100%;
+  grid-template-rows: auto 1fr;
 }
 
 .tv-legend {
@@ -35,4 +42,64 @@
   height: 10px;
   border-radius: 999px;
   display: inline-block;
+}
+
+.tv-tooltip {
+  position: absolute;
+  width: 180px;
+  padding: 0.6rem 0.75rem;
+  border-radius: 4px 4px 0 0;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  box-shadow: 0 2px 5px rgba(117, 134, 150, 0.25);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tv-tooltip--magnifier {
+  border-radius: 4px 4px 0 0;
+  border-bottom: none;
+  width: 200px;
+}
+
+.tv-tooltip--tracking,
+.tv-tooltip--floating {
+  border-radius: 4px;
+}
+
+.tv-tooltip__date {
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+}
+
+.tv-tooltip__primary {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.35rem;
+}
+
+.tv-tooltip__primary-label {
+  color: var(--color-text-muted);
+}
+
+.tv-tooltip__primary-value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.tv-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.tv-tooltip__label {
+  color: var(--color-text-muted);
+}
+
+.tv-tooltip__value {
+  font-variant-numeric: tabular-nums;
 }
