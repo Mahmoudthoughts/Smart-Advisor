@@ -342,6 +342,42 @@
   color: var(--color-text-muted);
 }
 
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  padding: 0.2rem;
+}
+
+.view-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.view-toggle button.active {
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
+.chart-shell {
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  padding: 12px;
+  background: var(--color-surface);
+}
+
+.raw-bars-chart {
+  height: 360px;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

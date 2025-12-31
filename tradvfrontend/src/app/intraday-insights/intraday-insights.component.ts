@@ -86,6 +86,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   readonly barSizeOptions = ['5 mins', '15 mins', '30 mins', '1 hour'];
   readonly aiTimezone = signal<string>('US/Eastern');
   readonly tableFirst = signal<boolean>(false);
+  readonly rawBarsView = signal<'table' | 'chart'>('table');
   readonly sessionColumns = this.sessionColumnState.visibility;
   readonly setSessionColumnVisibility = this.sessionColumnState.setVisibility;
   readonly resetSessionColumns = this.sessionColumnState.resetVisibility;
@@ -95,6 +96,47 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
 
   readonly sortedBars = computed(() => {
     return [...this.bars()].sort((a, b) => this.parseBarDate(a.date) - this.parseBarDate(b.date));
+  });
+
+  readonly rawBarSeries = computed<TvSeries[]>(() => {
+    const bars = this.sortedBars();
+    if (!bars.length) {
+      return [];
+    }
+    const data = bars
+      .map((bar) => {
+        const timestamp = Math.floor(this.parseBarDate(bar.date) / 1000);
+        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+          return null;
+        }
+        return {
+          time: timestamp as Time,
+          open: bar.open,
+          high: bar.high,
+          low: bar.low,
+          close: bar.close
+        };
+      })
+      .filter((entry) => entry !== null);
+
+    if (!data.length) {
+      return [];
+    }
+
+    return [
+      {
+        name: 'Price',
+        type: 'candlestick',
+        data,
+        options: {
+          upColor: '#22c55e',
+          downColor: '#ef4444',
+          borderVisible: false,
+          wickUpColor: '#22c55e',
+          wickDownColor: '#ef4444'
+        }
+      }
+    ];
   });
 
   readonly sessionGroups = computed(() => {

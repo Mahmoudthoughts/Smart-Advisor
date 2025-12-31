@@ -266,6 +266,14 @@
       <p>Timestamped bars returned by the IBKR bridge.</p>
     </header>
     <div class="table-controls">
+      <div class="view-toggle" role="group" aria-label="Raw intraday view">
+        <button type="button" [class.active]="rawBarsView() === 'table'" (click)="rawBarsView.set('table')">
+          Table
+        </button>
+        <button type="button" [class.active]="rawBarsView() === 'chart'" (click)="rawBarsView.set('chart')">
+          Chart
+        </button>
+      </div>
       <button type="button" class="reset" (click)="resetBarColumns()">Reset columns</button>
       <div class="column-toggles" role="group" aria-label="Toggle intraday bars columns">
         <label class="toggle">
@@ -294,7 +302,19 @@
         </label>
       </div>
     </div>
-    <div class="table-scroll" *ngIf="sortedBars().length; else noBars">
+    <ng-container *ngIf="rawBarsView() === 'chart'; else tableView">
+      <div class="chart-shell" *ngIf="rawBarSeries().length; else noBars">
+        <app-tv-chart
+          class="raw-bars-chart"
+          [series]="rawBarSeries()"
+          [showTimeScale]="true"
+          [showTooltip]="true"
+          [tooltipMode]="'magnifier'"
+        ></app-tv-chart>
+      </div>
+    </ng-container>
+    <ng-template #tableView>
+      <div class="table-scroll" *ngIf="sortedBars().length; else noBars">
       <table>
         <thead>
           <tr>
@@ -317,7 +337,8 @@
           </tr>
         </tbody>
       </table>
-    </div>
+      </div>
+    </ng-template>
     <ng-template #noBars>
       <p class="empty">No intraday bars returned for the selected window.</p>
     </ng-template>
