@@ -55,6 +55,16 @@ export class PositionsComponent implements OnInit {
     return { maxAbs, max };
   });
 
+  readonly metricLabel = computed(() => {
+    if (this.view() === 'daily_pnl') {
+      return 'Daily P&L';
+    }
+    if (this.view() === 'unrealized_pnl') {
+      return 'Unrealized P&L';
+    }
+    return 'Mkt Value';
+  });
+
   ngOnInit(): void {
     this.load();
   }
@@ -87,6 +97,10 @@ export class PositionsComponent implements OnInit {
     }
   }
 
+  marketValue(row: WatchlistSymbol): number {
+    return (row.position_qty ?? 0) * (row.latest_close ?? 0);
+  }
+
   metricSignClass(v: number): string {
     if (v > 0) return 'metric--positive';
     if (v < 0) return 'metric--negative';
@@ -108,18 +122,18 @@ export class PositionsComponent implements OnInit {
     const scale = this.metricScale();
     if (this.view() === 'market_value') {
       const t = this.clamp(value / scale.max, 0, 1);
-      const start = this.hexToRgb('#DBEAFE');
-      const end = this.hexToRgb('#2563EB');
+      const start = this.hexToRgb('#E0EAFF');
+      const end = this.hexToRgb('#1E40AF');
       const color = this.interpolateColor(start, end, t);
-      return `linear-gradient(90deg, ${this.toRgba(color, 0.35)} 0%, ${this.toRgba(color, 0.08)} 70%, rgba(0,0,0,0) 100%), var(--color-surface)`;
+      return `linear-gradient(90deg, ${this.toRgba(color, 0.32)} 0%, ${this.toRgba(color, 0.08)} 70%, rgba(0,0,0,0) 100%), var(--color-surface)`;
     }
 
-    const t = this.clamp(value / scale.maxAbs, -1, 1);
-    const neutral = this.hexToRgb('#FFF8F2');
-    const neg = this.hexToRgb('#E74C3C');
-    const pos = this.hexToRgb('#27AE60');
-    const color = t >= 0 ? this.interpolateColor(neutral, pos, t) : this.interpolateColor(neutral, neg, -t);
-    return `linear-gradient(90deg, ${this.toRgba(color, 0.32)} 0%, ${this.toRgba(color, 0.08)} 70%, rgba(0,0,0,0) 100%), var(--color-surface)`;
+    const magnitude = this.clamp(Math.abs(value) / scale.maxAbs, 0, 1);
+    const isPositive = value >= 0;
+    const base = isPositive ? this.hexToRgb('#DCFCE7') : this.hexToRgb('#FFE4E6');
+    const accent = isPositive ? this.hexToRgb('#22C55E') : this.hexToRgb('#EF4444');
+    const color = this.interpolateColor(base, accent, magnitude * 0.85);
+    return `linear-gradient(90deg, ${this.toRgba(color, 0.35)} 0%, ${this.toRgba(color, 0.1)} 65%, rgba(0,0,0,0) 100%), var(--color-surface)`;
   }
 
   openDetails(symbol: string): void {
