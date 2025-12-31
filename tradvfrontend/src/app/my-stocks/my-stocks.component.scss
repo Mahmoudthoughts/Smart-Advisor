@@ -90,6 +90,35 @@ td.actions {
   white-space: nowrap;
 }
 
+.action-icons {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.icon-action {
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+  border-radius: 8px;
+  padding: 0.35rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-action:hover {
+  background: var(--color-surface);
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.icon-action:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.6);
+  outline-offset: 2px;
+}
+
 .muted {
   display: block;
   color: var(--color-text-muted);

@@ -110,10 +110,38 @@
             </span>
           </td>
           <td *ngIf="columns().actions" class="actions">
-            <button type="button" class="link" (click)="viewSymbol(row.symbol)">View</button>
-            <button type="button" class="link" (click)="viewIntraday(row.symbol)">Intraday</button>
-            <button type="button" class="link" (click)="recordTransaction(row.symbol)">Add txn</button>
-            <button type="button" class="link" (click)="refreshSymbol(row.symbol)">Refresh</button>
+            <div class="action-icons">
+              <button type="button" class="icon-action" (click)="viewSymbol(row.symbol)" aria-label="View" title="View">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span class="sr-only">View</span>
+              </button>
+              <button type="button" class="icon-action" (click)="viewIntraday(row.symbol)" aria-label="Intraday" title="Intraday">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <span class="sr-only">Intraday</span>
+              </button>
+              <button type="button" class="icon-action" (click)="recordTransaction(row.symbol)" aria-label="Add transaction" title="Add transaction">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                <span class="sr-only">Add transaction</span>
+              </button>
+              <button type="button" class="icon-action" (click)="refreshSymbol(row.symbol)" aria-label="Refresh" title="Refresh">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
+                  <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
+                </svg>
+                <span class="sr-only">Refresh</span>
+              </button>
+            </div>
           </td>
         </tr>
       </tbody>
