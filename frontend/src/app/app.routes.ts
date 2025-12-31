@@ -23,7 +23,10 @@ import { UnrealizedComponent } from './unrealized/unrealized.component';
 import { IntradayInsightsComponent } from './intraday-insights/intraday-insights.component';
 
 export const APP_ROUTES: Routes = [
-  {
+ {
+  path: 'app/positions',
+  loadComponent: () => import('./positions/positions.component').then(m => m.PositionsComponent),
+  },{
     path: 'login',
     component: LoginComponent
   },

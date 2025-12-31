@@ -46,6 +46,7 @@ export class AppComponent {
     { path: '/app/overview', label: 'Overview' },
     { path: '/app/analysis', label: 'Analysis' },
     { path: '/app/stocks', label: 'My Stocks' },
+    { path: '/app/positions', label: 'Positions' },
     { path: '/app/intraday-insights', label: 'Intraday Insights' },
     { path: '/app/transactions', label: 'Transactions' },
     { path: '/app/timeline', label: 'Timeline' },
@@ -94,7 +95,8 @@ export class AppComponent {
           title: 'Holdings',
           items: [
             { path: '/app/stocks', label: 'My Stocks' },
-            { path: '/app/intraday-insights', label: 'Intraday Insights' },
+            { path: '/app/positions', label: 'Positions' }, 
+	    { path: '/app/intraday-insights', label: 'Intraday Insights' },
             { path: '/app/transactions', label: 'Transactions' }
           ]
         },

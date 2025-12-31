@@ -1,0 +1,78 @@
+/* frontend/src/app/positions/positions.component.scss */
+:host { display:block; padding: 18px; background: var(--bg, #fff); }
+
+.positions__header {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom: 12px;
+  h1 { margin:0; font-size:20px; font-weight:800; }
+  .muted { color: #666; margin-top:4px; font-size:13px; }
+}
+
+.tabs {
+  display:flex;
+  gap:8px;
+  align-items:center;
+  .tab {
+    background:#f6f7fb;
+    border-radius:8px;
+    padding:8px 10px;
+    font-weight:700;
+    font-size:12px;
+    border: none;
+    cursor:pointer;
+  }
+  .tab.active { background:#e8f0ff; color:#0b4fff; }
+}
+
+.list { margin-top: 6px; }
+.card {
+  margin: 8px 0;
+  border-radius:12px;
+  overflow:hidden;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+  .card__inner {
+    display:flex;
+    align-items:center;
+    width:100%;
+    text-align:left;
+    padding:12px;
+    border:none;
+    background: transparent;
+    cursor: pointer;
+    gap:12px;
+  }
+  .left { flex:1.6; min-width: 0;
+    .symbol { font-weight:800; font-size:16px; }
+    .company { color:#666; font-size:13px; margin-top:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  }
+  .center { flex:1; }
+  .metric { font-weight:800; font-size:16px; }
+  .metric--positive { color:#0b9a58; background:transparent; }
+  .metric--negative { color:#c92b2b; }
+  .metric--neutral { color:#333; }
+  .qty { margin-top:6px; color:#444; font-size:12px; }
+
+  .right { flex:0.9; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .price-pill { background:#d42b2b; color:#fff; padding:6px 12px; border-radius:8px; font-weight:700; }
+  .pct-pill { padding:6px 8px; border-radius:8px; color:#fff; font-weight:700; font-size:12px; }
+  .pct-pill.pct--positive { background:#19a974; }
+  .pct-pill.pct--negative { background:#d9534f; }
+}
+
+.skeleton { background: linear-gradient(90deg,#f7f7f7,#eee); }
+.s-line { height:12px; background:#eee; border-radius:6px; margin-bottom:8px; }
+.s-line--short { width:60px; }
+.s-line--long { width:160px; }
+.s-line--short-2 { width:90px; }
+.s-pill { width:80px; height:16px; background:#eee; border-radius:8px; }
+.s-pill--small { width:50px; height:12px; }
+.empty { text-align:center; padding:20px; color:#777; }
+.error { color:#c92b2b; padding:8px 0; }
+@media (max-width: 600px) {
+  .card__inner { padding:12px 8px; }
+  .left .company { font-size:12px; }
+}
+

@@ -1,0 +1,69 @@
+<!-- frontend/src/app/positions/positions.component.html -->
+<section class="positions">
+  <header class="positions__header">
+    <div>
+      <h1>Your Positions</h1>
+      <p class="muted">Holdings, unrealized P&L and market value</p>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Positions view">
+      <button class="tab" [class.active]="view() === 'daily_pnl'" (click)="view.set('daily_pnl')" role="tab">Daily P&L</button>
+      <button class="tab" [class.active]="view() === 'unrealized_pnl'" (click)="view.set('unrealized_pnl')" role="tab">UNREALIZED P&L</button>
+      <button class="tab" [class.active]="view() === 'market_value'" (click)="view.set('market_value')" role="tab">MKT VALUE</button>
+    </nav>
+  </header>
+
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <div *ngIf="isLoading()" class="skeleton-list">
+    <div class="card skeleton" *ngFor="let i of [1,2,3,4]">
+      <div class="left">
+        <div class="s-line s-line--short"></div>
+        <div class="s-line s-line--long"></div>
+      </div>
+      <div class="center">
+        <div class="s-line s-line--short-2"></div>
+        <div class="s-line s-line--short"></div>
+      </div>
+      <div class="right">
+        <div class="s-pill"></div>
+        <div class="s-pill s-pill--small"></div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoading() && watchlist().length === 0" class="empty">
+    <p>No positions found.</p>
+  </div>
+
+  <div *ngIf="!isLoading()" class="list">
+    <article class="card" *ngFor="let row of watchlist()">
+      <button class="card__inner" (click)="openDetails(row.symbol)">
+        <div class="left">
+          <div class="symbol">{{ row.symbol }}</div>
+          <div class="company">{{ row.name || '—' }}</div>
+        </div>
+
+        <div class="center">
+          <div class="metric" [ngClass]="metricSignClass(metricValue(row))">
+            {{ metricValue(row) | currency:'USD':'symbol':'1.0-2' }}
+          </div>
+          <div class="qty">{{ row.position_qty === null ? '—' : (row.position_qty | number:'1.0-2') }} shares</div>
+        </div>
+
+        <div class="right">
+          <div class="price-pill">
+            {{ row.latest_close === null ? 'N/A' : (row.latest_close | currency:'USD':'symbol':'1.2-2') }}
+          </div>
+          <div class="pct-pill" [ngClass]="percentClass(row.day_change_percent)">
+            <span *ngIf="row.day_change_percent !== null">
+              {{ (row.day_change_percent / 100) | percent:'1.2-2' }}
+            </span>
+            <span *ngIf="row.day_change_percent === null">—</span>
+          </div>
+        </div>
+      </button>
+    </article>
+  </div>
+</section>
+
