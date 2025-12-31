@@ -24,19 +24,27 @@
 
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
-  <div *ngIf="isLoading()" class="skeleton-list">
-    <div class="card skeleton" *ngFor="let i of [1,2,3,4]">
-      <div class="left">
+  <div *ngIf="isLoading()" class="skeleton-table">
+    <div class="table__header table__row">
+      <div class="cell">Instrument</div>
+      <div class="cell">{{ metricLabel() }}</div>
+      <div class="cell">Market value</div>
+      <div class="cell">Last price</div>
+    </div>
+    <div class="table__row skeleton" *ngFor="let i of [1,2,3,4]">
+      <div class="cell">
         <div class="s-line s-line--short"></div>
         <div class="s-line s-line--long"></div>
       </div>
-      <div class="center">
-        <div class="s-line s-line--short-2"></div>
+      <div class="cell">
         <div class="s-line s-line--short"></div>
       </div>
-      <div class="right">
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
+      </div>
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
         <div class="s-pill"></div>
-        <div class="s-pill s-pill--small"></div>
       </div>
     </div>
   </div>
@@ -45,25 +53,48 @@
     <p>No positions found.</p>
   </div>
 
-  <div *ngIf="!isLoading()" class="list">
-    <article class="card" *ngFor="let row of sortedWatchlist()">
-      <button class="card__inner" (click)="openDetails(row.symbol)" [style.background]="rowBackground(row)">
-        <div class="left">
+  <div *ngIf="!isLoading()" class="positions-table">
+    <div class="table__header table__row" role="row">
+      <div class="cell cell--instrument" role="columnheader">Instrument</div>
+      <div class="cell cell--metric" role="columnheader">
+        <span class="header-pill">{{ metricLabel() }}</span>
+      </div>
+      <div class="cell cell--market-value" role="columnheader">
+        <span class="header-pill">Market Value</span>
+      </div>
+      <div class="cell cell--last-price" role="columnheader">
+        <span class="header-pill">Last Price</span>
+      </div>
+    </div>
+
+    <div class="table__body">
+      <button
+        class="table__row"
+        *ngFor="let row of sortedWatchlist()"
+        (click)="openDetails(row.symbol)"
+        [style.background]="rowBackground(row)"
+        role="row"
+      >
+        <div class="cell cell--instrument" role="cell">
           <div class="symbol">{{ row.symbol }}</div>
           <div class="company">{{ row.name || 'N/A' }}</div>
-        </div>
-
-        <div class="center">
-          <div class="metric" [ngClass]="metricSignClass(metricValue(row))">
-            {{ metricValue(row) | currency:'USD':'symbol':'1.0-2' }}
-          </div>
           <div class="qty">{{ row.position_qty === null ? 'N/A' : (row.position_qty | number:'1.0-2') }} shares</div>
         </div>
 
-        <div class="right">
-          <div class="price-pill">
-            {{ row.latest_close === null ? 'N/A' : (row.latest_close | currency:'USD':'symbol':'1.2-2') }}
+        <div class="cell cell--metric" role="cell">
+          <div class="metric" [ngClass]="metricSignClass(metricValue(row))">
+            {{ metricValue(row) | currency:'USD':'symbol':'1.0-2' }}
           </div>
+        </div>
+
+        <div class="cell cell--market-value" role="cell">
+          <div class="metric metric--muted">
+            {{ marketValue(row) | currency:'USD':'symbol':'1.0-2' }}
+          </div>
+        </div>
+
+        <div class="cell cell--last-price" role="cell">
+          <div class="price">{{ row.latest_close === null ? 'N/A' : (row.latest_close | currency:'USD':'symbol':'1.2-2') }}</div>
           <div class="pct-pill" [ngClass]="percentClass(row.day_change_percent)">
             <span *ngIf="row.day_change_percent !== null">
               {{ (row.day_change_percent / 100) | percent:'1.2-2' }}
@@ -72,7 +103,7 @@
           </div>
         </div>
       </button>
-    </article>
+    </div>
   </div>
 </section>
 
