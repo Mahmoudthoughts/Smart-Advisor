@@ -8,9 +8,18 @@
 
     <nav class="tabs" role="tablist" aria-label="Positions view">
       <button class="tab" [class.active]="view() === 'daily_pnl'" (click)="view.set('daily_pnl')" role="tab">Daily P&L</button>
-      <button class="tab" [class.active]="view() === 'unrealized_pnl'" (click)="view.set('unrealized_pnl')" role="tab">UNREALIZED P&L</button>
-      <button class="tab" [class.active]="view() === 'market_value'" (click)="view.set('market_value')" role="tab">MKT VALUE</button>
+      <button class="tab" [class.active]="view() === 'unrealized_pnl'" (click)="view.set('unrealized_pnl')" role="tab">Unrealized P&L</button>
+      <button class="tab" [class.active]="view() === 'market_value'" (click)="view.set('market_value')" role="tab">Market value</button>
     </nav>
+    <div class="sort-control">
+      <label for="sortBy">Sort by</label>
+      <select id="sortBy" [value]="currentSortKey()" (change)="setSort($any($event.target).value)">
+        <option value="alphabet">Alphabet</option>
+        <option value="share_price">Share price</option>
+        <option value="change_pct">Change %</option>
+        <option value="position">Position</option>
+      </select>
+    </div>
   </header>
 
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
@@ -37,18 +46,18 @@
   </div>
 
   <div *ngIf="!isLoading()" class="list">
-    <article class="card" *ngFor="let row of watchlist()">
-      <button class="card__inner" (click)="openDetails(row.symbol)">
+    <article class="card" *ngFor="let row of sortedWatchlist()">
+      <button class="card__inner" (click)="openDetails(row.symbol)" [style.background]="rowBackground(row)">
         <div class="left">
           <div class="symbol">{{ row.symbol }}</div>
-          <div class="company">{{ row.name || '—' }}</div>
+          <div class="company">{{ row.name || 'N/A' }}</div>
         </div>
 
         <div class="center">
           <div class="metric" [ngClass]="metricSignClass(metricValue(row))">
             {{ metricValue(row) | currency:'USD':'symbol':'1.0-2' }}
           </div>
-          <div class="qty">{{ row.position_qty === null ? '—' : (row.position_qty | number:'1.0-2') }} shares</div>
+          <div class="qty">{{ row.position_qty === null ? 'N/A' : (row.position_qty | number:'1.0-2') }} shares</div>
         </div>
 
         <div class="right">
@@ -59,11 +68,12 @@
             <span *ngIf="row.day_change_percent !== null">
               {{ (row.day_change_percent / 100) | percent:'1.2-2' }}
             </span>
-            <span *ngIf="row.day_change_percent === null">—</span>
+            <span *ngIf="row.day_change_percent === null">N/A</span>
           </div>
         </div>
       </button>
     </article>
   </div>
 </section>
+
 
