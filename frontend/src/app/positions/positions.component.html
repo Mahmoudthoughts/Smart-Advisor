@@ -22,6 +22,48 @@
     </div>
   </header>
 
+  <section
+    class="positions__summary"
+    aria-label="Positions totals overview"
+    *ngIf="!isLoading()"
+  >
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'market_value'"
+      aria-label="Total market value"
+    >
+      <p class="summary-card__label">Market Value</p>
+      <p class="summary-card__value metric--muted">
+        {{ totals().marketValue | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Across all held positions</p>
+    </div>
+
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'unrealized_pnl'"
+      aria-label="Total unrealized profit and loss"
+    >
+      <p class="summary-card__label">Unrealized P&amp;L</p>
+      <p class="summary-card__value" [ngClass]="metricSignClass(totals().unrealized)">
+        {{ totals().unrealized | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Open position performance</p>
+    </div>
+
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'daily_pnl'"
+      aria-label="Total daily profit and loss"
+    >
+      <p class="summary-card__label">Daily P&amp;L</p>
+      <p class="summary-card__value" [ngClass]="metricSignClass(totals().daily)">
+        {{ totals().daily | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Today&apos;s movement</p>
+    </div>
+  </section>
+
   <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
 
   <div *ngIf="isLoading()" class="skeleton-table">
