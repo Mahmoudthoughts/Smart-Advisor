@@ -103,7 +103,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     if (!bars.length) {
       return [];
     }
-    const data = bars
+    const candleData = bars
       .map((bar) => {
         const timestamp = Math.floor(this.parseBarDate(bar.date) / 1000);
         if (!Number.isFinite(timestamp) || timestamp <= 0) {
@@ -119,21 +119,45 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
       })
       .filter((entry) => entry !== null);
 
-    if (!data.length) {
+    if (!candleData.length) {
       return [];
     }
+
+    const volumeData = bars
+      .map((bar) => {
+        const timestamp = Math.floor(this.parseBarDate(bar.date) / 1000);
+        if (!Number.isFinite(timestamp) || timestamp <= 0) {
+          return null;
+        }
+        const isUp = bar.close >= bar.open;
+        return {
+          time: timestamp as Time,
+          value: bar.volume,
+          color: isUp ? '#22c55e' : '#ef4444'
+        };
+      })
+      .filter((entry) => entry !== null);
 
     return [
       {
         name: 'Price',
         type: 'candlestick',
-        data,
+        data: candleData,
         options: {
           upColor: '#22c55e',
           downColor: '#ef4444',
           borderVisible: false,
           wickUpColor: '#22c55e',
           wickDownColor: '#ef4444'
+        }
+      },
+      {
+        name: 'Volume',
+        type: 'histogram',
+        data: volumeData,
+        options: {
+          priceScaleId: 'volume',
+          priceFormat: { type: 'volume' }
         }
       }
     ];

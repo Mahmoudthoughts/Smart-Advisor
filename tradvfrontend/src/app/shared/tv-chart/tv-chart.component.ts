@@ -268,6 +268,7 @@ export class TvChartComponent implements AfterViewInit, OnChanges, OnDestroy {
     });
     this.seriesEntries = [];
     this.seriesMeta = [];
+    let usesVolumeScale = false;
 
     this.series.forEach((entry, index) => {
       const series = this.addSeries(entry.type, entry.options);
@@ -281,8 +282,31 @@ export class TvChartComponent implements AfterViewInit, OnChanges, OnDestroy {
         this.seriesEntries.push(series);
         const legendName = this.legend?.[index]?.label;
         this.seriesMeta.push({ series, name: entry.name ?? legendName ?? `Series ${index + 1}` });
+        if (entry.options && typeof entry.options === 'object') {
+          const priceScaleId = (entry.options as { priceScaleId?: string }).priceScaleId;
+          if (priceScaleId === 'volume') {
+            usesVolumeScale = true;
+          }
+        }
       }
     });
+
+    if (usesVolumeScale) {
+      this.chart.applyOptions({
+        rightPriceScale: {
+          scaleMargins: {
+            top: 0.1,
+            bottom: 0.3
+          }
+        }
+      });
+      this.chart.priceScale('volume').applyOptions({
+        scaleMargins: {
+          top: 0.7,
+          bottom: 0
+        }
+      });
+    }
 
     if (this.autoFit) {
       this.chart.timeScale().fitContent();
