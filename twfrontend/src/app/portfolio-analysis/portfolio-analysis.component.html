@@ -17,6 +17,13 @@
         <button type="button" [class.active]="metric() === 'unrealized'" (click)="setMetric('unrealized')">Unrealized</button>
         <button type="button" [class.active]="metric() === 'realized'" (click)="setMetric('realized')">Realized</button>
       </div>
+      <div class="control-group live-toggle">
+        <span class="label">Live metadata</span>
+        <label class="switch">
+          <input type="checkbox" [checked]="useLiveData()" (change)="toggleLiveData()" />
+          <span class="slider" aria-hidden="true"></span>
+        </label>
+      </div>
     </nav>
   </header>
 
@@ -46,7 +53,7 @@
       style="height: 520px; width: 100%;"
     ></div>
     <p class="muted note">
-      Industry metadata is not provided by the data source yet; symbols without metadata fall under "Unknown".
+      When live metadata is off, region/currency/industry fall back to "Unknown".
     </p>
   </div>
 

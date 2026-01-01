@@ -50,6 +50,7 @@ export class PortfolioAnalysisComponent implements OnInit {
   readonly holdings = signal<HoldingSnapshot[]>([]);
   readonly groupBy = signal<GroupKey>('region');
   readonly metric = signal<MetricKey>('total');
+  readonly useLiveData = signal<boolean>(false);
 
   readonly chartOption = computed<EChartsOption>(() => this.buildTreemap());
   readonly summaryTotals = computed(() => {
@@ -75,6 +76,11 @@ export class PortfolioAnalysisComponent implements OnInit {
     this.metric.set(key);
   }
 
+  toggleLiveData(): void {
+    this.useLiveData.update((current) => !current);
+    this.loadData();
+  }
+
   retry(): void {
     this.loadData();
   }
@@ -82,6 +88,7 @@ export class PortfolioAnalysisComponent implements OnInit {
   private loadData(): void {
     this.isLoading.set(true);
     this.loadError.set(null);
+    const useLive = this.useLiveData();
     this.dataService
       .getWatchlist()
       .pipe(
@@ -89,7 +96,7 @@ export class PortfolioAnalysisComponent implements OnInit {
           if (!items.length) {
             return of([] as HoldingSnapshot[]);
           }
-          const perSymbol = items.map((item) => this.fetchSnapshotForSymbol(item));
+          const perSymbol = items.map((item) => this.fetchSnapshotForSymbol(item, useLive));
           return forkJoin(perSymbol);
         })
       )
@@ -106,10 +113,12 @@ export class PortfolioAnalysisComponent implements OnInit {
       });
   }
 
-  private fetchSnapshotForSymbol(item: WatchlistSymbol) {
+  private fetchSnapshotForSymbol(item: WatchlistSymbol, useLive: boolean) {
     return forkJoin({
       timeline: this.dataService.getTimeline(item.symbol).pipe(catchError(() => of(null as TimelineResponse | null))),
-      meta: this.dataService.searchSymbols(item.symbol).pipe(catchError(() => of(null as SymbolSearchResult[] | null)))
+      meta: useLive
+        ? this.dataService.searchSymbols(item.symbol).pipe(catchError(() => of(null as SymbolSearchResult[] | null)))
+        : of(null as SymbolSearchResult[] | null)
     }).pipe(
       map(({ timeline, meta }) => {
         const latestSnapshot = timeline?.snapshots?.[timeline.snapshots.length - 1];
