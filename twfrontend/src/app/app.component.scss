@@ -1,0 +1,11 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  color: var(--color-text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+.tab-caret {
+  font-size: 0.65rem;
+  transform: translateY(-1px);
+}

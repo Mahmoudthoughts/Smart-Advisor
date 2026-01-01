@@ -1,0 +1,65 @@
+<section class="analysis">
+  <header class="analysis__header">
+    <div>
+      <h1>Portfolio Analysis</h1>
+      <p class="muted">Group your holdings by region, currency, or industry and view realized/unrealized P&amp;L.</p>
+    </div>
+    <nav class="controls">
+      <div class="control-group">
+        <span class="label">Group by</span>
+        <button type="button" [class.active]="groupBy() === 'region'" (click)="setGroup('region')">Region</button>
+        <button type="button" [class.active]="groupBy() === 'currency'" (click)="setGroup('currency')">Currency</button>
+        <button type="button" [class.active]="groupBy() === 'industry'" (click)="setGroup('industry')">Industry</button>
+      </div>
+      <div class="control-group">
+        <span class="label">Metric</span>
+        <button type="button" [class.active]="metric() === 'total'" (click)="setMetric('total')">Total</button>
+        <button type="button" [class.active]="metric() === 'unrealized'" (click)="setMetric('unrealized')">Unrealized</button>
+        <button type="button" [class.active]="metric() === 'realized'" (click)="setMetric('realized')">Realized</button>
+      </div>
+    </nav>
+  </header>
+
+  <div class="summary" *ngIf="holdings().length > 0">
+    <div class="pill neutral">
+      <span class="label">Total P&amp;L</span>
+      <span class="value" [class.positive]="summaryTotals().total >= 0" [class.negative]="summaryTotals().total < 0">
+        {{ summaryTotals().total | currency:'USD':'symbol':'1.0-0' }}
+      </span>
+    </div>
+    <div class="pill positive">
+      <span class="label">Unrealized</span>
+      <span class="value">{{ summaryTotals().unrealized | currency:'USD':'symbol':'1.0-0' }}</span>
+    </div>
+    <div class="pill negative">
+      <span class="label">Realized</span>
+      <span class="value">{{ summaryTotals().realized | currency:'USD':'symbol':'1.0-0' }}</span>
+    </div>
+  </div>
+
+  <div class="panel" *ngIf="!isLoading() && !loadError() && holdings().length > 0">
+    <app-tv-chart
+      [series]="chartSeries()"
+      [legend]="chartLegend()"
+      class="treemap"
+      [showTimeScale]="false"
+    ></app-tv-chart>
+    <p class="muted note">
+      Industry metadata is not provided by the data source yet; symbols without metadata fall under “Unknown”.
+    </p>
+  </div>
+
+  <div class="placeholder" *ngIf="!isLoading() && !loadError() && holdings().length === 0">
+    <p>No holdings found. Add stocks to your watchlist to see analysis here.</p>
+  </div>
+
+  <div class="placeholder" *ngIf="isLoading()">
+    <div class="spinner"></div>
+    <p>Loading analysis…</p>
+  </div>
+
+  <div class="placeholder error" *ngIf="!isLoading() && loadError()">
+    <p>{{ loadError() }}</p>
+    <button type="button" (click)="retry()">Try again</button>
+  </div>
+</section>

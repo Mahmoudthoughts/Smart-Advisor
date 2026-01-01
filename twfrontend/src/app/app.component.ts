@@ -1,0 +1,394 @@
+import { Component, HostListener, computed, effect, inject, signal } from '@angular/core';
+import { NgFor, NgIf } from '@angular/common';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
+import { AuthService } from './auth.service';
+import { setUserTelemetry } from './telemetry-user';
+import { DebugService } from './debug.service';
+import { environment } from '../environments/environment';
+
+type NavItem = {
+  path: string;
+  label: string;
+  badge?: string;
+};
+
+type NavGroup = {
+  title?: string;
+  items: NavItem[];
+};
+
+type NavLink = {
+  path: string;
+  label: string;
+  children?: NavItem[];
+  groups?: NavGroup[];
+};
+
+@Component({
+  selector: 'app-root',
+  standalone: true,
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, NgIf, NgFor],
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.scss']
+})
+export class AppComponent {
+  private readonly auth = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly debug = inject(DebugService);
+  private readonly navStorageKey = 'smart-advisor.nav-selection';
+  private readonly hasStorage = typeof window !== 'undefined' && !!window.localStorage;
+  private readonly themeStorageKey = 'smart-advisor.theme';
+
+  readonly brand = 'Smart Advisor';
+  readonly isAuthenticated = this.auth.isAuthenticated;
+  readonly user = this.auth.user;
+  readonly allNavLinks: NavLink[] = [
+    { path: '/app/overview', label: 'Overview' },
+    { path: '/app/analysis', label: 'Analysis' },
+    { path: '/app/stocks', label: 'My Stocks' },
+    { path: '/app/positions', label: 'Positions' },
+    { path: '/app/onboarding', label: 'Onboarding' },
+    { path: '/app/intraday-insights', label: 'Intraday Insights' },
+    { path: '/app/ai-history', label: 'AI History' },
+    { path: '/app/transactions', label: 'Transactions' },
+    { path: '/app/timeline', label: 'Timeline' },
+    { path: '/app/unrealized', label: 'Unrealized' },
+    { path: '/app/opportunities', label: 'Opportunities' },
+    { path: '/app/decisions', label: 'Decisions' },
+    { path: '/app/signals', label: 'Signals' },
+    { path: '/app/sentiment', label: 'Sentiment' },
+    { path: '/app/forecast', label: 'Forecast' },
+    { path: '/app/montecarlo', label: 'Monte Carlo' },
+    { path: '/app/simulator', label: 'Simulator' },
+    { path: '/app/macro', label: 'Macro' },
+    { path: '/app/alerts', label: 'Alerts' },
+    { path: '/app/admin', label: 'Admin' }
+  ];
+
+  readonly topNavLinks: NavLink[] = [
+    { path: '/app/overview', label: 'Overview' },
+    {
+      path: '/app/analysis',
+      label: 'Analysis',
+      groups: [
+        {
+          title: 'Performance',
+          items: [
+            { path: '/app/analysis', label: 'Analysis' },
+            { path: '/app/timeline', label: 'Timeline' },
+            { path: '/app/unrealized', label: 'Unrealized' }
+          ]
+        },
+        {
+          title: 'Signals',
+          items: [
+            { path: '/app/signals', label: 'Signals' },
+            { path: '/app/sentiment', label: 'Sentiment' },
+            { path: '/app/forecast', label: 'Forecast' }
+          ]
+        }
+      ]
+    },
+    {
+      path: '/app/stocks',
+      label: 'Portfolio',
+      groups: [
+        {
+          title: 'Holdings',
+          items: [
+            { path: '/app/stocks', label: 'My Stocks' },
+            { path: '/app/positions', label: 'Positions' },
+            { path: '/app/onboarding', label: 'Onboarding' },
+            { path: '/app/intraday-insights', label: 'Intraday Insights' },
+            { path: '/app/ai-history', label: 'AI History' },
+            { path: '/app/transactions', label: 'Transactions' }
+          ]
+        },
+        {
+          title: 'Decisions',
+          items: [
+            { path: '/app/decisions', label: 'Decisions' },
+            { path: '/app/opportunities', label: 'Opportunities' }
+          ]
+        }
+      ]
+    },
+    {
+      path: '/app/macro',
+      label: 'Markets',
+      groups: [
+        {
+          title: 'Strategy',
+          items: [
+            { path: '/app/montecarlo', label: 'Monte Carlo' },
+            { path: '/app/simulator', label: 'Simulator' },
+            { path: '/app/macro', label: 'Macro' }
+          ]
+        },
+        {
+          title: 'Alerts',
+          items: [{ path: '/app/alerts', label: 'Alerts' }]
+        }
+      ]
+    },
+    { path: '/app/admin', label: 'Admin' }
+  ];
+
+  readonly openMegaMenu = signal<string | null>(null);
+  readonly menuOpen = signal(false);
+  readonly sidebarOpen = signal(false);
+  readonly selectedPaths = signal<string[]>(this.loadSelections());
+  readonly navLinks = computed(() =>
+    this.allNavLinks.filter((link) => this.selectedPaths().includes(link.path))
+  );
+  readonly openMegaLink = computed(() => {
+    const openPath = this.openMegaMenu();
+    if (!openPath) {
+      return null;
+    }
+    return this.topNavLinks.find((link) => link.path === openPath) ?? null;
+  });
+  readonly brandTarget = computed(() => (this.isAuthenticated() ? '/app/overview' : '/login'));
+  readonly currentYear = new Date().getFullYear();
+  readonly isDarkTheme = signal(this.restoreTheme());
+  readonly isDev = !environment.production;
+  readonly debugOutput = signal<string | null>(null);
+
+  constructor() {
+    effect(() => {
+      if (!this.hasStorage) {
+        return;
+      }
+      const selections = this.selectedPaths();
+      localStorage.setItem(this.navStorageKey, JSON.stringify(selections));
+    });
+
+    // Close sidebar on navigation
+    this.router.events.subscribe((evt) => {
+      if (evt instanceof NavigationEnd) {
+        this.sidebarOpen.set(false);
+        this.openMegaMenu.set(null);
+      }
+    });
+
+    // Apply theme on startup
+    this.applyTheme(this.isDarkTheme());
+    // Persist theme when it changes
+    effect(() => {
+      const dark = this.isDarkTheme();
+      if (this.hasStorage) {
+        localStorage.setItem(this.themeStorageKey, dark ? 'dark' : 'light');
+      }
+      this.applyTheme(dark);
+    });
+
+    // Keep telemetry user baggage in sync with auth state
+    effect(() => {
+      const u = this.user();
+      if (u) {
+        setUserTelemetry({ id: u.id, email: u.email, role: u.role });
+      } else {
+        setUserTelemetry(null);
+      }
+    });
+  }
+
+  logout(): void {
+    this.auth.logout();
+    setUserTelemetry(null);
+    void this.router.navigate(['/login']);
+  }
+
+  userInitials(): string {
+    const name = this.user()?.name ?? '';
+    if (!name.trim()) {
+      return '•';
+    }
+    const parts = name.trim().split(/\s+/);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  toggleMenu(event?: MouseEvent): void {
+    event?.stopPropagation();
+    this.menuOpen.update((open) => !open);
+  }
+
+  toggleSidebar(): void {
+    this.sidebarOpen.update((open) => !open);
+  }
+
+  closeSidebar(): void {
+    this.sidebarOpen.set(false);
+  }
+
+  debugTelemetry(): void {
+    this.debugOutput.set(null);
+    this.debug.corsTest().subscribe({
+      next: (data) => {
+        try {
+          this.debugOutput.set(JSON.stringify(data));
+          // eslint-disable-next-line no-console
+          console.debug('[telemetry-debug]', data);
+        } catch {
+          this.debugOutput.set(String(data));
+        }
+      },
+      error: (err) => {
+        const message = err?.error ?? err?.message ?? 'Failed to call /debug/cors-test';
+        this.debugOutput.set(typeof message === 'string' ? message : JSON.stringify(message));
+      }
+    });
+  }
+
+  keepMenuOpen(event: MouseEvent): void {
+    event.stopPropagation();
+  }
+
+  openMegaOnHover(link: NavLink): void {
+    if (this.hasChildren(link)) {
+      this.openMegaMenu.set(link.path);
+    } else {
+      this.openMegaMenu.set(null);
+    }
+  }
+
+  onTabClick(event: MouseEvent, link: NavLink): void {
+    if (!this.hasChildren(link)) {
+      this.openMegaMenu.set(null);
+      return;
+    }
+    if (this.openMegaMenu() !== link.path) {
+      event.preventDefault();
+      this.openMegaMenu.set(link.path);
+    }
+  }
+
+  closeMegaMenu(): void {
+    this.openMegaMenu.set(null);
+  }
+
+  isMegaOpen(link: NavLink): boolean {
+    return this.openMegaMenu() === link.path;
+  }
+
+  hasChildren(link: NavLink): boolean {
+    return (link.children?.length ?? 0) > 0 || (link.groups?.length ?? 0) > 0;
+  }
+
+  getMegaGroups(link: NavLink): NavGroup[] {
+    if (link.groups?.length) {
+      return link.groups;
+    }
+    if (link.children?.length) {
+      return [{ items: link.children }];
+    }
+    return [];
+  }
+
+  megaColumns(link: NavLink): number {
+    const total = this.getMegaGroups(link).reduce(
+      (sum, group) => sum + group.items.length,
+      0
+    );
+    return total > 6 ? 2 : 1;
+  }
+
+  toggleLink(path: string): void {
+    this.selectedPaths.update((current) => {
+      const next = current.includes(path)
+        ? current.filter((item) => item !== path)
+        : this.sortPaths([...current, path]);
+      return next.length === 0 ? current : next;
+    });
+  }
+
+  selectAll(): void {
+    this.selectedPaths.set(this.sortPaths(this.allNavLinks.map((link) => link.path)));
+  }
+
+  resetDefaults(): void {
+    this.selectedPaths.set(this.sortPaths(this.allNavLinks.map((link) => link.path)));
+  }
+
+  isLinkSelected(path: string): boolean {
+    return this.selectedPaths().includes(path);
+  }
+
+  @HostListener('document:click', ['$event'])
+  closeMenu(event: MouseEvent): void {
+    const target = event.target as HTMLElement | null;
+    if (!target?.closest('.topbar-mega')) {
+      this.openMegaMenu.set(null);
+    }
+    this.menuOpen.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    this.closeSidebar();
+    this.openMegaMenu.set(null);
+  }
+
+  private loadSelections(): string[] {
+    try {
+      if (!this.hasStorage) {
+        return this.sortPaths(this.allNavLinks.map((link) => link.path));
+      }
+      const stored = localStorage.getItem(this.navStorageKey);
+      if (!stored) {
+        return this.sortPaths(this.allNavLinks.map((link) => link.path));
+      }
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.every((value) => typeof value === 'string')) {
+        const valid = parsed.filter((path) => this.allNavLinks.some((link) => link.path === path));
+        if (valid.length > 0) {
+          if (!valid.includes('/app/admin')) {
+            valid.push('/app/admin');
+          }
+          return this.sortPaths(valid);
+        }
+      }
+    } catch {
+      // ignore parsing errors and fall back to defaults
+    }
+    return this.sortPaths(this.allNavLinks.map((link) => link.path));
+  }
+
+  private sortPaths(paths: string[]): string[] {
+    const order = this.allNavLinks.map((link) => link.path);
+    return Array.from(new Set(paths)).sort(
+      (a, b) => order.indexOf(a) - order.indexOf(b)
+    );
+  }
+
+  toggleTheme(): void {
+    this.isDarkTheme.update((v) => !v);
+  }
+
+  private applyTheme(dark: boolean): void {
+    if (typeof document === 'undefined') return;
+    const body = document.body;
+    if (dark) {
+      body.classList.add('theme-dark');
+    } else {
+      body.classList.remove('theme-dark');
+    }
+  }
+
+  private restoreTheme(): boolean {
+    try {
+      if (!this.hasStorage) return false;
+      const saved = localStorage.getItem(this.themeStorageKey);
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+    } catch {}
+    // Fallback: prefer system setting
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  }
+}

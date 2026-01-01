@@ -1,0 +1,94 @@
+﻿<section class="opportunities-page">
+  <header class="page-header">
+    <div>
+      <h1>Top Missed Opportunities</h1>
+      <p>Rank regret-heavy sessions and understand the drivers that made them stand out.</p>
+    </div>
+    <label>
+      Strategy focus
+      <select [(ngModel)]="selectedStrategy" name="strategy">
+        <option *ngFor="let strategy of strategies" [value]="strategy">{{ strategy }}</option>
+      </select>
+    </label>
+  </header>
+  <section class="leaderboard">
+    <div class="table-controls">
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle opportunity columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().rank" (ngModelChange)="setColumnVisibility('rank', $event)" />
+          Rank
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+          Date
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+          Symbol
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().hypoPnl" (ngModelChange)="setColumnVisibility('hypoPnl', $event)" />
+          Hypo P&amp;L
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columns().dayOpportunity"
+            (ngModelChange)="setColumnVisibility('dayOpportunity', $event)"
+          />
+          Day opportunity
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="columns().deltaVsToday"
+            (ngModelChange)="setColumnVisibility('deltaVsToday', $event)"
+          />
+          Delta vs today
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().narrative" (ngModelChange)="setColumnVisibility('narrative', $event)" />
+          Narrative
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col" *ngIf="columns().rank">Rank</th>
+            <th scope="col" *ngIf="columns().date">Date</th>
+            <th scope="col" *ngIf="columns().symbol">Symbol</th>
+            <th scope="col" *ngIf="columns().hypoPnl" class="numeric">Hypo P&amp;L</th>
+            <th scope="col" *ngIf="columns().dayOpportunity" class="numeric">Day Opportunity</th>
+            <th scope="col" *ngIf="columns().deltaVsToday" class="numeric">I" vs Today</th>
+            <th scope="col" *ngIf="columns().narrative">Narrative</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of topMissed">
+            <td *ngIf="columns().rank" class="numeric">{{ row.rank }}</td>
+            <td *ngIf="columns().date">{{ row.date }}</td>
+            <td *ngIf="columns().symbol"><span class="ticker">{{ row.symbol }}</span></td>
+            <td *ngIf="columns().hypoPnl" class="numeric">{{ row.hypoPnl | currency: 'USD' }}</td>
+            <td *ngIf="columns().dayOpportunity" class="numeric">{{ row.dayOpportunity | currency: 'USD' }}</td>
+            <td *ngIf="columns().deltaVsToday" class="numeric" [class.positive]="row.deltaVsToday > 0">
+              {{ row.deltaVsToday | currency: 'USD' }}
+            </td>
+            <td *ngIf="columns().narrative">{{ row.narrative }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="themes">
+    <article *ngFor="let theme of themes">
+      <h2>{{ theme.title }}</h2>
+      <p>{{ theme.description }}</p>
+      <span class="impact">Impact: {{ theme.impact }}</span>
+    </article>
+  </section>
+</section>
+

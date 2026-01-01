@@ -1,0 +1,127 @@
+<section class="signals-page">
+  <header class="page-header">
+    <h1>Signals & Rules</h1>
+    <p>Review triggered signals, manage boolean rules, and control cooldown policies.</p>
+  </header>
+
+  <section class="rules">
+    <header>
+      <h2>Rule library</h2>
+      <p>Active rules evaluate on nightly batch; drafts can be staged for review.</p>
+    </header>
+    <ul>
+      <li *ngFor="let rule of rules" [class.draft]="rule.status === 'draft'">
+        <div class="rule-header">
+          <h3>{{ rule.label }}</h3>
+          <span class="status">{{ rule.status }}</span>
+        </div>
+        <p>{{ rule.description }}</p>
+        <footer>
+          <span>Rule ID: {{ rule.id }}</span>
+          <span>Cooldown: {{ rule.cooldownDays }} day(s)</span>
+        </footer>
+      </li>
+    </ul>
+  </section>
+
+  <section class="events">
+    <header>
+      <h2>Recent signal events</h2>
+      <p>Deduplicated daily triggers with severity context and reasoning snippets.</p>
+    </header>
+    <div class="table-controls">
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle signal event columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+          Date
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+          Symbol
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().signalType" (ngModelChange)="setColumnVisibility('signalType', $event)" />
+          Signal
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().severity" (ngModelChange)="setColumnVisibility('severity', $event)" />
+          Severity
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().context" (ngModelChange)="setColumnVisibility('context', $event)" />
+          Context
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="columns().date">Date</th>
+            <th *ngIf="columns().symbol">Symbol</th>
+            <th *ngIf="columns().signalType">Signal</th>
+            <th *ngIf="columns().severity">Severity</th>
+            <th *ngIf="columns().context">Context</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let event of events">
+            <td *ngIf="columns().date">{{ event.date }}</td>
+            <td *ngIf="columns().symbol"><span class="ticker">{{ event.symbol }}</span></td>
+            <td *ngIf="columns().signalType">{{ event.signalType }}</td>
+            <td *ngIf="columns().severity">
+              <span class="badge" [class.action]="event.severity === 'action'" [class.watch]="event.severity === 'watch'">
+                {{ event.severity }}
+              </span>
+            </td>
+            <td *ngIf="columns().context">{{ event.context }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="form-card">
+    <header>
+      <h2>Quick rule prototype</h2>
+      <p>Sketch a boolean expression; backend will convert to JSON tree per §7.3.</p>
+    </header>
+    <form>
+      <label>
+        Symbol
+        <input type="text" [ngModel]="ruleForm().symbol" name="symbol" (ngModelChange)="updateForm('symbol', $event)" />
+      </label>
+      <label>
+        Condition expression
+        <textarea
+          name="condition"
+          rows="3"
+          [ngModel]="ruleForm().condition"
+          (ngModelChange)="updateForm('condition', $event)"
+        ></textarea>
+      </label>
+      <div class="inline">
+        <label>
+          Cooldown (days)
+          <input
+            type="number"
+            min="0"
+            [ngModel]="ruleForm().cooldown"
+            name="cooldown"
+            (ngModelChange)="updateForm('cooldown', $event)"
+          />
+        </label>
+        <label>
+          Severity
+          <select [ngModel]="ruleForm().severity" name="severity" (ngModelChange)="updateForm('severity', $event)">
+            <option value="info">Info</option>
+            <option value="watch">Watch</option>
+            <option value="action">Action</option>
+          </select>
+        </label>
+      </div>
+      <button type="button">Save draft</button>
+    </form>
+  </section>
+</section>

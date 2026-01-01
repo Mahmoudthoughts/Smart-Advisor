@@ -7,6 +7,7 @@ For contributor/agent guidelines, see `AGENTS.md`.
 - `backend/` — Python package that rebuilds positions, computes hypothetical liquidation metrics, and now exposes FastAPI endpoints for multi-user authentication. Includes a Dockerfile for containerized execution and pytest coverage.
 - `frontend/` — Angular workspace with login/registration flows, responsive advisor dashboards, and ngx-echarts visualisations (auto-resize aware navigation + chart layouts). Served through NGINX with SPA routing configured in `frontend/nginx.conf`.
 - `tradvfrontend/` — Angular workspace focused on TradingView lightweight-charts prototyping, served through NGINX with SPA routing configured in `tradvfrontend/nginx.conf`.
+- `twfrontend/` - Tailwind-first Angular workspace that merges feature coverage from `frontend` and `tradvfrontend`, served through NGINX with SPA routing configured in `twfrontend/nginx.conf`.
 - `backend/sql/schema.sql` — DDL for the PostgreSQL schema used by the authentication system and shared portfolios.
 - `services/ingest/` — Standalone Alpha Vantage ingest service that can run independently to populate the shared PostgreSQL schema or feed downstream consumers.
 - `services/portfolio/` — Dedicated FastAPI portfolio service that owns transactions, watchlists, accounts, and snapshot recompute logic plus an outbox for domain events.
@@ -25,6 +26,7 @@ Services exposed locally:
 - **Backend API:** http://localhost:8000 (FastAPI with `/auth/register`, `/auth/login`, `/health`)
 - **Angular Frontend:** http://localhost:4200 (served from the production build)
 - **TradV Frontend:** http://localhost:4300 (served from the production build)
+- **Tailwind Frontend:** http://localhost:4400 (served from the production build)
 - **Ingest Service:** http://localhost:8100 (FastAPI `/health`, `/jobs/prices`, `/jobs/fx`)
 - **IBKR Bridge:** http://localhost:8110 (FastAPI `/prices`, `/symbols/search` - talks to your IB Gateway/TWS session)
 - **Portfolio Service:** http://localhost:8200 (FastAPI `/health`, `/portfolio/*` proxied internally by the backend)
@@ -41,7 +43,7 @@ Both endpoints require OHLC data; requests fail if fewer than 2 rows (signal) or
 The backend and ingest containers expose the `ALPHAVANTAGE_API_KEY` environment variable so market data integrations can authenticate
 against Alpha Vantage out of the box.
 
-> **Note:** After updating frontend assets or `frontend/nginx.conf`, rebuild the frontend image so the single-page app fallback (deep-link support) picks up the changes. Do the same for `tradvfrontend/nginx.conf` when updating the TradV frontend image.
+> **Note:** After updating frontend assets or `frontend/nginx.conf`, rebuild the frontend image so the single-page app fallback (deep-link support) picks up the changes. Do the same for `tradvfrontend/nginx.conf` or `twfrontend/nginx.conf` when updating those frontend images.
 > ```bash
 > docker compose build frontend
 > docker compose up -d frontend

@@ -62,6 +62,15 @@ services:
     ports:
       - '4300:80'
 
+  twfrontend:
+    build:
+      context: ./twfrontend
+    image: mahibrahim/twfrontend:1.0.0
+    depends_on:
+      - backend
+    ports:
+      - '4400:80'
+
   ingest:
     build:
       context: .

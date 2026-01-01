@@ -1,0 +1,195 @@
+<section class="admin-page">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Control center</p>
+      <h1>Administration</h1>
+      <p class="lede">Manage user access and configure which providers feed your stock lists.</p>
+    </div>
+  </header>
+
+  <div class="panel-grid">
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Users</p>
+          <h2>Manage access</h2>
+          <p class="hint">Invite team members, promote admins, and reset passwords.</p>
+        </div>
+      </div>
+
+      <form class="card" [formGroup]="userForm" (ngSubmit)="submitNewUser()">
+        <div class="form-grid">
+          <label>
+            <span>Name</span>
+            <input type="text" formControlName="name" placeholder="Jane Doe" />
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" formControlName="email" placeholder="name@company.com" />
+          </label>
+          <label>
+            <span>Password</span>
+            <input type="password" formControlName="password" placeholder="Min 8 characters" />
+          </label>
+          <label>
+            <span>Role</span>
+            <select formControlName="role">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit">Create user</button>
+          <div class="status" *ngIf="userStatus()">{{ userStatus() }}</div>
+          <div class="status error" *ngIf="userError()">{{ userError() }}</div>
+        </div>
+      </form>
+
+      <div class="list" *ngIf="!isLoadingUsers(); else usersLoading">
+        <div class="empty" *ngIf="users().length === 0">No users have been created yet.</div>
+        <div class="list-row" *ngFor="let user of users(); trackBy: trackById">
+          <div class="user-meta">
+            <div class="name">{{ user.name }}</div>
+            <div class="muted">{{ user.email }}</div>
+            <div class="muted">Joined {{ user.created_at | date: 'mediumDate' }}</div>
+          </div>
+          <div class="user-controls">
+            <label>
+              <span>Role</span>
+              <select [value]="user.role" (change)="changeUserRole(user, $any($event.target).value)">
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label>
+              <span>Set temp password</span>
+              <input
+                type="password"
+                [value]="passwordDrafts()[user.id] || ''"
+                (input)="setPasswordDraft(user.id, $any($event.target).value)"
+                placeholder="New password"
+              />
+            </label>
+            <div class="row-actions">
+              <button type="button" (click)="resetPassword(user)">Reset</button>
+              <button type="button" class="danger" (click)="deleteUser(user)">Delete</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template #usersLoading>
+        <div class="loading">Loading users…</div>
+      </ng-template>
+    </article>
+
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Providers</p>
+          <h2>Stock list sources</h2>
+          <p class="hint">Configure API keys and mark which provider should be used by default.</p>
+        </div>
+      </div>
+
+      <form class="card" [formGroup]="providerForm" (ngSubmit)="submitNewProvider()">
+        <div class="form-grid">
+          <label>
+            <span>Provider ID</span>
+            <input type="text" formControlName="provider" placeholder="alpha_vantage" />
+          </label>
+          <label>
+            <span>Display name</span>
+            <input type="text" formControlName="display_name" placeholder="Alpha Vantage" />
+          </label>
+          <label>
+            <span>API key</span>
+            <input type="text" formControlName="api_key" placeholder="Optional" />
+          </label>
+          <label>
+            <span>Base URL</span>
+            <input type="text" formControlName="base_url" placeholder="https://…" />
+          </label>
+        </div>
+        <div class="toggles">
+          <label>
+            <input type="checkbox" formControlName="is_active" />
+            <span>Active</span>
+          </label>
+          <label>
+            <input type="checkbox" formControlName="is_default" />
+            <span>Default</span>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit">Add provider</button>
+          <div class="status" *ngIf="providerStatus()">{{ providerStatus() }}</div>
+          <div class="status error" *ngIf="providerError()">{{ providerError() }}</div>
+        </div>
+      </form>
+
+      <div class="list" *ngIf="!isLoadingProviders(); else providersLoading">
+        <div class="empty" *ngIf="providers().length === 0">No providers configured yet.</div>
+        <div class="list-row" *ngFor="let provider of providers(); trackBy: trackById">
+          <div class="user-meta">
+            <div class="name">{{ provider.display_name }}</div>
+            <div class="muted">{{ provider.provider }}</div>
+            <div class="muted">Updated {{ provider.updated_at | date: 'medium' }}</div>
+          </div>
+          <div class="provider-controls">
+            <label>
+              <span>Display name</span>
+              <input
+                type="text"
+                [value]="providerDrafts()[provider.id]?.display_name || provider.display_name"
+                (input)="editProviderField(provider.id, 'display_name', $any($event.target).value)"
+              />
+            </label>
+            <label>
+              <span>API key</span>
+              <input
+                type="text"
+                [value]="providerDrafts()[provider.id]?.api_key || ''"
+                (input)="editProviderField(provider.id, 'api_key', $any($event.target).value)"
+                placeholder="Optional"
+              />
+            </label>
+            <label>
+              <span>Base URL</span>
+              <input
+                type="text"
+                [value]="providerDrafts()[provider.id]?.base_url || ''"
+                (input)="editProviderField(provider.id, 'base_url', $any($event.target).value)"
+                placeholder="Optional"
+              />
+            </label>
+            <div class="toggles inline">
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="providerDrafts()[provider.id]?.is_active ?? provider.is_active"
+                  (change)="editProviderField(provider.id, 'is_active', $any($event.target).checked)"
+                />
+                <span>Active</span>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="providerDrafts()[provider.id]?.is_default ?? provider.is_default"
+                  (change)="editProviderField(provider.id, 'is_default', $any($event.target).checked)"
+                />
+                <span>Default</span>
+              </label>
+            </div>
+            <div class="row-actions">
+              <button type="button" (click)="saveProvider(provider.id)">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template #providersLoading>
+        <div class="loading">Loading providers…</div>
+      </ng-template>
+    </article>
+  </div>
+</section>

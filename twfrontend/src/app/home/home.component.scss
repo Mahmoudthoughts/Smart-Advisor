@@ -1,0 +1,120 @@
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  margin-top: 2.5rem;
+  margin-bottom: 2.5rem;
+  animation: fade-up 650ms ease-out both;
+}
+
+.hero-copy {
+  display: grid;
+  gap: 1rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  color: var(--tradv-accent);
+  font-weight: 600;
+}
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--tradv-muted);
+  max-width: 36rem;
+  line-height: 1.6;
+}
+
+.timeframe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.timeframe-button {
+  border: 1px solid color-mix(in srgb, var(--tradv-muted) 50%, transparent);
+  background: transparent;
+  color: var(--tradv-text);
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease;
+}
+
+.timeframe-button.active {
+  border-color: var(--tradv-accent);
+  background: color-mix(in srgb, var(--tradv-accent) 18%, transparent);
+}
+
+.hero-card {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--tradv-surface) 80%, transparent);
+  border: 1px solid color-mix(in srgb, var(--tradv-muted) 25%, transparent);
+}
+
+.stat {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.label {
+  color: var(--tradv-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+}
+
+.value {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.delta {
+  font-size: 0.95rem;
+  color: #f87171;
+}
+
+.delta.positive {
+  color: #4ade80;
+}
+
+.delta.muted {
+  color: var(--tradv-muted);
+}
+
+.chart-card {
+  background: color-mix(in srgb, var(--tradv-surface) 90%, transparent);
+  border-radius: 28px;
+  padding: clamp(1.25rem, 3vw, 2rem);
+  border: 1px solid color-mix(in srgb, var(--tradv-muted) 20%, transparent);
+  box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+  animation: fade-up 700ms ease-out both;
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

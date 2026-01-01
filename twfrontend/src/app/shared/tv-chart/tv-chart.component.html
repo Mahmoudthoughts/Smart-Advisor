@@ -1,0 +1,30 @@
+<div class="tv-chart-shell">
+  <div class="tv-legend" *ngIf="legend?.length">
+    <span *ngFor="let item of legend" class="tv-legend__item">
+      <span class="tv-legend__dot" [style.background]="item.color"></span>
+      {{ item.label }}
+    </span>
+  </div>
+  <div class="tv-chart-wrapper">
+    <div #chartContainer class="tv-chart"></div>
+    <div
+      class="tv-tooltip"
+      *ngIf="showTooltip && tooltipVisible"
+      [class.tv-tooltip--magnifier]="tooltipMode === 'magnifier'"
+      [class.tv-tooltip--tracking]="tooltipMode === 'tracking'"
+      [class.tv-tooltip--floating]="tooltipMode === 'floating'"
+      [style.left.px]="tooltipX"
+      [style.top.px]="tooltipY"
+    >
+      <div class="tv-tooltip__date" *ngIf="tooltipDate">{{ tooltipDate }}</div>
+      <div class="tv-tooltip__primary" *ngIf="tooltipPrimaryValue">
+        <span class="tv-tooltip__primary-label">{{ tooltipPrimaryLabel }}</span>
+        <span class="tv-tooltip__primary-value">{{ tooltipPrimaryValue }}</span>
+      </div>
+      <div class="tv-tooltip__row" *ngFor="let item of tooltipItems">
+        <span class="tv-tooltip__label">{{ item.label }}</span>
+        <span class="tv-tooltip__value">{{ item.value }}</span>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,118 @@
+<section class="simulator-page">
+  <header class="page-header">
+    <div>
+      <h1>Scenario Simulator</h1>
+      <p>Create alternate timelines to test exits, re-entries, and hedges before committing.</p>
+    </div>
+    <label>
+      Base timeline
+      <select [(ngModel)]="selectedTimeline" name="timeline">
+        <option *ngFor="let option of baseTimeline" [value]="option">{{ option }}</option>
+      </select>
+    </label>
+  </header>
+
+  <section class="actions">
+    <header>
+      <h2>What-if actions</h2>
+      <button type="button" (click)="addAction()">Add action</button>
+    </header>
+    <div class="table-controls">
+      <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle action columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().type" (ngModelChange)="setColumnVisibility('type', $event)" />
+          Type
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().date" (ngModelChange)="setColumnVisibility('date', $event)" />
+          Date
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().qtyPct" (ngModelChange)="setColumnVisibility('qtyPct', $event)" />
+          Qty %
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().price" (ngModelChange)="setColumnVisibility('price', $event)" />
+          Price
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().limitPrice" (ngModelChange)="setColumnVisibility('limitPrice', $event)" />
+          Limit price
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="columns().actions" (ngModelChange)="setColumnVisibility('actions', $event)" />
+          Actions
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="columns().type">Type</th>
+            <th *ngIf="columns().date">Date</th>
+            <th *ngIf="columns().qtyPct" class="numeric">Qty %</th>
+            <th *ngIf="columns().price">Price</th>
+            <th *ngIf="columns().limitPrice" class="numeric">Limit price</th>
+            <th *ngIf="columns().actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let action of actions(); trackBy: trackById">
+            <td *ngIf="columns().type">
+              <select [ngModel]="action.type" (ngModelChange)="onTypeChange(action.id, $event)">
+                <option value="BUY">BUY</option>
+                <option value="SELL">SELL</option>
+              </select>
+            </td>
+            <td *ngIf="columns().date">
+              <input type="date" [ngModel]="action.date" (ngModelChange)="onDateChange(action.id, $event)" />
+            </td>
+            <td *ngIf="columns().qtyPct" class="numeric">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                [ngModel]="action.qtyPct"
+                (ngModelChange)="onQtyChange(action.id, $event)"
+              />
+            </td>
+            <td *ngIf="columns().price">
+              <select [ngModel]="action.price" (ngModelChange)="onPriceModeChange(action.id, $event)">
+                <option value="mkt_close">Market close</option>
+                <option value="limit">Limit</option>
+              </select>
+            </td>
+            <td *ngIf="columns().limitPrice" class="numeric">
+              <input
+                type="number"
+                step="0.01"
+                [disabled]="action.price === 'mkt_close'"
+                [ngModel]="action.limitPrice ?? null"
+                (ngModelChange)="onLimitPriceChange(action.id, $event)"
+              />
+            </td>
+            <td *ngIf="columns().actions">
+              <button type="button" class="delete" (click)="removeAction(action.id)">Remove</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="results">
+    <header>
+      <h2>Scenario deltas</h2>
+      <p>Compare ghost timeline results with the active portfolio baseline.</p>
+    </header>
+    <ul>
+      <li *ngFor="let metric of results">
+        <h3>{{ metric.label }}</h3>
+        <p>{{ metric.value }}</p>
+        <span>{{ metric.delta }}</span>
+      </li>
+    </ul>
+  </section>
+</section>

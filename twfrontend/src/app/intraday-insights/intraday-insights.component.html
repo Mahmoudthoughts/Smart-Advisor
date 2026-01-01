@@ -1,0 +1,349 @@
+﻿<section class="intraday-insights">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">Intraday insights</p>
+      <h1>Midday dip and close recovery</h1>
+      <p>Review intraday bars, session-level dips, and the quick trade plan summary.</p>
+    </div>
+    <div class="actions">
+      <button type="button" (click)="viewSymbolDetail()" [disabled]="!selectedSymbol()">Open symbol detail</button>
+      <a routerLink="/app/stocks" class="secondary">Back to My Stocks</a>
+    </div>
+  </header>
+
+  <section class="controls">
+    <div class="field">
+      <label for="symbolSelect">Symbol</label>
+      <select id="symbolSelect" [value]="selectedSymbol()" (change)="onSymbolChange($any($event.target).value)">
+        <option value="" disabled>Select symbol</option>
+        <option *ngFor="let row of watchlist()" [value]="row.symbol">{{ row.symbol }} - {{ row.name || 'Unknown' }}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="barSize">Bar size</label>
+      <select id="barSize" [value]="barSize()" (change)="barSize.set($any($event.target).value)">
+        <option *ngFor="let option of barSizeOptions" [value]="option">{{ option }}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="durationDays">Lookback (days)</label>
+      <input
+        id="durationDays"
+        type="number"
+        min="1"
+        max="30"
+        [value]="durationDays()"
+        (change)="durationDays.set($any($event.target).valueAsNumber)"
+      />
+    </div>
+    <div class="field toggle">
+      <label for="useRth">Regular trading hours</label>
+      <input id="useRth" type="checkbox" [checked]="useRth()" (change)="useRth.set($any($event.target).checked)" />
+    </div>
+    <button type="button" class="apply" (click)="applyOptions()">Apply</button>
+  </section>
+
+  <p class="status" *ngIf="lastUpdated()">Last updated {{ lastUpdated() }}</p>
+  <p class="status" *ngIf="isLoading()">Loading intraday bars...</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <section class="sessions" *ngIf="sessionDates().length">
+    <header>
+      <h2>Compare sessions</h2>
+      <p>Select which days to overlay. Median low/high time is computed from the selected sessions.</p>
+    </header>
+    <div class="session-actions">
+      <button type="button" (click)="selectAllSessions()">Select all</button>
+      <button type="button" class="ghost" (click)="clearAllSessions()">Clear all</button>
+      <span class="meta">
+        Median low: {{ medianLowTime() }} / Median high: {{ medianHighTime() }}
+      </span>
+    </div>
+    <div class="session-grid">
+      <label class="session-chip" *ngFor="let date of sessionDates()">
+        <input
+          type="checkbox"
+          [checked]="activeSessionDates().includes(date)"
+          (change)="toggleSession(date)"
+        />
+        <span>{{ date }}</span>
+      </label>
+    </div>
+  </section>
+
+  <section class="summary">
+    <article class="metric">
+      <span class="label">Sessions analyzed</span>
+      <strong>{{ intradaySummary().sessions }}</strong>
+      <span class="delta">{{ intradaySummary().helper }}</span>
+    </article>
+    <article class="metric">
+      <span class="label">Median noon drawdown</span>
+      <strong>
+        {{ intradaySummary().middayDrawdownPct === null ? 'n/a' : (intradaySummary().middayDrawdownPct | percent: '1.2-2') }}
+      </strong>
+      <span class="delta">Open to midday low</span>
+    </article>
+    <article class="metric">
+      <span class="label">Avg close recovery</span>
+      <strong>
+        {{ intradaySummary().closeLiftPct === null ? 'n/a' : (intradaySummary().closeLiftPct | percent: '1.2-2') }}
+      </strong>
+      <span class="delta">Midday low to close</span>
+    </article>
+  </section>
+
+  <p class="fallback" *ngIf="intradaySummary().status === 'insufficient'">{{ intradaySummary().fallback }}</p>
+
+  <section class="ai-card">
+    <header>
+      <div>
+        <h2>AI timing insight</h2>
+        <p>Generated using intraday data for {{ selectedSymbol() }} ({{ durationDays() }} days, {{ barSize() }}).</p>
+      </div>
+      <div class="ai-actions">
+        <a
+          class="ghost"
+          [routerLink]="['/app/ai-history']"
+          [queryParams]="{ symbol: selectedSymbol() }"
+        >
+          View history
+        </a>
+        <button type="button" class="apply" (click)="requestAiTiming(true)" [disabled]="aiLoading()">
+          {{ aiLoading() ? 'Generating...' : 'Regenerate' }}
+        </button>
+      </div>
+    </header>
+
+    <p class="status" *ngIf="aiLoading()">Generating AI timing insight...</p>
+    <p class="error" *ngIf="aiError()">{{ aiError() }}</p>
+
+    <div class="ai-body" *ngIf="aiResult() as ai">
+      <p class="summary-text">{{ ai.summary }}</p>
+      <div class="ai-metrics">
+        <div>
+          <span class="label">Best buy window</span>
+          <strong>{{ ai.best_buy_window }}</strong>
+        </div>
+        <div>
+          <span class="label">Best sell window</span>
+          <strong>{{ ai.best_sell_window }}</strong>
+        </div>
+        <div>
+          <span class="label">Confidence</span>
+          <strong>{{ ai.confidence | percent: '1.0-0' }}</strong>
+        </div>
+      </div>
+      <div class="ai-citations" *ngIf="ai.citations?.length">
+        <h3>Citations</h3>
+        <ul>
+          <li *ngFor="let cite of ai.citations">
+            <span class="badge">{{ cite.id }}</span>
+            <span>{{ cite.text }}</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="chart-card" *ngIf="overlayCombinedSeries().length && !tableFirst()">
+    <header>
+      <h2>Overlayed intraday sessions</h2>
+      <p>Each line is a session plotted by time-of-day to spot common lows and highs.</p>
+    </header>
+    <app-tv-chart
+      class="overlay-chart"
+      [series]="overlayCombinedSeries()"
+      [legend]="overlayLegend()"
+      [showTimeScale]="true"
+    ></app-tv-chart>
+  </section>
+
+  <section class="table-card">
+    <header>
+      <h2>Session summary</h2>
+      <p>Daily sessions derived from intraday bars (midday window: 11:00-13:30 ET).</p>
+    </header>
+    <div class="table-controls">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="tableFirst()" (ngModelChange)="tableFirst.set($event)" />
+        Table first (hide chart)
+      </label>
+      <button type="button" class="reset" (click)="resetSessionColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle session summary columns">
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().date"
+            (ngModelChange)="setSessionColumnVisibility('date', $event)"
+          />
+          Date
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().bars"
+            (ngModelChange)="setSessionColumnVisibility('bars', $event)"
+          />
+          Bars
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().open"
+            (ngModelChange)="setSessionColumnVisibility('open', $event)"
+          />
+          Open
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().middayLow"
+            (ngModelChange)="setSessionColumnVisibility('middayLow', $event)"
+          />
+          Midday low
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().close"
+            (ngModelChange)="setSessionColumnVisibility('close', $event)"
+          />
+          Close
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().drawdownPct"
+            (ngModelChange)="setSessionColumnVisibility('drawdownPct', $event)"
+          />
+          Drawdown
+        </label>
+        <label class="toggle">
+          <input
+            type="checkbox"
+            [ngModel]="sessionColumns().recoveryPct"
+            (ngModelChange)="setSessionColumnVisibility('recoveryPct', $event)"
+          />
+          Recovery
+        </label>
+      </div>
+    </div>
+    <div class="table-scroll" *ngIf="sessionSummaries().length; else noSessions">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="sessionColumns().date">Date</th>
+            <th *ngIf="sessionColumns().bars" class="numeric">Bars</th>
+            <th *ngIf="sessionColumns().open" class="numeric">Open</th>
+            <th *ngIf="sessionColumns().middayLow" class="numeric">Midday low</th>
+            <th *ngIf="sessionColumns().close" class="numeric">Close</th>
+            <th *ngIf="sessionColumns().drawdownPct" class="numeric">Drawdown</th>
+            <th *ngIf="sessionColumns().recoveryPct" class="numeric">Recovery</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let session of sessionSummaries()">
+            <td *ngIf="sessionColumns().date">{{ session.date }}</td>
+            <td *ngIf="sessionColumns().bars" class="numeric">{{ session.bars }}</td>
+            <td *ngIf="sessionColumns().open" class="numeric">{{ session.open === null ? 'n/a' : (session.open | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().middayLow" class="numeric">{{ session.middayLow === null ? 'n/a' : (session.middayLow | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().close" class="numeric">{{ session.close === null ? 'n/a' : (session.close | currency: 'USD':'symbol':'1.2-2') }}</td>
+            <td *ngIf="sessionColumns().drawdownPct" class="numeric">{{ session.drawdownPct === null ? 'n/a' : (session.drawdownPct | percent: '1.2-2') }}</td>
+            <td *ngIf="sessionColumns().recoveryPct" class="numeric">{{ session.recoveryPct === null ? 'n/a' : (session.recoveryPct | percent: '1.2-2') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #noSessions>
+      <p class="empty">No intraday sessions yet. Pick a symbol and apply your bar settings.</p>
+    </ng-template>
+  </section>
+
+  <section class="table-card">
+    <header>
+      <h2>Raw intraday bars</h2>
+      <p>Timestamped bars returned by the IBKR bridge.</p>
+    </header>
+    <div class="table-controls">
+      <div class="view-toggle" role="group" aria-label="Raw intraday view">
+        <button type="button" [class.active]="rawBarsView() === 'table'" (click)="rawBarsView.set('table')">
+          Table
+        </button>
+        <button type="button" [class.active]="rawBarsView() === 'chart'" (click)="rawBarsView.set('chart')">
+          Chart
+        </button>
+      </div>
+      <button type="button" class="reset" (click)="resetBarColumns()">Reset columns</button>
+      <div class="column-toggles" role="group" aria-label="Toggle intraday bars columns">
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().date" (ngModelChange)="setBarColumnVisibility('date', $event)" />
+          Timestamp
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().open" (ngModelChange)="setBarColumnVisibility('open', $event)" />
+          Open
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().high" (ngModelChange)="setBarColumnVisibility('high', $event)" />
+          High
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().low" (ngModelChange)="setBarColumnVisibility('low', $event)" />
+          Low
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().close" (ngModelChange)="setBarColumnVisibility('close', $event)" />
+          Close
+        </label>
+        <label class="toggle">
+          <input type="checkbox" [ngModel]="barColumns().volume" (ngModelChange)="setBarColumnVisibility('volume', $event)" />
+          Volume
+        </label>
+      </div>
+    </div>
+    <ng-container *ngIf="rawBarsView() === 'chart'; else tableView">
+      <div class="chart-shell" *ngIf="rawBarSeries().length; else noBars">
+        <app-tv-chart
+          class="raw-bars-chart"
+          [series]="rawBarSeries()"
+          [showTimeScale]="true"
+          [showTooltip]="true"
+          [tooltipMode]="'magnifier'"
+        ></app-tv-chart>
+      </div>
+    </ng-container>
+    <ng-template #tableView>
+      <div class="table-scroll" *ngIf="sortedBars().length; else noBars">
+      <table>
+        <thead>
+          <tr>
+            <th *ngIf="barColumns().date">Timestamp</th>
+            <th *ngIf="barColumns().open" class="numeric">Open</th>
+            <th *ngIf="barColumns().high" class="numeric">High</th>
+            <th *ngIf="barColumns().low" class="numeric">Low</th>
+            <th *ngIf="barColumns().close" class="numeric">Close</th>
+            <th *ngIf="barColumns().volume" class="numeric">Volume</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let bar of sortedBars()">
+            <td *ngIf="barColumns().date">{{ bar.date }}</td>
+            <td *ngIf="barColumns().open" class="numeric">{{ bar.open | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().high" class="numeric">{{ bar.high | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().low" class="numeric">{{ bar.low | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().close" class="numeric">{{ bar.close | currency: 'USD':'symbol':'1.2-2' }}</td>
+            <td *ngIf="barColumns().volume" class="numeric">{{ bar.volume | number: '1.0-0' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      </div>
+    </ng-template>
+    <ng-template #noBars>
+      <p class="empty">No intraday bars returned for the selected window.</p>
+    </ng-template>
+  </section>
+</section>
+
+
+

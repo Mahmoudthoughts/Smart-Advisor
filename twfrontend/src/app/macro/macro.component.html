@@ -1,0 +1,35 @@
+<section class="macro-page">
+  <header class="page-header">
+    <h1>Macro Overlays</h1>
+    <p>Track treasury yields and upcoming catalysts to contextualize regret and signal drift.</p>
+  </header>
+
+  <section class="chart-card">
+    <header>
+      <h2>10Y Treasury yield</h2>
+      <p>Use rolling yield trend to adjust beta assumptions and rule sensitivity.</p>
+    </header>
+
+    <app-tv-chart class="chart" [series]="yieldSeries" [legend]="yieldLegend" [showTimeScale]="false"></app-tv-chart>
+
+  </section>
+
+  <section class="events">
+    <header>
+      <h2>Upcoming macro events</h2>
+      <p>Pulls from Treasury yield + Trading Economics feed per § optional prompt.</p>
+    </header>
+    <ul>
+      <li *ngFor="let event of events">
+        <div class="meta">
+          <span class="date">{{ event.date }}</span>
+          <span class="importance" [class.high]="event.importance === 'High'" [class.medium]="event.importance === 'Medium'">
+            {{ event.importance }}
+          </span>
+        </div>
+        <h3>{{ event.label }}</h3>
+        <p>{{ event.narrative }}</p>
+      </li>
+    </ul>
+  </section>
+</section>

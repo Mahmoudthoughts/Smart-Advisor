@@ -1,0 +1,160 @@
+<header class="sticky top-0 z-40 border-b border-[var(--topbar-border)] bg-[var(--topbar-bg)] backdrop-blur">
+  <div class="mx-auto flex w-full max-w-[var(--app-max-width)] items-center gap-4 px-[var(--app-gutter)] py-4">
+    <div class="flex items-center gap-3">
+      <button
+        *ngIf="isAuthenticated()"
+        type="button"
+        class="inline-flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2 text-sm font-semibold tracking-[0.18em] text-[var(--color-text)] uppercase transition hover:-translate-y-0.5 hover:border-[var(--color-accent)]"
+        (click)="toggleSidebar()"
+        [attr.aria-expanded]="sidebarOpen()"
+        aria-controls="app-sidebar"
+        aria-label="Open menu"
+      >
+        <span class="text-[0.7rem]">Menu</span>
+      </button>
+      <a
+        class="font-display text-lg font-semibold uppercase tracking-[0.35em] text-[var(--color-text)] no-underline"
+        [routerLink]="brandTarget()"
+      >
+        {{ brand }}
+      </a>
+    </div>
+
+    <div class="topbar-mega relative flex flex-1 items-center justify-center" *ngIf="isAuthenticated()" (mouseleave)="closeMegaMenu()">
+      <nav class="flex flex-1 items-center justify-center gap-5 overflow-x-auto px-2 text-xs font-semibold uppercase tracking-[0.3em]" aria-label="Primary">
+        <a
+          *ngFor="let link of topNavLinks"
+          class="relative flex items-center gap-2 border-b-2 border-transparent pb-2 text-[var(--color-text-muted)] transition hover:text-[var(--color-text)]"
+          [routerLink]="link.path"
+          routerLinkActive="border-[var(--color-accent)] text-[var(--color-text)]"
+          [routerLinkActiveOptions]="{ exact: false }"
+          [attr.aria-haspopup]="hasChildren(link) ? 'true' : null"
+          [attr.aria-expanded]="hasChildren(link) ? isMegaOpen(link) : null"
+          (mouseenter)="openMegaOnHover(link)"
+          (focus)="openMegaOnHover(link)"
+          (click)="onTabClick($event, link)"
+        >
+          <span class="tab-label">{{ link.label }}</span>
+          <span class="tab-caret" *ngIf="hasChildren(link)" aria-hidden="true">v</span>
+        </a>
+      </nav>
+
+      <section class="absolute left-1/2 top-full z-20 mt-4 w-[min(820px,90vw)] -translate-x-1/2 rounded-2xl border border-[var(--topbar-border)] bg-[var(--color-surface)] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.18)]" *ngIf="openMegaLink() as openLink">
+        <div class="grid gap-6" [class.grid-cols-2]="megaColumns(openLink) === 2">
+          <div class="grid gap-3" *ngFor="let group of getMegaGroups(openLink)">
+            <h4 *ngIf="group.title" class="text-[0.7rem] font-semibold uppercase tracking-[0.4em] text-[var(--color-text-muted)]">
+              {{ group.title }}
+            </h4>
+            <a
+              *ngFor="let item of group.items"
+              class="flex items-center justify-between gap-4 rounded-xl border border-transparent bg-[var(--color-surface-alt)] px-4 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)]"
+              [routerLink]="item.path"
+              routerLinkActive="border-[var(--color-accent)]"
+              [routerLinkActiveOptions]="{ exact: false }"
+              (click)="closeMegaMenu()"
+            >
+              <span>{{ item.label }}</span>
+              <span class="rounded-full bg-[rgba(18,201,160,0.2)] px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.2em] text-[var(--color-primary)]" *ngIf="item.badge">
+                {{ item.badge }}
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-border)] text-[var(--color-text)] transition hover:border-[var(--color-accent)]" (click)="toggleTheme()" [attr.aria-label]="isDarkTheme() ? 'Switch to light mode' : 'Switch to dark mode'">
+        <svg class="h-4 w-4" *ngIf="!isDarkTheme()" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        </svg>
+        <svg class="h-4 w-4" *ngIf="isDarkTheme()" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        </svg>
+      </button>
+      <ng-container *ngIf="!isAuthenticated()">
+        <a routerLink="/login" class="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--color-text)] no-underline">Login</a>
+        <a routerLink="/register" class="rounded-full bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-text)] no-underline transition hover:shadow-glow">Register</a>
+      </ng-container>
+    </div>
+  </div>
+</header>
+
+<div class="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm" *ngIf="sidebarOpen()" (click)="closeSidebar()"></div>
+
+<aside
+  id="app-sidebar"
+  *ngIf="isAuthenticated()"
+  class="fixed left-0 top-0 z-50 flex h-screen w-[min(360px,92vw)] -translate-x-full flex-col gap-6 border-r border-[var(--color-border)] bg-[var(--color-surface)] px-5 pb-6 pt-6 shadow-[24px_0_50px_rgba(2,6,23,0.35)] transition duration-300"
+  [class.translate-x-0]="sidebarOpen()"
+>
+  <header class="flex items-center justify-between">
+    <div class="flex items-center gap-3 rounded-full bg-[var(--color-surface-alt)] px-3 py-2 text-sm font-semibold">
+      <span class="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--color-accent)] text-[var(--color-text)]">
+        {{ userInitials() }}
+      </span>
+      <span>{{ user()?.name }}</span>
+    </div>
+    <button type="button" class="text-2xl font-semibold text-[var(--color-text)]" aria-label="Close menu" (click)="closeSidebar()">x</button>
+  </header>
+
+  <nav class="grid gap-2">
+    <a
+      *ngFor="let link of navLinks()"
+      class="rounded-xl border border-transparent bg-[var(--color-surface-alt)] px-4 py-3 text-sm font-semibold uppercase tracking-[0.2em] text-[var(--color-text)] transition hover:border-[var(--color-accent)] hover:bg-[var(--color-surface)] hover:text-[var(--color-accent)]"
+      [routerLink]="link.path"
+      routerLinkActive="border-[var(--color-accent)] text-[var(--color-accent)]"
+      [routerLinkActiveOptions]="{ exact: false }"
+      (click)="closeSidebar()"
+    >
+      {{ link.label }}
+    </a>
+  </nav>
+
+  <section class="grid gap-3">
+    <h4 class="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-text-muted)]">Customize navigation</h4>
+    <ul class="grid max-h-64 gap-2 overflow-y-auto">
+      <li *ngFor="let link of allNavLinks">
+        <label class="flex items-center gap-3 rounded-xl border border-transparent bg-[var(--color-surface-alt)] px-3 py-2 text-sm font-semibold">
+          <input type="checkbox" [checked]="isLinkSelected(link.path)" (change)="toggleLink(link.path)" class="h-4 w-4 accent-[var(--color-accent)]" />
+          <span>{{ link.label }}</span>
+        </label>
+      </li>
+    </ul>
+    <div class="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-accent)]">
+      <button type="button" class="uppercase" (click)="selectAll()">Select all</button>
+      <button type="button" class="uppercase" (click)="resetDefaults()">Reset defaults</button>
+    </div>
+  </section>
+
+  <footer class="mt-auto flex flex-col gap-3">
+    <button type="button" class="inline-flex items-center justify-center gap-2 rounded-full bg-[var(--color-accent)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-text)]" (click)="logout()" aria-label="Sign out">
+      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      <span>Sign out</span>
+    </button>
+    <button *ngIf="isDev" type="button" class="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--color-text-muted)]" (click)="debugTelemetry()">Debug telemetry</button>
+    <p *ngIf="isDev && debugOutput()" class="text-xs text-[var(--color-text-muted)]">
+      {{ debugOutput() }}
+    </p>
+  </footer>
+</aside>
+
+<main class="mx-auto w-full max-w-[var(--app-max-width)] px-[var(--app-gutter)] py-10">
+  <router-outlet></router-outlet>
+</main>
+
+<footer class="py-8 text-center text-xs uppercase tracking-[0.3em] text-[var(--color-text-muted)]">
+  <p>Smart Advisor {{ currentYear }}. Signal clarity, human timing.</p>
+</footer>

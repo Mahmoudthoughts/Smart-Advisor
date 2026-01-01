@@ -1,0 +1,158 @@
+﻿<section class="stocks">
+  <header class="page-header">
+    <div>
+      <h1>My Stocks</h1>
+      <p>Monitor the symbols you are tracking, including real positions, pricing, and unrealized performance.</p>
+    </div>
+    <div class="actions">
+      <button type="button" (click)="trackAnother()">Add symbols</button>
+      <a routerLink="/app/transactions" class="secondary">Record transactions</a>
+    </div>
+  </header>
+
+  <section class="summary">
+    <div class="tile">
+      <span class="label">Tracked symbols</span>
+      <strong>{{ watchlist().length }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">Active positions</span>
+      <strong>{{ investedSymbols().length }}</strong>
+    </div>
+    <div class="tile">
+      <span class="label">Unrealized P&amp;L</span>
+      <strong [class.positive]="totalUnrealized() >= 0" [class.negative]="totalUnrealized() < 0">
+        {{ totalUnrealized() | currency: 'USD' }}
+      </strong>
+    </div>
+  </section>
+
+  <p class="status" *ngIf="refreshStatus()">{{ refreshStatus() }}</p>
+  <p class="error" *ngIf="refreshError()">{{ refreshError() }}</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+  <div class="table-controls" *ngIf="watchlist().length">
+    <button type="button" class="reset" (click)="resetColumns()">Reset columns</button>
+    <div class="column-toggles" role="group" aria-label="Toggle watchlist columns">
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().symbol" (ngModelChange)="setColumnVisibility('symbol', $event)" />
+        Ticker
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().name" (ngModelChange)="setColumnVisibility('name', $event)" />
+        Name
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().last" (ngModelChange)="setColumnVisibility('last', $event)" />
+        Last
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().change" (ngModelChange)="setColumnVisibility('change', $event)" />
+        Change
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().position" (ngModelChange)="setColumnVisibility('position', $event)" />
+        Position
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().avgCost" (ngModelChange)="setColumnVisibility('avgCost', $event)" />
+        Avg cost
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().unrealized" (ngModelChange)="setColumnVisibility('unrealized', $event)" />
+        Unrealized P&amp;L
+      </label>
+      <label class="toggle">
+        <input type="checkbox" [ngModel]="columns().actions" (ngModelChange)="setColumnVisibility('actions', $event)" />
+        Actions
+      </label>
+    </div>
+  </div>
+
+  <div class="table-scroll" *ngIf="watchlist().length; else emptyState">
+    <table>
+      <thead>
+        <tr>
+          <th *ngIf="columns().symbol">Ticker</th>
+          <th *ngIf="columns().name">Name</th>
+          <th *ngIf="columns().last" class="numeric">Last</th>
+          <th *ngIf="columns().change" class="numeric">Change</th>
+          <th *ngIf="columns().position" class="numeric">Position</th>
+          <th *ngIf="columns().avgCost" class="numeric">Avg cost</th>
+          <th *ngIf="columns().unrealized" class="numeric">Unrealized P&amp;L</th>
+          <th *ngIf="columns().actions" class="actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of watchlist()">
+          <td *ngIf="columns().symbol">
+            <strong>{{ row.symbol }}</strong>
+            <span class="muted">{{ row.latest_close_date }}</span>
+          </td>
+          <td *ngIf="columns().name">{{ row.name || 'N/A' }}</td>
+          <td *ngIf="columns().last" class="numeric">
+            {{ row.latest_close === null ? 'N/A' : (row.latest_close | currency: 'USD':'symbol':'1.2-2') }}
+          </td>
+          <td *ngIf="columns().change" class="numeric">
+            <span [class.positive]="(row.day_change ?? 0) >= 0" [class.negative]="(row.day_change ?? 0) < 0">
+              {{ row.day_change === null ? 'N/A' : (row.day_change | currency: 'USD':'symbol':'1.2-2') }}
+              <small *ngIf="row.day_change_percent !== null">({{ row.day_change_percent | percent: '1.2-2' }})</small>
+            </span>
+          </td>
+          <td *ngIf="columns().position" class="numeric">
+            {{ row.position_qty === null ? 'N/A' : (row.position_qty | number: '1.0-2') }}
+          </td>
+          <td *ngIf="columns().avgCost" class="numeric">
+            {{ row.average_cost === null ? 'N/A' : (row.average_cost | currency: 'USD') }}
+          </td>
+          <td *ngIf="columns().unrealized" class="numeric">
+            <span [class.positive]="(row.unrealized_pl ?? 0) >= 0" [class.negative]="(row.unrealized_pl ?? 0) < 0">
+              {{ row.unrealized_pl === null ? 'N/A' : (row.unrealized_pl | currency: 'USD') }}
+            </span>
+          </td>
+          <td *ngIf="columns().actions" class="actions">
+            <div class="action-icons">
+              <button type="button" class="icon-action" (click)="viewSymbol(row.symbol)" aria-label="View" title="View">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span class="sr-only">View</span>
+              </button>
+              <button type="button" class="icon-action" (click)="viewIntraday(row.symbol)" aria-label="Intraday" title="Intraday">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <span class="sr-only">Intraday</span>
+              </button>
+              <button type="button" class="icon-action" (click)="recordTransaction(row.symbol)" aria-label="Add transaction" title="Add transaction">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+                <span class="sr-only">Add transaction</span>
+              </button>
+              <button type="button" class="icon-action" (click)="refreshSymbol(row.symbol)" aria-label="Refresh" title="Refresh">
+                <svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <polyline points="23 4 23 10 17 10"></polyline>
+                  <polyline points="1 20 1 14 7 14"></polyline>
+                  <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10"></path>
+                  <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14"></path>
+                </svg>
+                <span class="sr-only">Refresh</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <ng-template #emptyState>
+    <div class="empty">
+      <p>No symbols tracked yet. Start by adding tickers you care about.</p>
+      <button type="button" (click)="trackAnother()">Launch onboarding</button>
+    </div>
+  </ng-template>
+</section>
+

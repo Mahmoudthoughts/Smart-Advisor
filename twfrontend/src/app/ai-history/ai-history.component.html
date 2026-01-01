@@ -1,0 +1,144 @@
+<section class="ai-history">
+  <header class="page-header">
+    <div>
+      <p class="eyebrow">AI Stock Advisor</p>
+      <h1>50 years of experience, logged insights</h1>
+      <p>
+        Review past AI timing recommendations for a symbol. This page only uses stored history
+        and never calls the model.
+      </p>
+    </div>
+    <div class="actions">
+      <a routerLink="/app/intraday-insights" class="secondary">Back to Intraday</a>
+    </div>
+  </header>
+
+  <section class="controls">
+    <div class="field">
+      <label for="symbolSelect">Symbol</label>
+      <select id="symbolSelect" [value]="selectedSymbol()" (change)="onSymbolChange($any($event.target).value)">
+        <option value="" disabled>Select symbol</option>
+        <option *ngFor="let row of watchlist()" [value]="row.symbol">
+          {{ row.symbol }} - {{ row.name || 'Unknown' }}
+        </option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="startDate">Start date</label>
+      <input
+        id="startDate"
+        type="date"
+        [value]="startDate()"
+        (change)="startDate.set($any($event.target).value)"
+      />
+    </div>
+    <div class="field">
+      <label for="endDate">End date</label>
+      <input
+        id="endDate"
+        type="date"
+        [value]="endDate()"
+        (change)="endDate.set($any($event.target).value)"
+      />
+    </div>
+    <button type="button" class="apply" (click)="applyFilters()">Load history</button>
+  </section>
+
+  <p class="status" *ngIf="isLoading()">Loading AI history...</p>
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <section class="history-grid" *ngIf="historyEntries().length; else noHistory">
+    <aside class="history-list">
+      <h2>Recommendations</h2>
+      <p class="muted">Showing {{ historyEntries().length }} stored runs for {{ selectedSymbol() }}.</p>
+      <div class="history-items">
+        <button
+          type="button"
+          class="history-item"
+          *ngFor="let entry of historyEntries(); let i = index"
+          [class.active]="i === selectedIndex()"
+          (click)="selectEntry(i)"
+        >
+          <span class="stamp">{{ formatTimestamp(entry.created_at) }}</span>
+          <span class="meta">{{ entry.bar_size }} · {{ entry.duration_days }}d · {{ entry.use_rth ? 'RTH' : 'All' }}</span>
+        </button>
+      </div>
+    </aside>
+
+    <article class="history-detail" *ngIf="selectedEntry() as selection">
+      <header>
+        <div>
+          <h2>{{ selection.entry.symbol }} history insight</h2>
+          <p>{{ selection.entry.symbol_name || selectedSymbolName() || 'Symbol overview' }}</p>
+        </div>
+        <button type="button" class="apply" (click)="regenerate()" [disabled]="historyEntries().length < 2">
+          Regenerate
+        </button>
+      </header>
+
+      <section class="inputs">
+        <h3>Inputs</h3>
+        <div class="input-grid">
+          <div>
+            <span class="label">Generated</span>
+            <strong>{{ formatTimestamp(selection.entry.created_at) }}</strong>
+          </div>
+          <div>
+            <span class="label">Bar size</span>
+            <strong>{{ selection.entry.bar_size }}</strong>
+          </div>
+          <div>
+            <span class="label">Lookback</span>
+            <strong>{{ selection.entry.duration_days }} days</strong>
+          </div>
+          <div>
+            <span class="label">Timezone</span>
+            <strong>{{ selection.entry.timezone }}</strong>
+          </div>
+          <div>
+            <span class="label">Session</span>
+            <strong>{{ selection.entry.use_rth ? 'Regular hours' : 'All hours' }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="outputs" *ngIf="selection.response as response">
+        <h3>Recommendation</h3>
+        <p class="summary">{{ response.summary }}</p>
+        <div class="output-grid">
+          <div>
+            <span class="label">Best buy window</span>
+            <strong>{{ response.best_buy_window }}</strong>
+          </div>
+          <div>
+            <span class="label">Best sell window</span>
+            <strong>{{ response.best_sell_window }}</strong>
+          </div>
+          <div>
+            <span class="label">Confidence</span>
+            <strong>{{ response.confidence | percent: '1.0-0' }}</strong>
+          </div>
+        </div>
+        <div class="citations" *ngIf="response.citations?.length">
+          <h4>Citations</h4>
+          <ul>
+            <li *ngFor="let cite of response.citations">
+              <span class="badge">{{ cite.id }}</span>
+              <span>{{ cite.text }}</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </article>
+  </section>
+
+  <ng-template #noHistory>
+    <section class="empty-card">
+      <h2>No saved history yet</h2>
+      <p>
+        Run AI timing insights from the intraday page to create stored recommendations for
+        {{ selectedSymbol() || 'a symbol' }}.
+      </p>
+    </section>
+  </ng-template>
+</section>

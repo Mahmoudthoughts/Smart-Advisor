@@ -1,0 +1,205 @@
+<div class="page-header">
+  <div>
+    <p class="eyebrow">Decision log</p>
+    <h1>Investor decisions & outcomes</h1>
+    <p class="subhead">Capture planned moves, track whether they were executed, and review the outcome price delta.</p>
+  </div>
+  <div class="filters">
+    <label>
+      <span>Symbol</span>
+      <input type="text" placeholder="e.g. PATH" [ngModel]="symbolFilter()" (ngModelChange)="symbolFilter.set($event)" />
+    </label>
+    <label>
+      <span>Investor</span>
+      <input type="text" placeholder="Name or handle" [ngModel]="investorFilter()" (ngModelChange)="investorFilter.set($event)" />
+    </label>
+    <label>
+      <span>Status</span>
+      <select [ngModel]="statusFilter()" (ngModelChange)="selectStatus($event)">
+        <option *ngFor="let option of statusOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
+    </label>
+    <button type="button" class="ghost" (click)="loadDecisions()">Reload</button>
+  </div>
+</div>
+
+<div class="grid">
+  <section class="card">
+    <header>
+      <div>
+        <p class="eyebrow">Log a decision</p>
+        <h2>Proposed move</h2>
+      </div>
+      <div class="hint">Fields marked * are required.</div>
+    </header>
+
+    <form class="form" (ngSubmit)="submitDecision()" novalidate>
+      <div class="field-row">
+        <label>
+          <span>Investor *</span>
+          <input type="text" required [formControl]="createForm.controls.investor" placeholder="Who is making the call?" />
+          <small *ngIf="createForm.controls.investor.invalid && createForm.controls.investor.touched">Investor is required.</small>
+        </label>
+        <label>
+          <span>Symbol *</span>
+          <input type="text" required [formControl]="createForm.controls.symbol" placeholder="Ticker" />
+          <small *ngIf="createForm.controls.symbol.invalid && createForm.controls.symbol.touched">Symbol is required.</small>
+        </label>
+      </div>
+
+      <div class="field-row">
+        <label>
+          <span>Action</span>
+          <select [formControl]="createForm.controls.action">
+            <option *ngFor="let option of actionOptions" [value]="option.value">{{ option.label }}</option>
+          </select>
+        </label>
+        <label>
+          <span>Planned quantity</span>
+          <input type="number" step="0.01" placeholder="Qty" [formControl]="createForm.controls.planned_quantity" />
+        </label>
+        <label>
+          <span>Decision price</span>
+          <input type="number" step="0.0001" placeholder="Latest close if empty" [formControl]="createForm.controls.decision_price" />
+        </label>
+      </div>
+
+      <label class="full">
+        <span>Notes</span>
+        <textarea rows="2" placeholder="Why now? Signals, catalysts, or risk notes" [formControl]="createForm.controls.notes"></textarea>
+      </label>
+
+      <div class="form-footer">
+        <div class="error" *ngIf="createError()">{{ createError() }}</div>
+        <button type="submit" [disabled]="isSubmitting()">{{ isSubmitting() ? 'Saving…' : 'Log decision' }}</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card resolution">
+    <header>
+      <div>
+        <p class="eyebrow">Resolve</p>
+        <h2>Close the loop</h2>
+        <p class="subhead">Mark decisions as executed or skipped and capture the outcome price.</p>
+      </div>
+    </header>
+
+    <div class="resolution-body" *ngIf="selectedDecisionId(); else selectPrompt">
+      <form class="form" (ngSubmit)="submitResolution()" novalidate>
+        <div class="field-row">
+          <label>
+            <span>Status</span>
+            <select [formControl]="resolveForm.controls.status">
+              <option value="EXECUTED">Executed</option>
+              <option value="SKIPPED">Skipped</option>
+            </select>
+          </label>
+          <label>
+            <span>Resolved price</span>
+            <input type="number" step="0.0001" placeholder="Auto-fills from latest close" [formControl]="resolveForm.controls.resolved_price" />
+          </label>
+          <label>
+            <span>Actual quantity</span>
+            <input type="number" step="0.01" placeholder="Defaults to plan" [formControl]="resolveForm.controls.actual_quantity" />
+          </label>
+        </div>
+
+        <div class="field-row">
+          <label>
+            <span>Outcome price</span>
+            <input type="number" step="0.0001" placeholder="Price to measure regret" [formControl]="resolveForm.controls.outcome_price" />
+          </label>
+        </div>
+
+        <label class="full">
+          <span>Outcome notes</span>
+          <textarea rows="2" placeholder="What happened after the call?" [formControl]="resolveForm.controls.outcome_notes"></textarea>
+        </label>
+
+        <div class="form-footer">
+          <div class="error" *ngIf="resolveError()">{{ resolveError() }}</div>
+          <div class="actions">
+            <button type="button" class="ghost" (click)="selectedDecisionId.set(null)" [disabled]="isResolving()">Cancel</button>
+            <button type="submit" [disabled]="isResolving()">{{ isResolving() ? 'Saving…' : 'Update status' }}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+    <ng-template #selectPrompt>
+      <div class="empty">Select an open decision to resolve it.</div>
+    </ng-template>
+  </section>
+</div>
+
+<section class="card list">
+  <header>
+    <div>
+      <p class="eyebrow">History</p>
+      <h2>Recent decisions</h2>
+    </div>
+    <div class="muted" *ngIf="!isLoading()">{{ filteredDecisions().length }} shown</div>
+  </header>
+
+  <div class="empty" *ngIf="isLoading()">Loading decision history…</div>
+  <div class="error" *ngIf="loadError()">{{ loadError() }}</div>
+  <div class="empty" *ngIf="!isLoading() && !loadError() && filteredDecisions().length === 0">
+    No decisions match your filters.
+  </div>
+
+  <div class="decision" *ngFor="let decision of filteredDecisions(); trackBy: trackById">
+    <div class="decision-header">
+      <div>
+        <div class="symbol">{{ decision.symbol }}</div>
+        <div class="meta">{{ decision.investor }} · {{ decision.decision_at | date: 'medium' }} · {{ decision.action | titlecase }}</div>
+      </div>
+      <div class="status">
+        <span [class]="statusClass(decision.status)">{{ decision.status | titlecase }}</span>
+        <button type="button" class="ghost" *ngIf="decision.status === 'OPEN'" (click)="openResolution(decision)">Resolve</button>
+      </div>
+    </div>
+
+    <div class="decision-body">
+      <div class="field">
+        <p class="label">Planned quantity</p>
+        <p class="value">{{ decision.planned_quantity ?? '—' }}</p>
+      </div>
+      <div class="field">
+        <p class="label">Decision price</p>
+        <p class="value">{{ decision.decision_price === null ? '—' : (decision.decision_price | currency:'USD':'symbol':'1.2-4') }}</p>
+      </div>
+      <div class="field">
+        <p class="label">Outcome price</p>
+        <p class="value">{{ decision.outcome_price === null ? '—' : (decision.outcome_price | currency:'USD':'symbol':'1.2-4') }}</p>
+      </div>
+      <div class="field">
+        <p class="label">Price change</p>
+        <p class="value">
+          {{ decision.outcome.price_change === null ? '—' : (decision.outcome.price_change | currency:'USD':'symbol':'1.2-4') }}
+          <span class="muted">({{ decision.outcome.price_change_pct === null ? '—' : (decision.outcome.price_change_pct | number:'1.1-1') }}%)</span>
+        </p>
+      </div>
+      <div class="field">
+        <p class="label">Projected value</p>
+        <p
+          class="value"
+          [class.gain]="(decision.outcome.projected_value_change ?? 0) > 0"
+          [class.loss]="(decision.outcome.projected_value_change ?? 0) < 0"
+        >
+          {{ decision.outcome.projected_value_change === null ? '—' : (decision.outcome.projected_value_change | currency:'USD':'symbol':'1.2-2') }}
+        </p>
+      </div>
+    </div>
+
+    <div class="notes" *ngIf="decision.notes || decision.outcome_notes">
+      <div *ngIf="decision.notes">
+        <p class="label">Notes</p>
+        <p class="muted">{{ decision.notes }}</p>
+      </div>
+      <div *ngIf="decision.outcome_notes">
+        <p class="label">Outcome</p>
+        <p class="muted">{{ decision.outcome_notes }}</p>
+      </div>
+    </div>
+  </div>
+</section>

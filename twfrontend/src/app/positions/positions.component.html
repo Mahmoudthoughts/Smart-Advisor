@@ -1,0 +1,152 @@
+<!-- frontend/src/app/positions/positions.component.html -->
+<section class="positions">
+  <header class="positions__header">
+    <div>
+      <h1>Your Positions</h1>
+      <p class="muted">Holdings, unrealized P&L and market value</p>
+    </div>
+
+    <nav class="tabs" role="tablist" aria-label="Positions view">
+      <button class="tab" [class.active]="view() === 'daily_pnl'" (click)="view.set('daily_pnl')" role="tab">Daily P&L</button>
+      <button class="tab" [class.active]="view() === 'unrealized_pnl'" (click)="view.set('unrealized_pnl')" role="tab">Unrealized P&L</button>
+      <button class="tab" [class.active]="view() === 'market_value'" (click)="view.set('market_value')" role="tab">Market value</button>
+    </nav>
+    <div class="sort-control">
+      <label for="sortBy">Sort by</label>
+      <select id="sortBy" [value]="currentSortKey()" (change)="setSort($any($event.target).value)">
+        <option value="alphabet">Alphabet</option>
+        <option value="share_price">Share price</option>
+        <option value="change_pct">Change %</option>
+        <option value="position">Position</option>
+      </select>
+    </div>
+  </header>
+
+  <section
+    class="positions__summary"
+    aria-label="Positions totals overview"
+    *ngIf="!isLoading()"
+  >
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'market_value'"
+      aria-label="Total market value"
+    >
+      <p class="summary-card__label">Market Value</p>
+      <p class="summary-card__value metric--muted">
+        {{ totals().marketValue | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Across all held positions</p>
+    </div>
+
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'unrealized_pnl'"
+      aria-label="Total unrealized profit and loss"
+    >
+      <p class="summary-card__label">Unrealized P&amp;L</p>
+      <p class="summary-card__value" [ngClass]="metricSignClass(totals().unrealized)">
+        {{ totals().unrealized | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Open position performance</p>
+    </div>
+
+    <div
+      class="summary-card"
+      [class.summary-card--active]="view() === 'daily_pnl'"
+      aria-label="Total daily profit and loss"
+    >
+      <p class="summary-card__label">Daily P&amp;L</p>
+      <p class="summary-card__value" [ngClass]="metricSignClass(totals().daily)">
+        {{ totals().daily | currency:'USD':'symbol':'1.0-2' }}
+      </p>
+      <p class="summary-card__hint">Today&apos;s movement</p>
+    </div>
+  </section>
+
+  <p class="error" *ngIf="loadError()">{{ loadError() }}</p>
+
+  <div *ngIf="isLoading()" class="skeleton-table">
+    <div class="table__header table__row">
+      <div class="cell">Instrument</div>
+      <div class="cell">{{ metricLabel() }}</div>
+      <div class="cell">Market value</div>
+      <div class="cell">Last price</div>
+    </div>
+    <div class="table__row skeleton" *ngFor="let i of [1,2,3,4]">
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
+        <div class="s-line s-line--long"></div>
+      </div>
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
+      </div>
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
+      </div>
+      <div class="cell">
+        <div class="s-line s-line--short"></div>
+        <div class="s-pill"></div>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="!isLoading() && watchlist().length === 0" class="empty">
+    <p>No positions found.</p>
+  </div>
+
+  <div *ngIf="!isLoading()" class="positions-table">
+    <div class="table__header table__row" role="row">
+      <div class="cell cell--instrument" role="columnheader">Instrument</div>
+      <div class="cell cell--metric" role="columnheader">
+        <span class="header-pill">{{ metricLabel() }}</span>
+      </div>
+      <div class="cell cell--market-value" role="columnheader">
+        <span class="header-pill">Market Value</span>
+      </div>
+      <div class="cell cell--last-price" role="columnheader">
+        <span class="header-pill">Last Price</span>
+      </div>
+    </div>
+
+    <div class="table__body">
+      <button
+        class="table__row"
+        *ngFor="let row of sortedWatchlist()"
+        (click)="openDetails(row.symbol)"
+        [style.background]="rowBackground(row)"
+        role="row"
+      >
+        <div class="cell cell--instrument" role="cell">
+          <div class="symbol">{{ row.symbol }}</div>
+          <div class="company">{{ row.name || 'N/A' }}</div>
+          <div class="qty">{{ row.position_qty === null ? 'N/A' : (row.position_qty | number:'1.0-2') }} shares</div>
+        </div>
+
+        <div class="cell cell--metric" role="cell">
+          <div class="metric" [ngClass]="metricSignClass(metricValue(row))">
+            {{ metricValue(row) | currency:'USD':'symbol':'1.0-2' }}
+          </div>
+        </div>
+
+        <div class="cell cell--market-value" role="cell">
+          <div class="metric metric--muted">
+            {{ marketValue(row) | currency:'USD':'symbol':'1.0-2' }}
+          </div>
+        </div>
+
+        <div class="cell cell--last-price" role="cell">
+          <div class="price">{{ row.latest_close === null ? 'N/A' : (row.latest_close | currency:'USD':'symbol':'1.2-2') }}</div>
+          <div class="pct-pill" [ngClass]="percentClass(row.day_change_percent)">
+            <span *ngIf="row.day_change_percent !== null">
+              {{ (row.day_change_percent / 100) | percent:'1.2-2' }}
+            </span>
+            <span *ngIf="row.day_change_percent === null">N/A</span>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+</section>
+
+

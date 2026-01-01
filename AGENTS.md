@@ -6,7 +6,7 @@ Purpose
 - Scope: the entire repository unless a more specific AGENTS.md appears deeper in a directory.
 
 Tech Stack
-- Frontend: Angular (standalone components, Signals API), ngx-echarts (frontend), TradingView lightweight-charts (tradvfrontend), SCSS, served via NGINX.
+- Frontend: Angular (standalone components, Signals API), ngx-echarts (frontend), TradingView lightweight-charts (tradvfrontend), Tailwind CSS (twfrontend), SCSS, served via NGINX.
 - Backend: FastAPI (Python 3.11), SQLAlchemy (async), PostgreSQL, Alembic, OpenTelemetry optional.
 - Orchestration: Docker Compose (db, backend, frontend, ai-timing).
   - Ingest microservice: FastAPI service under `services/ingest` (Alpha Vantage data fetcher), now the only path for price ingest.
@@ -17,6 +17,7 @@ Run & Build
 - Backend: http://localhost:8000 (health: `/health`, auth: `/auth/*`)
 - Frontend: http://localhost:4200 (served by NGINX from production build)
 - TradV Frontend: http://localhost:4300 (served by NGINX from production build)
+- Tailwind Frontend: http://localhost:4400 (served by NGINX from production build)
 - AI Timing: http://localhost:8300 (health: `/health`, timing: `/timing`)
 - DB: `postgres://smart_advisor:smart_advisor@localhost:5432/smart_advisor`
 
@@ -33,7 +34,7 @@ Frontend Conventions
 - State uses Angular Signals (`signal`, `computed`, `effect`). Prefer signals over RxJS component state where feasible.
 - HTTP via `HttpClient` and `environment.apiBaseUrl`. Do not hardcode URLs.
 - Charts: `frontend/` uses `ngx-echarts`. `tradvfrontend/` uses TradingView `lightweight-charts` via shared chart components.
-- Styling: SCSS with CSS variables in `frontend/src/styles.scss`. Use `var(--color-*)` tokens for theme-aware colors.
+- Styling: SCSS with CSS variables in `frontend/src/styles.scss`. `twfrontend/` uses Tailwind for layout and keeps theme variables in `twfrontend/src/styles.scss`.
 - Theming: body gets `.theme-dark` class for dark mode. Toggle with a button in the header (sun/moon icons). Persist to `localStorage` key `smart-advisor.theme`.
 - Navigation: left-side collapsible drawer (scrollable). The menu button is on the left of the top bar.
 - Timeline page: quick presets WTD/MTD/Last week/Last month/Last 3M; manual date changes clear preset and allow refresh.
@@ -111,6 +112,7 @@ File Map (UI features)
 - NGINX SPA + API proxy: `frontend/nginx.conf`
 - TradV Frontend shell + lightweight charts: `tradvfrontend/src/app/home/home.component.{html,ts,scss}`, `tradvfrontend/src/app/shared/chart-panel/chart-panel.component.{html,ts,scss}`
 - TradV AI timing history page: `tradvfrontend/src/app/ai-history/ai-history.component.{html,ts,scss}`
+- Tailwind Frontend shell + theme: `twfrontend/src/app/app.component.{html,ts,scss}`, `twfrontend/src/styles.scss`
 - Backend CORS: `backend/app/main.py`
 
 Notes for Agents
