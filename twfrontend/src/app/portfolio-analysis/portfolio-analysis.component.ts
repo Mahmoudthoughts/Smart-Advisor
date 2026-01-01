@@ -3,7 +3,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map, switchMap } from 'rxjs/operators';
 import type { EChartsOption } from 'echarts';
-import { NgxEchartsDirective } from 'ngx-echarts';
+import { NgxEchartsModule } from 'ngx-echarts';
 
 import { PortfolioDataService, SymbolSearchResult, TimelineResponse, WatchlistSymbol } from '../portfolio-data.service';
 
@@ -38,7 +38,7 @@ interface GroupBucket {
 @Component({
   selector: 'app-portfolio-analysis',
   standalone: true,
-  imports: [CommonModule, NgxEchartsDirective],
+  imports: [CommonModule, NgxEchartsModule],
   templateUrl: './portfolio-analysis.component.html',
   styleUrls: ['./portfolio-analysis.component.scss']
 })

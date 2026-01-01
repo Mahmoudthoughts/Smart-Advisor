@@ -38,7 +38,13 @@
   </div>
 
   <div class="panel" *ngIf="!isLoading() && !loadError() && holdings().length > 0">
-    <div echarts [options]="chartOption()" [autoResize]="true" class="treemap"></div>
+    <div
+      echarts
+      [options]="chartOption()"
+      [autoResize]="true"
+      class="treemap"
+      style="height: 520px; width: 100%;"
+    ></div>
     <p class="muted note">
       Industry metadata is not provided by the data source yet; symbols without metadata fall under "Unknown".
     </p>
