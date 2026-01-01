@@ -17,6 +17,7 @@ from .portfolio import (
     PortfolioSymbol,
     Transaction,
 )
+from .session_summary import SessionSummary
 from .sentiment import SignalEvent, TickerSentimentDaily
 
 __all__ = [
@@ -39,4 +40,5 @@ __all__ = [
     "IntradayBar",
     "MacroEvent",
     "DashboardKPI",
+    "SessionSummary",
 ]
