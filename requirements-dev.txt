@@ -1,0 +1,7 @@
+lightgbm
+joblib
+pandas
+pyarrow
+pytest
+flake8
+mypy
