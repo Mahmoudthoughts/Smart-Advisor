@@ -266,6 +266,28 @@
   align-items: center;
 }
 
+.ai-card .ai-provider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 200px;
+}
+
+.ai-card .ai-provider label {
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.ai-card .ai-provider select {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-border);
+  padding: 0.45rem 0.75rem;
+  background: var(--color-surface-alt);
+  color: var(--color-text);
+}
+
 .ai-card .ghost {
   border-radius: 999px;
   padding: 0.6rem 1.2rem;

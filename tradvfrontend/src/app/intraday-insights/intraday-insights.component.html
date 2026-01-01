@@ -101,6 +101,19 @@
         <h2>AI timing insight</h2>
         <p>Generated using intraday data for {{ selectedSymbol() }} ({{ durationDays() }} days, {{ barSize() }}).</p>
       </div>
+      <div class="ai-provider">
+        <label for="llmProviderSelect">LLM provider</label>
+        <select
+          id="llmProviderSelect"
+          [value]="llmProviderId()"
+          (change)="llmProviderId.set($any($event.target).value)"
+        >
+          <option value="">Use default</option>
+          <option *ngFor="let provider of llmProviders()" [value]="provider.id">
+            {{ provider.display_name }} ({{ provider.provider }})
+          </option>
+        </select>
+      </div>
       <div class="ai-actions">
         <a
           class="ghost"
@@ -117,6 +130,7 @@
 
     <p class="status" *ngIf="aiLoading()">Generating AI timing insight...</p>
     <p class="error" *ngIf="aiError()">{{ aiError() }}</p>
+    <p class="error" *ngIf="llmProviderError()">{{ llmProviderError() }}</p>
 
     <div class="ai-body" *ngIf="aiResult() as ai">
       <p class="summary-text">{{ ai.summary }}</p>

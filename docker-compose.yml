@@ -159,6 +159,8 @@ services:
       AI_TIMING_DEFAULT_TZ: ${AI_TIMING_DEFAULT_TZ:-US/Eastern}
     ports:
       - '8300:8300'
+    extra_hosts:
+      - "model-runner.docker.internal:host-gateway"
 
   ib-gateway:
     restart: always

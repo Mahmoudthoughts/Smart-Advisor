@@ -37,6 +37,7 @@ export type AiTimingRequest = {
   timezone: string;
   use_rth: boolean;
   force_refresh?: boolean;
+  llm_provider_id?: string | null;
   symbol_name?: string | null;
   session_summaries?: Array<{
     date: string;
@@ -57,6 +58,15 @@ export type AiTimingRequest = {
   }>;
 };
 
+export type LlmProviderOption = {
+  id: string;
+  provider: string;
+  display_name: string;
+  model?: string | null;
+  base_url?: string | null;
+  is_default: boolean;
+};
+
 @Injectable({ providedIn: 'root' })
 export class AiTimingService {
   private readonly http = inject(HttpClient);
@@ -64,6 +74,10 @@ export class AiTimingService {
 
   getTiming(payload: AiTimingRequest): Observable<AiTimingResponse> {
     return this.http.post<AiTimingResponse>(`${this.baseUrl}/ai/timing`, payload);
+  }
+
+  getLlmProviders(): Observable<LlmProviderOption[]> {
+    return this.http.get<LlmProviderOption[]>(`${this.baseUrl}/ai/llm-providers`);
   }
 
   getTimingHistory(params: {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import logging
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 from fastapi import FastAPI, HTTPException, status
-from openai import OpenAI
+from openai import OpenAI, NotFoundError
 from pydantic import BaseModel, Field
 
 from config import get_settings
@@ -302,6 +303,101 @@ def build_fallback_response(
     }
 
 
+def build_text_response(
+    text: str, features: dict[str, Any], citations: list[Citation]
+) -> dict[str, Any]:
+    return {
+        "summary": text.strip(),
+        "best_buy_window": features.get("best_buy_window", "n/a"),
+        "best_sell_window": features.get("best_sell_window", "n/a"),
+        "confidence": features.get("confidence", 0.0),
+        "citations": [c.dict() for c in citations],
+    }
+
+
+def normalize_llm_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    if "summary" in payload:
+        return payload
+    recommendation = payload.get("recommendation") or payload.get("timing_recommendation")
+    summary = None
+    if isinstance(recommendation, dict):
+        summary = recommendation.get("rationale") or recommendation.get("timing")
+    elif isinstance(recommendation, str):
+        summary = recommendation
+    return {
+        "summary": summary,
+        "best_buy_window": payload.get("best_buy_window")
+        or (payload.get("time_windows") or {}).get("buy")
+        or (payload.get("timing_recommendation") or {}).get("best_buy"),
+        "best_sell_window": payload.get("best_sell_window")
+        or (payload.get("time_windows") or {}).get("sell")
+        or (payload.get("timing_recommendation") or {}).get("best_sell"),
+        "confidence": payload.get("confidence")
+        or payload.get("confidence_level")
+        or (payload.get("timing_recommendation") or {}).get("confidence"),
+        "citations": payload.get("citations"),
+    }
+
+
+def extract_json_candidate(text: str) -> str | None:
+    cleaned = text.strip()
+    if not cleaned:
+        return None
+    fence_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", cleaned, re.DOTALL)
+    if fence_match:
+        return fence_match.group(1)
+    json_match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+    if json_match:
+        return json_match.group(0)
+    return None
+
+
+def parse_llm_response(
+    raw_text: str, features: dict[str, Any], citations: list[Citation]
+) -> dict[str, Any]:
+    cleaned = (raw_text or "").strip()
+    if not cleaned:
+        return build_fallback_response(features, citations)
+    try:
+        parsed = json.loads(cleaned)
+    except json.JSONDecodeError:
+        candidate = extract_json_candidate(cleaned)
+        if candidate:
+            try:
+                parsed = json.loads(candidate)
+            except json.JSONDecodeError:
+                return build_text_response(cleaned, features, citations)
+        else:
+            return build_text_response(cleaned, features, citations)
+    if isinstance(parsed, dict):
+        normalized = normalize_llm_payload(parsed)
+        summary = normalized.get("summary")
+        if summary:
+            best_buy = normalized.get("best_buy_window") or features.get("best_buy_window", "n/a")
+            best_sell = normalized.get("best_sell_window") or features.get("best_sell_window", "n/a")
+            confidence = normalized.get("confidence")
+            if confidence is None:
+                confidence = features.get("confidence", 0.0)
+            return {
+                "summary": str(summary),
+                "best_buy_window": best_buy,
+                "best_sell_window": best_sell,
+                "confidence": confidence,
+                "citations": normalized.get("citations") or [c.dict() for c in citations],
+            }
+    return build_text_response(cleaned, features, citations)
+
+
+def _alternate_base_url(base_url: str | None) -> str | None:
+    if not base_url:
+        return None
+    cleaned = base_url.rstrip("/")
+    if cleaned.endswith("/v1"):
+        candidate = cleaned[: -len("/v1")]
+        return candidate or None
+    return f"{cleaned}/v1"
+
+
 async def call_llm(
     payload: TimingRequest, features: dict[str, Any], citations: list[Citation]
 ) -> dict[str, Any]:
@@ -375,43 +471,54 @@ async def call_llm(
         },
     }
 
-    try:
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    "You are a trading assistant. Provide educational, non-financial advice. "
-                    "Use only the provided citations in square brackets like [C1]. "
-                    "Do not mention you are an AI. Keep it concise."
-                ),
-            },
-            {
-                "role": "user",
-                "content": (
-                    "Using the provided intraday feature summary, write a short recommendation "
-                    "for day-trading timing. Use citations for every factual claim. "
-                    "Return JSON matching the schema."
-                ),
-            },
-            {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
-        ]
-        use_responses = provider_name == "openai" and base_url is None and hasattr(client, "responses")
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "You are a trading assistant. Provide educational, non-financial advice. "
+                "Use only the provided citations in square brackets like [C1]. "
+                "Do not mention you are an AI. Keep it concise."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Using the provided intraday feature summary, write a short recommendation "
+                "for day-trading timing. Use citations for every factual claim. "
+                "Return JSON matching the schema."
+            ),
+        },
+        {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
+    ]
+
+    def run_request(active_client: OpenAI) -> dict[str, Any]:
+        use_responses = provider_name == "openai" and base_url is None and hasattr(active_client, "responses")
         if use_responses:
-            response = client.responses.create(
+            response = active_client.responses.create(
                 model=model,
                 input=messages,
                 response_format={"type": "json_schema", "json_schema": schema},
             )
             raw_text = response.output_text
         else:
-            response = client.chat.completions.create(
+            response = active_client.chat.completions.create(
                 model=model,
                 messages=messages,
             )
             raw_text = response.choices[0].message.content or ""
-        parsed = json.loads(raw_text)
+        parsed = parse_llm_response(raw_text, features, citations)
         logger.info("AI timing response: %s", json.dumps(parsed, ensure_ascii=True))
         return parsed
+
+    try:
+        return run_request(client)
+    except NotFoundError:
+        alt_base_url = _alternate_base_url(base_url)
+        if not alt_base_url:
+            raise
+        logger.warning("LLM endpoint not found at %s; retrying with %s", base_url, alt_base_url)
+        retry_client = OpenAI(api_key=api_key, base_url=alt_base_url)
+        return run_request(retry_client)
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("AI timing call failed: %s", exc)
         return build_fallback_response(features, citations)

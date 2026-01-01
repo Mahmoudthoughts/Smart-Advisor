@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 import { SeriesMarker, Time } from 'lightweight-charts';
 
 import { IntradayBar, PortfolioDataService, WatchlistSymbol } from '../portfolio-data.service';
-import { AiTimingResponse, AiTimingService } from '../services/ai-timing.service';
+import { AiTimingResponse, AiTimingService, LlmProviderOption } from '../services/ai-timing.service';
 import { createColumnVisibility } from '../shared/column-visibility';
 import { TvChartComponent, TvLegendItem, TvSeries } from '../shared/tv-chart/tv-chart.component';
 
@@ -185,6 +185,9 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
   readonly aiLoading = signal<boolean>(false);
   readonly aiError = signal<string | null>(null);
   readonly aiResult = signal<AiTimingResponse | null>(null);
+  readonly llmProviders = signal<LlmProviderOption[]>([]);
+  readonly llmProviderId = signal<string>('');
+  readonly llmProviderError = signal<string | null>(null);
 
   readonly selectedSymbolName = computed(() => {
     const symbol = this.selectedSymbol();
@@ -376,6 +379,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadWatchlist();
+    this.loadLlmProviders();
     this.querySub = this.route.queryParamMap.subscribe((params) => {
       const symbol = (params.get('symbol') ?? '').toUpperCase();
       if (symbol && symbol !== this.selectedSymbol()) {
@@ -401,6 +405,23 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
         }
       },
       error: () => this.watchlist.set([])
+    });
+  }
+
+  loadLlmProviders(): void {
+    this.llmProviderError.set(null);
+    this.aiTiming.getLlmProviders().subscribe({
+      next: (providers) => {
+        this.llmProviders.set(providers);
+        const preferred = providers.find((item) => item.is_default) ?? null;
+        if (preferred && !this.llmProviderId()) {
+          this.llmProviderId.set(preferred.id);
+        }
+      },
+      error: () => {
+        this.llmProviders.set([]);
+        this.llmProviderError.set('Unable to load LLM providers.');
+      }
     });
   }
 
@@ -586,6 +607,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
     }
     this.aiLoading.set(true);
     this.aiError.set(null);
+    const selectedProviderId = this.llmProviderId();
     const payload = {
       symbol,
       bar_size: this.barSize(),
@@ -593,6 +615,7 @@ export class IntradayInsightsComponent implements OnInit, OnDestroy {
       timezone: this.aiTimezone(),
       use_rth: this.useRth(),
       force_refresh: forceRefresh,
+      llm_provider_id: selectedProviderId ? selectedProviderId : undefined,
       symbol_name: this.selectedSymbolName(),
       session_summaries: this.sessionSummaries().map((summary) => ({
         date: summary.date,

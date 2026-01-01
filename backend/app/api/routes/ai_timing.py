@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import UUID
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -51,6 +52,7 @@ class TimingRequest(BaseModel):
     session_summaries: list[SessionSummaryPayload] | None = None
     bars: list[IntradayBarPayload]
     force_refresh: bool | None = None
+    llm_provider_id: UUID | None = None
 
 
 class TimingHistoryEntry(BaseModel):
@@ -64,6 +66,15 @@ class TimingHistoryEntry(BaseModel):
     created_at: datetime
     request_payload: dict[str, Any]
     response_payload: dict[str, Any]
+
+
+class LlmProviderOption(BaseModel):
+    id: UUID
+    provider: str
+    display_name: str
+    model: str | None
+    base_url: str | None
+    is_default: bool
 
 
 @router.post("/timing")
@@ -85,7 +96,16 @@ async def get_timing(
     baggage = request.headers.get("baggage")
     if baggage:
         headers["baggage"] = baggage
-    llm_provider = await _get_default_llm_provider(db)
+    llm_provider = None
+    if payload.llm_provider_id:
+        llm_provider = await _get_llm_provider(db, payload.llm_provider_id)
+        if not llm_provider:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Requested LLM provider was not found or is inactive.",
+            )
+    else:
+        llm_provider = await _get_default_llm_provider(db)
     proxy_payload: dict[str, Any] = payload.model_dump(mode="json")
     if llm_provider:
         proxy_payload["llm"] = {
@@ -156,6 +176,27 @@ async def get_timing_history(
     ]
 
 
+@router.get("/llm-providers", response_model=list[LlmProviderOption])
+async def list_llm_providers(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[LlmProviderOption]:
+    _ = current_user
+    result = await db.execute(select(LlmProvider).where(LlmProvider.is_active.is_(True)))
+    providers = result.scalars().all()
+    return [
+        LlmProviderOption(
+            id=provider.id,
+            provider=provider.provider,
+            display_name=provider.display_name,
+            model=provider.model,
+            base_url=provider.base_url,
+            is_default=provider.is_default,
+        )
+        for provider in providers
+    ]
+
+
 def _parse_history_date(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -198,6 +239,13 @@ async def _save_history(
 async def _get_default_llm_provider(db: AsyncSession) -> LlmProvider | None:
     result = await db.execute(
         select(LlmProvider).where(LlmProvider.is_active.is_(True), LlmProvider.is_default.is_(True))
+    )
+    return result.scalar_one_or_none()
+
+
+async def _get_llm_provider(db: AsyncSession, provider_id: UUID) -> LlmProvider | None:
+    result = await db.execute(
+        select(LlmProvider).where(LlmProvider.id == provider_id, LlmProvider.is_active.is_(True))
     )
     return result.scalar_one_or_none()
 
