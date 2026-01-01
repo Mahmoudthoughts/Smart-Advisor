@@ -101,6 +101,7 @@ Common Tasks
 - Add a date preset: follow Timeline or Symbol Detail patterns; compute ISO `YYYY-MM-DD` strings and reload data.
 - Extend symbol header data: enrich via `PortfolioDataService.searchSymbols()`; avoid blocking UI if provider data is missing.
 - Manage transactions: inline edit/delete live in `frontend/src/app/transactions/transactions.component.*`; backend proxies (`/portfolio/transactions/{id}`) to the portfolio service, which now implements `DELETE` alongside POST/PUT.
+- Manage AI timing LLM providers: update `/admin/llm-providers` in `backend/smart_advisor/api/admin.py` and the admin UI/service under each frontend.
 
 File Map (UI features)
  - Header, sidebar, theme toggle, top tabs + mega dropdown: `frontend/src/app/app.component.{html,ts,scss}`
@@ -124,7 +125,7 @@ Notes for Agents
    - Ingest: `DATABASE_URL`, `ALPHAVANTAGE_API_KEY`, `ALPHAVANTAGE_REQUESTS_PER_MINUTE`, `BASE_CURRENCY`, OTEL envs.
  - AI timing env vars to keep in sync:
    - Backend: `AI_TIMING_BASE_URL`.
-   - AI timing: `OPENAI_API_KEY`, `OPENAI_MODEL`, `AI_TIMING_CACHE_TTL_SEC`, `AI_TIMING_DEFAULT_TZ`.
+   - AI timing: `OPENAI_API_KEY` (optional for local providers), `OPENAI_MODEL`, `AI_TIMING_CACHE_TTL_SEC`, `AI_TIMING_DEFAULT_TZ`.
 - Portfolio service calls must include both `X-Internal-Token` (when configured) and `X-User-Id`; reuse the helpers under `app/services/portfolio.py` rather than issuing ad-hoc httpx requests.
 
 This document applies to all subdirectories unless overridden by a deeper AGENTS.md.

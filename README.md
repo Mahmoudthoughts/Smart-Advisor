@@ -115,11 +115,13 @@ The AI timing microservice under `services/ai_timing` computes intraday timing f
 
 ### Configuration
 
-- `OPENAI_API_KEY` — OpenAI API key used by the AI timing service.
+- `OPENAI_API_KEY` — OpenAI API key used by the AI timing service (optional when using a local provider).
 - `OPENAI_MODEL` — Model name (default `gpt-4.1-mini`).
 - `AI_TIMING_CACHE_TTL_SEC` — Cache TTL in seconds (default `900`).
 - `AI_TIMING_DEFAULT_TZ` — Default timezone for session grouping (default `US/Eastern`).
 - Backend requires `AI_TIMING_BASE_URL` to reach the service (Compose sets `http://ai-timing:8300`).
+
+Admin users can configure AI timing LLM providers via `/admin/llm-providers` (provider ID, model, base URL, API key, default selection); the backend forwards the active default config to the AI timing service.
 
 ## Recent UI changes and usage
 
@@ -190,7 +192,7 @@ The AI timing microservice under `services/ai_timing` computes intraday timing f
   - Inline editing plus delete actions keep the manual trade history clean; ledger recomputes portfolio metrics after each change.
   - Files: `frontend/src/app/transactions/transactions.component.{html,ts,scss}`, backend proxy `backend/app/api/routes/portfolio.py`, portfolio service routes/services.
 - Administration dashboard
-  - Manage Smart Advisor users (create, promote to admin, reset passwords) and configure stock list data providers with API keys/default selection.
+  - Manage Smart Advisor users (create, promote to admin, reset passwords), configure stock list providers, and manage AI timing LLM providers (API keys, base URLs, default selection).
   - Files: `frontend/src/app/admin/admin.component.{html,ts,scss}`, `frontend/src/app/admin.service.ts`, backend admin routes in `backend/smart_advisor/api/admin.py`.
 
 - CORS and API proxy

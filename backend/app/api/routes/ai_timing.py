@@ -16,7 +16,7 @@ from app.api.dependencies.auth import get_current_user
 from app.config import get_settings
 from app.db.session import get_db
 from app.models.ai_timing import AiTimingHistory
-from smart_advisor.api.models import User
+from smart_advisor.api.models import LlmProvider, User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -85,10 +85,19 @@ async def get_timing(
     baggage = request.headers.get("baggage")
     if baggage:
         headers["baggage"] = baggage
+    llm_provider = await _get_default_llm_provider(db)
+    proxy_payload: dict[str, Any] = payload.model_dump(mode="json")
+    if llm_provider:
+        proxy_payload["llm"] = {
+            "provider": llm_provider.provider,
+            "api_key": llm_provider.api_key,
+            "base_url": llm_provider.base_url,
+            "model": llm_provider.model,
+        }
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post(url, json=payload.model_dump(mode="json"), headers=headers)
+            resp = await client.post(url, json=proxy_payload, headers=headers)
         if resp.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY,
@@ -184,6 +193,13 @@ async def _save_history(
     except Exception:  # pragma: no cover - defensive
         await db.rollback()
         logger.exception("Failed to persist AI timing history.")
+
+
+async def _get_default_llm_provider(db: AsyncSession) -> LlmProvider | None:
+    result = await db.execute(
+        select(LlmProvider).where(LlmProvider.is_active.is_(True), LlmProvider.is_default.is_(True))
+    )
+    return result.scalar_one_or_none()
 
 
 __all__ = ["router"]

@@ -88,3 +88,19 @@ class StockListProvider(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
+
+class LlmProvider(Base):
+    __tablename__ = "llm_providers"
+    __table_args__ = (UniqueConstraint("provider", name="uq_llm_provider"),)
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=_uuid_pk)
+    provider: Mapped[str] = mapped_column(String(64))
+    display_name: Mapped[str] = mapped_column(String(255))
+    api_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    base_url: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+

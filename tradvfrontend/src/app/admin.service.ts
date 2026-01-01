@@ -45,6 +45,29 @@ export interface StockListProviderUpsert {
   readonly is_default: boolean;
 }
 
+export interface LlmProviderConfig {
+  readonly id: string;
+  readonly provider: string;
+  readonly display_name: string;
+  readonly api_key: string | null;
+  readonly base_url: string | null;
+  readonly model: string | null;
+  readonly is_active: boolean;
+  readonly is_default: boolean;
+  readonly created_at: string;
+  readonly updated_at: string;
+}
+
+export interface LlmProviderUpsert {
+  readonly provider: string;
+  readonly display_name: string;
+  readonly api_key?: string | null;
+  readonly base_url?: string | null;
+  readonly model?: string | null;
+  readonly is_active: boolean;
+  readonly is_default: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AdminService {
   private readonly http = inject(HttpClient);
@@ -76,6 +99,21 @@ export class AdminService {
   updateProvider(providerId: string, payload: StockListProviderUpsert): Observable<StockListProviderConfig> {
     return this.http.patch<StockListProviderConfig>(
       `${environment.apiBaseUrl}/admin/providers/${providerId}`,
+      payload
+    );
+  }
+
+  listLlmProviders(): Observable<LlmProviderConfig[]> {
+    return this.http.get<LlmProviderConfig[]>(`${environment.apiBaseUrl}/admin/llm-providers`);
+  }
+
+  createLlmProvider(payload: LlmProviderUpsert): Observable<LlmProviderConfig> {
+    return this.http.post<LlmProviderConfig>(`${environment.apiBaseUrl}/admin/llm-providers`, payload);
+  }
+
+  updateLlmProvider(providerId: string, payload: LlmProviderUpsert): Observable<LlmProviderConfig> {
+    return this.http.patch<LlmProviderConfig>(
+      `${environment.apiBaseUrl}/admin/llm-providers/${providerId}`,
       payload
     );
   }

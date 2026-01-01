@@ -7,10 +7,12 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .database import Database
-from .models import StockListProvider, User
+from .models import LlmProvider, StockListProvider, User
 from .schemas import (
     AdminCreateUserRequest,
     AdminUpdateUserRequest,
+    LlmProviderOut,
+    LlmProviderUpsert,
     StockListProviderOut,
     StockListProviderUpsert,
     UserOut,
@@ -130,6 +132,63 @@ def get_admin_router(database: Database) -> APIRouter:
         await session.refresh(provider)
         return _to_provider_out(provider)
 
+    @router.get("/llm-providers", response_model=list[LlmProviderOut])
+    async def list_llm_providers(
+        session: AsyncSession = Depends(database.get_session),
+    ) -> list[LlmProviderOut]:
+        result = await session.execute(select(LlmProvider))
+        providers = result.scalars().all()
+        return [_to_llm_provider_out(provider) for provider in providers]
+
+    @router.post("/llm-providers", response_model=LlmProviderOut, status_code=status.HTTP_201_CREATED)
+    async def create_llm_provider(
+        payload: LlmProviderUpsert, session: AsyncSession = Depends(database.get_session)
+    ) -> LlmProviderOut:
+        provider = LlmProvider(
+            provider=payload.provider.strip(),
+            display_name=payload.display_name.strip(),
+            api_key=payload.api_key,
+            base_url=payload.base_url,
+            model=payload.model,
+            is_active=payload.is_active,
+            is_default=payload.is_default,
+        )
+        session.add(provider)
+        await session.flush()
+
+        if payload.is_default:
+            await _reset_default_llm_providers(session, provider.id)
+
+        await session.commit()
+        await session.refresh(provider)
+        return _to_llm_provider_out(provider)
+
+    @router.patch("/llm-providers/{provider_id}", response_model=LlmProviderOut)
+    async def update_llm_provider(
+        provider_id: UUID,
+        payload: LlmProviderUpsert,
+        session: AsyncSession = Depends(database.get_session),
+    ) -> LlmProviderOut:
+        provider = await session.get(LlmProvider, provider_id)
+        if provider is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Provider not found")
+
+        provider.provider = payload.provider.strip()
+        provider.display_name = payload.display_name.strip()
+        provider.api_key = payload.api_key
+        provider.base_url = payload.base_url
+        provider.model = payload.model
+        provider.is_active = payload.is_active
+        provider.is_default = payload.is_default
+
+        await session.flush()
+        if payload.is_default:
+            await _reset_default_llm_providers(session, provider_id)
+
+        await session.commit()
+        await session.refresh(provider)
+        return _to_llm_provider_out(provider)
+
     return router
 
 
@@ -137,6 +196,14 @@ async def _reset_default_providers(session: AsyncSession, keep_id: UUID) -> None
     await session.execute(
         update(StockListProvider)
         .where(StockListProvider.id != keep_id)
+        .values(is_default=False)
+    )
+
+
+async def _reset_default_llm_providers(session: AsyncSession, keep_id: UUID) -> None:
+    await session.execute(
+        update(LlmProvider)
+        .where(LlmProvider.id != keep_id)
         .values(is_default=False)
     )
 
@@ -158,6 +225,21 @@ def _to_provider_out(provider: StockListProvider) -> StockListProviderOut:
         display_name=provider.display_name,
         api_key=provider.api_key,
         base_url=provider.base_url,
+        is_active=provider.is_active,
+        is_default=provider.is_default,
+        created_at=provider.created_at,
+        updated_at=provider.updated_at,
+    )
+
+
+def _to_llm_provider_out(provider: LlmProvider) -> LlmProviderOut:
+    return LlmProviderOut(
+        id=provider.id,
+        provider=provider.provider,
+        display_name=provider.display_name,
+        api_key=provider.api_key,
+        base_url=provider.base_url,
+        model=provider.model,
         is_active=provider.is_active,
         is_default=provider.is_default,
         created_at=provider.created_at,

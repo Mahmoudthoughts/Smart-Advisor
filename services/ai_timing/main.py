@@ -43,6 +43,13 @@ class SessionSummaryPayload(BaseModel):
     recovery_pct: float | None = None
 
 
+class LlmConfig(BaseModel):
+    provider: str | None = None
+    api_key: str | None = None
+    base_url: str | None = None
+    model: str | None = None
+
+
 class TimingRequest(BaseModel):
     symbol: str = Field(..., min_length=1)
     bar_size: str = Field(..., description="e.g., 5 mins, 15 mins")
@@ -53,6 +60,7 @@ class TimingRequest(BaseModel):
     session_summaries: list[SessionSummaryPayload] | None = None
     bars: list[IntradayBar]
     force_refresh: bool = Field(default=False, description="Bypass cached timing response")
+    llm: LlmConfig | None = None
 
 
 class Citation(BaseModel):
@@ -117,6 +125,9 @@ def build_cache_key(payload: TimingRequest, tz_name: str) -> str:
     dates = [bar.date for bar in payload.bars]
     first = min(dates)
     last = max(dates)
+    llm_provider = payload.llm.provider if payload.llm and payload.llm.provider else "default"
+    llm_model = payload.llm.model if payload.llm and payload.llm.model else "default"
+    llm_base_url = payload.llm.base_url if payload.llm and payload.llm.base_url else "default"
     return "|".join(
         [
             payload.symbol.upper(),
@@ -127,6 +138,9 @@ def build_cache_key(payload: TimingRequest, tz_name: str) -> str:
             str(len(payload.bars)),
             first,
             last,
+            llm_provider,
+            llm_model,
+            llm_base_url,
         ]
     )
 
@@ -270,6 +284,24 @@ def build_citations(features: dict[str, Any]) -> list[Citation]:
     ]
 
 
+def build_fallback_response(
+    features: dict[str, Any], citations: list[Citation]
+) -> dict[str, Any]:
+    return {
+        "summary": (
+            "Based on the recent sessions, the intraday lows tend to cluster around "
+            f"{features.get('median_low_time')} and highs around {features.get('median_high_time')}. "
+            f"Consider the buy window {features.get('best_buy_window')} and sell window "
+            f"{features.get('best_sell_window')} as the most consistent timing bands. "
+            "Use these as a timing reference, not a guarantee."
+        ),
+        "best_buy_window": features.get("best_buy_window", "n/a"),
+        "best_sell_window": features.get("best_sell_window", "n/a"),
+        "confidence": features.get("confidence", 0.0),
+        "citations": [c.dict() for c in citations],
+    }
+
+
 async def call_llm(
     payload: TimingRequest, features: dict[str, Any], citations: list[Citation]
 ) -> dict[str, Any]:
@@ -283,7 +315,22 @@ async def call_llm(
         }
 
     settings = get_settings()
-    client = OpenAI(api_key=settings.openai_api_key)
+    llm_config = payload.llm
+    provider_name = (llm_config.provider or "openai").lower() if llm_config else "openai"
+    model = settings.openai_model
+    if llm_config and llm_config.model:
+        model = llm_config.model
+    if llm_config and llm_config.api_key:
+        api_key = llm_config.api_key
+    elif provider_name != "openai":
+        api_key = "local"
+    else:
+        api_key = settings.openai_api_key
+    if provider_name == "openai" and not api_key:
+        logger.warning("OpenAI API key is missing; returning fallback response.")
+        return build_fallback_response(features, citations)
+    base_url = llm_config.base_url if llm_config and llm_config.base_url else None
+    client = OpenAI(api_key=api_key, base_url=base_url) if base_url else OpenAI(api_key=api_key)
 
     prompt = {
         "symbol": payload.symbol.upper(),
@@ -348,16 +395,17 @@ async def call_llm(
             },
             {"role": "user", "content": json.dumps(prompt, ensure_ascii=True)},
         ]
-        if hasattr(client, "responses"):
+        use_responses = provider_name == "openai" and base_url is None and hasattr(client, "responses")
+        if use_responses:
             response = client.responses.create(
-                model=settings.openai_model,
+                model=model,
                 input=messages,
                 response_format={"type": "json_schema", "json_schema": schema},
             )
             raw_text = response.output_text
         else:
             response = client.chat.completions.create(
-                model=settings.openai_model,
+                model=model,
                 messages=messages,
             )
             raw_text = response.choices[0].message.content or ""
@@ -366,19 +414,7 @@ async def call_llm(
         return parsed
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("AI timing call failed: %s", exc)
-        return {
-            "summary": (
-                "Based on the recent sessions, the intraday lows tend to cluster around "
-                f"{features.get('median_low_time')} and highs around {features.get('median_high_time')}. "
-                f"Consider the buy window {features.get('best_buy_window')} and sell window "
-                f"{features.get('best_sell_window')} as the most consistent timing bands. "
-                "Use these as a timing reference, not a guarantee."
-            ),
-            "best_buy_window": features.get("best_buy_window", "n/a"),
-            "best_sell_window": features.get("best_sell_window", "n/a"),
-            "confidence": features.get("confidence", 0.0),
-            "citations": [c.dict() for c in citations],
-        }
+        return build_fallback_response(features, citations)
 
 
 def parse_datetime(value: str) -> datetime:

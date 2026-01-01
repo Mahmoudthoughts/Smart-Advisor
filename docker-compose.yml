@@ -1,6 +1,14 @@
 version: '3.11'
 
 services:
+  llm:
+    provider:
+      type: model
+      options:
+        model: ai/llama3.2:latest	
+        environment:
+          - MAX_TOKENS=4096
+          - BATCH_SIZE=4096
   db:
     image: postgres:16
     environment:

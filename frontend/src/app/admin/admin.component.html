@@ -3,7 +3,7 @@
     <div>
       <p class="eyebrow">Control center</p>
       <h1>Administration</h1>
-      <p class="lede">Manage user access and configure which providers feed your stock lists.</p>
+      <p class="lede">Manage user access and configure stock list and LLM providers.</p>
     </div>
   </header>
 
@@ -189,6 +189,128 @@
       </div>
       <ng-template #providersLoading>
         <div class="loading">Loading providers…</div>
+      </ng-template>
+    </article>
+
+    <article class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">LLM</p>
+          <h2>AI timing providers</h2>
+          <p class="hint">Switch between OpenAI and local models by setting a default.</p>
+        </div>
+      </div>
+
+      <form class="card" [formGroup]="llmProviderForm" (ngSubmit)="submitNewLlmProvider()">
+        <div class="form-grid">
+          <label>
+            <span>Provider ID</span>
+            <input type="text" formControlName="provider" placeholder="openai" />
+          </label>
+          <label>
+            <span>Display name</span>
+            <input type="text" formControlName="display_name" placeholder="OpenAI" />
+          </label>
+          <label>
+            <span>Model</span>
+            <input type="text" formControlName="model" placeholder="gpt-4.1-mini" />
+          </label>
+          <label>
+            <span>API key</span>
+            <input type="text" formControlName="api_key" placeholder="Optional" />
+          </label>
+          <label>
+            <span>Base URL</span>
+            <input type="text" formControlName="base_url" placeholder="http://local-llm:8000/v1" />
+          </label>
+        </div>
+        <div class="toggles">
+          <label>
+            <input type="checkbox" formControlName="is_active" />
+            <span>Active</span>
+          </label>
+          <label>
+            <input type="checkbox" formControlName="is_default" />
+            <span>Default</span>
+          </label>
+        </div>
+        <div class="actions">
+          <button type="submit">Add LLM provider</button>
+          <div class="status" *ngIf="llmProviderStatus()">{{ llmProviderStatus() }}</div>
+          <div class="status error" *ngIf="llmProviderError()">{{ llmProviderError() }}</div>
+        </div>
+      </form>
+
+      <div class="list" *ngIf="!isLoadingLlmProviders(); else llmProvidersLoading">
+        <div class="empty" *ngIf="llmProviders().length === 0">No LLM providers configured yet.</div>
+        <div class="list-row" *ngFor="let provider of llmProviders(); trackBy: trackById">
+          <div class="user-meta">
+            <div class="name">{{ provider.display_name }}</div>
+            <div class="muted">{{ provider.provider }}</div>
+            <div class="muted">Updated {{ provider.updated_at | date: 'medium' }}</div>
+          </div>
+          <div class="provider-controls">
+            <label>
+              <span>Display name</span>
+              <input
+                type="text"
+                [value]="llmProviderDrafts()[provider.id]?.display_name || provider.display_name"
+                (input)="editLlmProviderField(provider.id, 'display_name', $any($event.target).value)"
+              />
+            </label>
+            <label>
+              <span>Model</span>
+              <input
+                type="text"
+                [value]="llmProviderDrafts()[provider.id]?.model || ''"
+                (input)="editLlmProviderField(provider.id, 'model', $any($event.target).value)"
+                placeholder="Optional"
+              />
+            </label>
+            <label>
+              <span>API key</span>
+              <input
+                type="text"
+                [value]="llmProviderDrafts()[provider.id]?.api_key || ''"
+                (input)="editLlmProviderField(provider.id, 'api_key', $any($event.target).value)"
+                placeholder="Optional"
+              />
+            </label>
+            <label>
+              <span>Base URL</span>
+              <input
+                type="text"
+                [value]="llmProviderDrafts()[provider.id]?.base_url || ''"
+                (input)="editLlmProviderField(provider.id, 'base_url', $any($event.target).value)"
+                placeholder="Optional"
+              />
+            </label>
+            <div class="toggles inline">
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="llmProviderDrafts()[provider.id]?.is_active ?? provider.is_active"
+                  (change)="editLlmProviderField(provider.id, 'is_active', $any($event.target).checked)"
+                />
+                <span>Active</span>
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  [checked]="llmProviderDrafts()[provider.id]?.is_default ?? provider.is_default"
+                  (change)="editLlmProviderField(provider.id, 'is_default', $any($event.target).checked)"
+                />
+                <span>Default</span>
+              </label>
+            </div>
+            <div class="row-actions">
+              <button type="button" (click)="saveLlmProvider(provider.id)">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <ng-template #llmProvidersLoading>
+        <div class="loading">Loading LLM providers...</div>
       </ng-template>
     </article>
   </div>

@@ -6,6 +6,8 @@ import {
   AdminService,
   AdminUser,
   AdminUserCreate,
+  LlmProviderConfig,
+  LlmProviderUpsert,
   StockListProviderConfig,
   StockListProviderUpsert
 } from '../admin.service';
@@ -23,14 +25,19 @@ export class AdminComponent implements OnInit {
 
   readonly users = signal<AdminUser[]>([]);
   readonly providers = signal<StockListProviderConfig[]>([]);
+  readonly llmProviders = signal<LlmProviderConfig[]>([]);
   readonly userStatus = signal<string | null>(null);
   readonly userError = signal<string | null>(null);
   readonly providerStatus = signal<string | null>(null);
   readonly providerError = signal<string | null>(null);
+  readonly llmProviderStatus = signal<string | null>(null);
+  readonly llmProviderError = signal<string | null>(null);
   readonly isLoadingUsers = signal<boolean>(true);
   readonly isLoadingProviders = signal<boolean>(true);
+  readonly isLoadingLlmProviders = signal<boolean>(true);
   readonly passwordDrafts = signal<Record<string, string>>({});
   readonly providerDrafts = signal<Record<string, StockListProviderUpsert | undefined>>({});
+  readonly llmProviderDrafts = signal<Record<string, LlmProviderUpsert | undefined>>({});
 
   readonly userForm = this.formBuilder.group({
     name: ['', [Validators.required, Validators.minLength(2)]],
@@ -48,9 +55,20 @@ export class AdminComponent implements OnInit {
     is_default: [false]
   });
 
+  readonly llmProviderForm = this.formBuilder.group({
+    provider: ['', [Validators.required, Validators.minLength(2)]],
+    display_name: ['', [Validators.required, Validators.minLength(2)]],
+    model: [''],
+    api_key: [''],
+    base_url: [''],
+    is_active: [true],
+    is_default: [false]
+  });
+
   ngOnInit(): void {
     this.loadUsers();
     this.loadProviders();
+    this.loadLlmProviders();
   }
 
   loadUsers(): void {
@@ -83,6 +101,23 @@ export class AdminComponent implements OnInit {
         this.providers.set([]);
         this.isLoadingProviders.set(false);
         this.providerError.set('Unable to load provider settings.');
+      }
+    });
+  }
+
+  loadLlmProviders(): void {
+    this.isLoadingLlmProviders.set(true);
+    this.llmProviderError.set(null);
+    this.adminService.listLlmProviders().subscribe({
+      next: (providers) => {
+        this.llmProviders.set(providers);
+        this.isLoadingLlmProviders.set(false);
+        this.syncLlmProviderDrafts(providers);
+      },
+      error: () => {
+        this.llmProviders.set([]);
+        this.isLoadingLlmProviders.set(false);
+        this.llmProviderError.set('Unable to load LLM provider settings.');
       }
     });
   }
@@ -182,9 +217,40 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  submitNewLlmProvider(): void {
+    this.llmProviderStatus.set(null);
+    this.llmProviderError.set(null);
+    if (this.llmProviderForm.invalid) {
+      this.llmProviderForm.markAllAsTouched();
+      return;
+    }
+    const payload = this.llmProviderForm.getRawValue();
+    this.adminService.createLlmProvider(payload as LlmProviderUpsert).subscribe({
+      next: (provider) => {
+        this.llmProviders.update((items) => [...items, provider]);
+        this.syncLlmProviderDrafts(this.llmProviders());
+        this.llmProviderStatus.set(`Created LLM provider ${provider.display_name}.`);
+        this.llmProviderForm.reset({ is_active: true, is_default: false });
+      },
+      error: (err) => {
+        const detail = err?.error?.detail ?? 'Unable to create the LLM provider.';
+        this.llmProviderError.set(typeof detail === 'string' ? detail : 'Unable to create the LLM provider.');
+      }
+    });
+  }
+
   editProviderField(providerId: string, field: keyof StockListProviderUpsert, value: string | boolean): void {
     this.providerDrafts.update((drafts) => {
       const current = drafts[providerId] ?? this.buildProviderDraft(this.providers().find((p) => p.id === providerId));
+      if (!current) return drafts;
+      return { ...drafts, [providerId]: { ...current, [field]: value } };
+    });
+  }
+
+  editLlmProviderField(providerId: string, field: keyof LlmProviderUpsert, value: string | boolean): void {
+    this.llmProviderDrafts.update((drafts) => {
+      const current =
+        drafts[providerId] ?? this.buildLlmProviderDraft(this.llmProviders().find((p) => p.id === providerId));
       if (!current) return drafts;
       return { ...drafts, [providerId]: { ...current, [field]: value } };
     });
@@ -207,6 +273,23 @@ export class AdminComponent implements OnInit {
     });
   }
 
+  saveLlmProvider(providerId: string): void {
+    const draft = this.llmProviderDrafts()[providerId];
+    if (!draft) return;
+    this.llmProviderStatus.set(null);
+    this.llmProviderError.set(null);
+    this.adminService.updateLlmProvider(providerId, draft).subscribe({
+      next: (provider) => {
+        this.llmProviders.update((items) => items.map((item) => (item.id === provider.id ? provider : item)));
+        this.syncLlmProviderDrafts(this.llmProviders());
+        this.llmProviderStatus.set(`Updated ${provider.display_name}.`);
+      },
+      error: () => {
+        this.llmProviderError.set('Unable to update the LLM provider right now.');
+      }
+    });
+  }
+
   trackById(_: number, item: { id: string }): string {
     return item.id;
   }
@@ -223,11 +306,32 @@ export class AdminComponent implements OnInit {
     };
   }
 
+  private buildLlmProviderDraft(provider?: LlmProviderConfig): LlmProviderUpsert | undefined {
+    if (!provider) return undefined;
+    return {
+      provider: provider.provider,
+      display_name: provider.display_name,
+      model: provider.model,
+      api_key: provider.api_key,
+      base_url: provider.base_url,
+      is_active: provider.is_active,
+      is_default: provider.is_default
+    };
+  }
+
   private syncProviderDrafts(providers: StockListProviderConfig[]): void {
     const drafts: Record<string, StockListProviderUpsert | undefined> = {};
     providers.forEach((provider) => {
       drafts[provider.id] = this.buildProviderDraft(provider)!;
     });
     this.providerDrafts.set(drafts);
+  }
+
+  private syncLlmProviderDrafts(providers: LlmProviderConfig[]): void {
+    const drafts: Record<string, LlmProviderUpsert | undefined> = {};
+    providers.forEach((provider) => {
+      drafts[provider.id] = this.buildLlmProviderDraft(provider)!;
+    });
+    this.llmProviderDrafts.set(drafts);
   }
 }
