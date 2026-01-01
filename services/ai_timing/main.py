@@ -274,13 +274,9 @@ async def call_llm(
     payload: TimingRequest, features: dict[str, Any], citations: list[Citation]
 ) -> dict[str, Any]:
     if features.get("session_count", 0) < 2:
-        return {
-            "summary": "Not enough sessions to estimate reliable intraday timing.",
-            "best_buy_window": features.get("best_buy_window", "n/a"),
-            "best_sell_window": features.get("best_sell_window", "n/a"),
-            "confidence": 0.0,
-            "citations": [c.dict() for c in citations],
-        }
+        return deterministic_response(
+            features, citations, note="Limited history; use these timing bands with caution."
+        )
 
     settings = get_settings()
     client = OpenAI(api_key=settings.openai_api_key)
@@ -366,19 +362,11 @@ async def call_llm(
         return parsed
     except Exception as exc:  # pragma: no cover - defensive
         logger.exception("AI timing call failed: %s", exc)
-        return {
-            "summary": (
-                "Based on the recent sessions, the intraday lows tend to cluster around "
-                f"{features.get('median_low_time')} and highs around {features.get('median_high_time')}. "
-                f"Consider the buy window {features.get('best_buy_window')} and sell window "
-                f"{features.get('best_sell_window')} as the most consistent timing bands. "
-                "Use these as a timing reference, not a guarantee."
-            ),
-            "best_buy_window": features.get("best_buy_window", "n/a"),
-            "best_sell_window": features.get("best_sell_window", "n/a"),
-            "confidence": features.get("confidence", 0.0),
-            "citations": [c.dict() for c in citations],
-        }
+        return deterministic_response(
+            features,
+            citations,
+            note="LLM unavailable; returning rule-based timing summary.",
+        )
 
 
 def parse_datetime(value: str) -> datetime:
@@ -455,3 +443,37 @@ def compute_confidence(session_count: int, buy_strength: float, sell_strength: f
     base = min(0.6, session_count / 10)
     strength = min(0.35, (abs(buy_strength) + abs(sell_strength)) / 6)
     return round(min(0.95, base + strength), 2)
+
+
+def deterministic_response(
+    features: dict[str, Any], citations: list[Citation], note: str | None = None
+) -> dict[str, Any]:
+    """Produce a concise, citation-backed summary without calling the LLM."""
+
+    summary_parts = []
+    if note:
+        summary_parts.append(note)
+    summary_parts.extend(
+        [
+            (
+                "Intraday lows cluster near "
+                f"{features.get('median_low_time', 'n/a')} [C1], highs around "
+                f"{features.get('median_high_time', 'n/a')} [C2]."
+            ),
+            (
+                "Buying dips is most consistent in "
+                f"{features.get('best_buy_window', 'n/a')} [C3], while strength "
+                "often appears in "
+                f"{features.get('best_sell_window', 'n/a')} [C4]."
+            ),
+            "Confidence is constrained by the available sessions [C1].",
+        ]
+    )
+
+    return {
+        "summary": " ".join(summary_parts),
+        "best_buy_window": features.get("best_buy_window", "n/a"),
+        "best_sell_window": features.get("best_sell_window", "n/a"),
+        "confidence": features.get("confidence", 0.0),
+        "citations": [c.dict() if hasattr(c, "dict") else c for c in citations],
+    }
